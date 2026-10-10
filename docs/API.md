@@ -1,6 +1,6 @@
 # Contrat d'API : rapprochement Orsay Gestion
 
-Source de vérité partagée entre le back (`middle_office/api/`) et le front (`middle_office/web/` : `index.html`, `app.css`, `app.js`).
+Source de vérité partagée entre le back (`middle_office/api/`) et le front (sources React dans `front/`, build servi depuis `middle_office/web/`).
 Toute évolution du contrat passe par ce fichier d'abord.
 
 Lancement : `uv run uvicorn middle_office.api:app --reload` puis http://127.0.0.1:8000
@@ -18,7 +18,7 @@ Lancement : `uv run uvicorn middle_office.api:app --reload` puis http://127.0.0.
 | Rate limit `POST` | 20 requêtes / minute / IP | `429 RATE_LIMIT` + en-tête `Retry-After` (secondes) |
 | Rate limit `GET` | 120 requêtes / minute / IP | idem |
 | Rate limit questions (`POST /api/questions*`) | 10 requêtes / minute / IP, quota à part | idem |
-| Usage du LLM (clé API) | modèle imposé `claude-haiku-5-5`, 300 appels réels / jour, 4 simultanés, timeout 10 s, 1 nouvelle tentative, cache des questions identiques, interrupteur `RECO_LLM_ACTIF=0` | **pas d'erreur** : repli par mots-clés, raison dans `comprehension.detail` |
+| Usage du LLM (clé API) | modèle imposé `claude-haiku-5-5`, 300 appels réels / jour, 4 simultanés, timeout 10 s, 1 nouvelle tentative, cache des questions identiques, interrupteur `LLM_ACTIF=0` | **pas d'erreur** : repli par mots-clés, raison dans `comprehension.detail` |
 | Question | 3 à 500 caractères, caractères de contrôle retirés, champs inconnus refusés | `422 VALIDATION` |
 | Taille du corps | 15 Mo | `413 CORPS_TROP_GROS` |
 | Taille d'un fichier décodé | 5 Mo | `413 FICHIER_TROP_GROS` |
@@ -38,7 +38,7 @@ Autres codes : `503 BASE_INDISPONIBLE` (questions, base de gestion illisible), `
 ## Routes
 
 ### `GET /` → la page HTML (`middle_office/web/index.html`)
-### `GET /static/app.css`, `GET /static/app.js` → fichiers du dossier `middle_office/web/`
+### `GET /static/assets/…` → fichiers du build (`middle_office/web/assets/`, noms hachés par Vite)
 
 ### `GET /api/sante`
 `date_arrete` : date de référence de la **base de gestion** (dernières positions de `orsay.db`), `null` si illisible. C'est la date des réponses aux questions et celle des fichiers d'exemple.

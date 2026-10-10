@@ -4,7 +4,7 @@
 - Modèle imposé (Haiku 5.5) : personne ne peut choisir un modèle plus cher via la requête.
 - Budget d'appels par jour, appels simultanés bornés, timeout court, une seule nouvelle tentative.
 - Cache des questions identiques : une même question ne consomme la clé qu'une fois.
-- Interrupteur `RECO_LLM_ACTIF=0` : coupe le LLM sans redéployer (les tests l'utilisent).
+- Interrupteur `LLM_ACTIF=0` : coupe le LLM sans redéployer (les tests l'utilisent).
 Toute limite atteinte lève `LLMIndisponible` : le domaine se replie sur les mots-clés, sans erreur
 pour l'utilisateur et sans consommer la clé. Compteurs en mémoire : remis à zéro au redémarrage.
 """
@@ -88,9 +88,9 @@ class ClientEncadre:
 def client_depuis_environnement(
     budget_jour: int, concurrence: int, timeout: float
 ) -> ClientEncadre | None:
-    """None si le LLM est coupé (`RECO_LLM_ACTIF=0`) ou si aucune clé n'est configurée."""
-    if os.environ.get("RECO_LLM_ACTIF", "1") == "0":
-        log.info("llm coupé par RECO_LLM_ACTIF=0 : compréhension par mots-clés")
+    """None si le LLM est coupé (`LLM_ACTIF=0`) ou si aucune clé n'est configurée."""
+    if os.environ.get("LLM_ACTIF", "1") == "0":
+        log.info("llm coupé par LLM_ACTIF=0 : compréhension par mots-clés")
         return None
     if not os.environ.get("ANTHROPIC_API_KEY"):
         log.info("llm : aucune clé configurée, compréhension par mots-clés")

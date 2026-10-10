@@ -16,5 +16,5 @@ Front en **Vite + React + TypeScript + Tailwind + shadcn/ui** (Radix), sources d
 
 ## Conséquences
 - Dépendances npm (Vite, React, Tailwind, Radix/shadcn) : `front/node_modules` est hors git, le build est dans git (à rebâtir après toute modification du front).
-- CSP : certains composants Radix injectent des balises `<style>`. Si `style-src 'unsafe-inline'` devient nécessaire, ce relâchement est documenté et limité aux styles (`script-src 'self'` reste strict).
+- CSP : **inchangée**, sans `'unsafe-inline'`. Les composants Radix qui injectent des `<style>` (Dialog, Sheet, ScrollArea, Select) sont évités : la fiche et la palette sont faites à la main, et le DropdownMenu est en `modal={false}`. Aucune violation relevée sur tout le parcours.
 - En production : build en CI plutôt que build commité, et tests de composants (non faits ici).

@@ -1,16 +1,19 @@
-# Test technique Saify : agents IA pour la finance
+# Test technique Saify : cas Orsay Gestion (middle office)
 
-Projet vide, prêt à recevoir le cas client. Python 3.12 géré par uv ; FastAPI, SDK Anthropic, LangGraph disponibles (aucun framework d'agents n'est imposé).
+Rapprochement quotidien des positions titres (besoin 1) et questions sur la base de gestion (besoin 2). Python 3.12 géré par uv ; FastAPI, SDK Anthropic, LangGraph disponibles (aucun framework d'agents n'est imposé).
 
 ## Commandes
 - Tests : `uv run pytest -q` · Lint : `uv run ruff check .` · Format : `uv run ruff format .`
-- API (quand elle existera) : `uv run uvicorn <module>:app --reload`
+- Application : `make run` (`uv run uvicorn middle_office.api:app --reload`) · CLI : `make cli`
+- Front : `make front-install`, `make front-dev` (Vite + proxy), `make front-build` (à commiter), `make front-check`
 - Clé API : `ANTHROPIC_API_KEY` dans `.env` (déjà ignoré par git, ne jamais l'afficher).
 
 ## Structure
-- `data/` fichiers du cas client · `docs/CONSIGNE.md` la consigne · `docs/adr/` décisions (modèle `0000-template.md`)
-- `CONTEXT.md` langage du domaine (glossaire finance, à enrichir avec le cas) · `NOTES.md` choix au fil de l'eau
-- Code à créer en `src/` (ou le dossier le plus simple pour le cas), tests en `tests/`.
+- `middle_office/domaine/` métier pur, sans HTTP : `rapprochement/` (besoin 1), `questions/` (besoin 2)
+- `middle_office/api/` HTTP (contrat : `docs/API.md`) · `middle_office/web/` build du front (généré, commité)
+- `front/` sources React (architecture : `docs/FRONT.md`) · `tests/` tests Python (oracles calculés à la main)
+- `data/donnees/` fichiers du client · `docs/adr/` décisions · `CONTEXT.md` glossaire · `NOTES.md` journal des choix
+- `exploration/` analyse exploratoire des données (hors application)
 
 ## Règles
 - Aligner avant de coder (`/grill`). Tests avant de déclarer fini ; ne jamais annoncer « ça marche » sans avoir vu la sortie.

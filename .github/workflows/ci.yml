@@ -8,7 +8,7 @@ jobs:
   python:
     runs-on: ubuntu-latest
     env:
-      RECO_LLM_ACTIF: "0"  # jamais d'appel au LLM en CI
+      LLM_ACTIF: "0"  # jamais d'appel au LLM en CI
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -16,3 +16,23 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+
+  front:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run build
+      # Le build commité doit correspondre aux sources : sinon la démo servirait un front périmé.
+      - run: git diff --exit-code -- ../middle_office/web
