@@ -17,6 +17,16 @@ class LigneSource:
     valeurs: dict[str, str]
 
 
+@dataclass(frozen=True)
+class Vigilance:
+    """Seuil de vigilance interne franchi : attire l'attention, ne juge pas la conformité."""
+
+    code: str
+    message: str
+    emetteurs: list[str]
+    valeur: Decimal  # en %
+
+
 @dataclass
 class Reponse:
     reponse: str  # phrase issue d'un gabarit, jamais rédigée par le LLM
@@ -26,6 +36,7 @@ class Reponse:
     lignes_sources: list[LigneSource]
     confiance: str = "haute"  # haute, ou basse dès qu'un chiffre est partiel ou douteux
     avertissements: list[str] = field(default_factory=list)
+    vigilances: list[Vigilance] = field(default_factory=list)
     question: str = ""
 
 

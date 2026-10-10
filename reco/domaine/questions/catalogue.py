@@ -12,6 +12,7 @@ from pathlib import Path
 
 from reco.domaine.questions.base import connexion_lecture_seule, decimal
 from reco.domaine.questions.modeles import Chiffre, LigneSource, Reponse, montant
+from reco.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
 from reco.domaine.rapprochement import formater_quantite
 
 CENTIME = Decimal("0.01")
@@ -155,7 +156,8 @@ def encours_valorise(base: Path, fonds: str | None, date_ref: date) -> Reponse:
                    confiance="basse" if v.exclues else "haute", avertissements=v.avertissements)  # fmt: skip
 
 
-def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date) -> Reponse:
+def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date,
+                            regles: ReglesVigilance = REGLES_PAR_DEFAUT) -> Reponse:  # fmt: skip
     """Part de chaque émetteur dans l'encours valorisé d'un fonds. Chiffres bruts, sans jugement réglementaire."""
     if fonds is None:
         return Reponse("Précisez le fonds : la concentration par émetteur se lit fonds par fonds (PAT, OBL ou ACT).",
@@ -187,7 +189,8 @@ def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date) -> Re
         *v.avertissements,
     ]
     return Reponse(phrase, chiffres, SQL_ENCOURS, v.parametres, v.sources,
-                   confiance="basse" if v.exclues else "haute", avertissements=avertissements)  # fmt: skip
+                   confiance="basse" if v.exclues else "haute", avertissements=avertissements,
+                   vigilances=regles.evaluer(classement, total))  # fmt: skip
 
 
 def _ajouter_mois(d: date, mois: int) -> date:
