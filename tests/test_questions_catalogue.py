@@ -8,7 +8,13 @@ from decimal import Decimal
 import pytest
 
 from reco.domaine.questions.base import connexion_lecture_seule
-from reco.domaine.questions.catalogue import encours_valorise
+from reco.domaine.questions.catalogue import (
+    concentration_emetteurs,
+    echeances,
+    encours_valorise,
+    operations_non_denouees,
+    origine_suspens,
+)
 from tests.fabrique import DONNEES, db_modifiee
 
 BASE = DONNEES / "orsay.db"
@@ -110,3 +116,100 @@ def test_fonds_sans_position():
     assert reponse.chiffres == []
     assert reponse.confiance == "basse"
     assert "aucune position" in reponse.reponse.lower()
+
+
+# 2.2 : échéances, concentration, opérations non dénouées, origine d'un suspens.
+def test_echeances_12_mois_par_defaut():
+    reponse = echeances(BASE, None, ARRETE)
+    assert [ligne.valeurs["isin"] for ligne in reponse.lignes_sources] == [
+        "FR0000011116",
+        "FR0000010373",
+    ]
+    valeurs = {c.libelle: c.valeur for c in reponse.chiffres}
+    assert valeurs["Tombées d'échéance"] == 2
+    assert valeurs["Nominal remboursé"] == Decimal("45000")
+    assert "25/09/2027" in reponse.reponse  # borne de l'horizon affichée
+    assert any("12 mois" in a for a in reponse.avertissements)
+
+
+def test_echeances_horizon_et_fonds():
+    assert [
+        ligne.valeurs["isin"]
+        for ligne in echeances(BASE, None, ARRETE, horizon_mois=3).lignes_sources
+    ] == ["FR0000011116"]
+    assert [ligne.valeurs["isin"] for ligne in echeances(BASE, "OBL", ARRETE).lignes_sources] == [
+        "FR0000010373"
+    ]
+
+
+def test_aucune_echeance_est_une_reponse_fiable():
+    reponse = echeances(BASE, "ACT", ARRETE)
+    assert reponse.lignes_sources == [] and reponse.confiance == "haute"
+    assert "aucune" in reponse.reponse.lower()
+
+
+def test_concentration_obl():
+    reponse = concentration_emetteurs(BASE, "OBL", ARRETE)
+    premier = reponse.chiffres[0]
+    assert premier.libelle == "Agence française de développement"
+    assert premier.valeur == Decimal("33.46") and premier.unite == "%"
+    assert len(reponse.chiffres) == 10  # 10 émetteurs distincts dans OBL
+    assert any("ratios réglementaires" in a for a in reponse.avertissements)
+
+
+def test_concentration_regroupe_par_emetteur():
+    reponse = concentration_emetteurs(BASE, "PAT", ARRETE)
+    valeurs = {c.libelle: c.valeur for c in reponse.chiffres}
+    assert valeurs["Kering"] == Decimal("87.54")
+    assert valeurs["République française"] == Decimal("0.03")  # 4 lignes d'État regroupées
+
+
+def test_concentration_exige_un_fonds():
+    reponse = concentration_emetteurs(BASE, None, ARRETE)
+    assert reponse.chiffres == [] and reponse.confiance == "basse"
+
+
+def test_operations_non_denouees():
+    reponse = operations_non_denouees(BASE, None, ARRETE)
+    assert [ligne.valeurs["id"] for ligne in reponse.lignes_sources] == ["19", "20"]
+    assert reponse.chiffres[0].valeur == 2
+    montants = {ligne.valeurs["id"]: ligne.valeurs["montant"] for ligne in reponse.lignes_sources}
+    assert montants == {"19": "10948000.00", "20": "217730.00"}
+    assert "CSDR" not in reponse.reponse
+
+
+def test_operation_non_denouee_en_retard_signale_csdr(tmp_path):
+    base = db_modifiee(
+        tmp_path, "UPDATE mouvements SET date_denouement = '2026-09-24' WHERE id = 19"
+    )
+    reponse = operations_non_denouees(base, None, ARRETE)
+    assert "CSDR" in reponse.reponse
+    assert any("n°19" in a and "CSDR" in a for a in reponse.avertissements)
+
+
+SUSPENS_SCHNEIDER = {
+    "id": "S6", "priorite": "en_attente", "fonds": "ACT", "entite": "ORSAY ACTIONS EUROPE",
+    "isin": "FR0000012965", "libelle_titre": "SCHNEIDER", "conservateur": "A", "type": "QTE",
+    "libelle_type": "Quantité différente", "qte_pms": "250000", "qte_dep": "225000", "ecart": "25000",
+    "action": "Vérifier les opérations de la veille non dénouées",
+    "piste": "op. n°19 ACHAT 25 000 dén. 26/09/2026 → écart entièrement expliqué",
+    "signalements": [], "sources": ["positions_internes.csv:21", "depositaire_A_20260925.xlsx:7"],
+}  # fmt: skip
+
+
+def test_origine_suspens():
+    reponse = origine_suspens(BASE, "FR0000012965", [SUSPENS_SCHNEIDER], "r_abc123")
+    assert "SCHNEIDER" in reponse.reponse and "r_abc123" in reponse.reponse
+    assert reponse.chiffres[0].valeur == Decimal("25000")
+    tables = [ligne.table for ligne in reponse.lignes_sources]
+    assert "positions_internes.csv:21" in tables and "mouvements" in tables
+
+
+def test_origine_suspens_absent():
+    reponse = origine_suspens(BASE, "FR0000010001", [SUSPENS_SCHNEIDER], "r_abc123")
+    assert "aucun suspens" in reponse.reponse.lower() and reponse.confiance == "haute"
+
+
+def test_origine_suspens_sans_rapprochement():
+    reponse = origine_suspens(BASE, "FR0000012965", None, None)
+    assert reponse.confiance == "basse" and "rapprochement" in reponse.reponse.lower()
