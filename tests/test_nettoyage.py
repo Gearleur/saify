@@ -2,7 +2,7 @@
 
 import pytest
 
-from reco.sources import isin_valide
+from reco.domaine.sources import isin_valide
 from tests.fabrique import (
     PMS,
     B,

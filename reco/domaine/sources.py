@@ -398,9 +398,21 @@ def lire_depositaire_b(nom: str, contenu: bytes, param: Parametrage, date_arrete
     return lecture
 
 
+def _dtd_present(contenu: bytes) -> bool:
+    """Cherche aussi dans la version UTF-16, qu'expat accepterait avec un BOM."""
+    textes = [contenu.upper()]
+    if contenu[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        textes.append(contenu.decode("utf-16", errors="replace").upper().encode())
+    return any(b"<!DOCTYPE" in t or b"<!ENTITY" in t for t in textes)
+
+
 def lire_depositaire_c(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) -> Lecture:
     """XML à namespace ; les lots d'un même (compte, ISIN) sont additionnés au rapprochement."""
     lecture = Lecture(nom)
+    if _dtd_present(contenu):  # avant tout parsing : entités externes, « billion laughs »
+        lecture.noter("BLOQUANT", "FORMAT", 0, "", "",
+                      "DOCTYPE ou ENTITY interdit dans le XML conservateur : fichier refusé par sécurité")  # fmt: skip
+        return lecture
     racine = ET.fromstring(contenu)
     brut_date = racine.findtext(".//c:DateArrete", "", NS_C).strip()
     try:

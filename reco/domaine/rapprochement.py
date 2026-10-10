@@ -12,7 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import NamedTuple
 
-from reco.sources import (
+from reco.domaine.sources import (
     Anomalie,
     Lecture,
     Parametrage,
@@ -33,6 +33,7 @@ LECTEURS = {
     "C": ("depositaire_C", lire_depositaire_c),
 }
 DATE_ARRETE = date(2026, 9, 25)
+PRIORITES = ("critique", "a_relever", "en_attente")  # ordre de traitement
 
 
 @dataclass
@@ -55,6 +56,19 @@ class Suspens:
     def ecart(self) -> Decimal:
         """PMS − conservateur : positif si le PMS en a plus (achat non dénoué, par exemple)."""
         return (self.qte_pms or Decimal(0)) - (self.qte_dep or Decimal(0))
+
+    @property
+    def priorite(self) -> str:
+        return priorite(self)
+
+
+def priorite(s: Suspens) -> str:
+    """critique : risque CSDR ; en_attente : QTE entièrement expliqué sans signalement ; sinon a_relever."""
+    if any("risque CSDR" in message for message in s.signalements):
+        return "critique"
+    if s.type == "QTE" and "écart entièrement expliqué" in s.piste and not s.signalements:
+        return "en_attente"
+    return "a_relever"
 
 
 @dataclass
@@ -342,7 +356,7 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
 
     resultat.suspens = _fusionner_dep(_comparer(pms, dep))
     _completer(resultat.suspens, param, base, date_arrete, conservateurs)
-    resultat.suspens.sort(key=lambda s: (s.entite, s.type, s.isin))
+    resultat.suspens.sort(key=lambda s: (PRIORITES.index(s.priorite), s.entite, s.type, s.isin))
     return resultat
 
 

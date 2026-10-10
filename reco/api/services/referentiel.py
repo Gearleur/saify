@@ -1,0 +1,74 @@
+"""Référentiel en lecture seule : paramétrage client, codes fonds et disponibilité de orsay.db."""
+
+import logging
+import sqlite3
+from pathlib import Path
+
+from reco.api.config import Reglages
+from reco.api.erreurs import ErreurApi
+from reco.api.schemas import Conservateur, Fonds, ParametrageSortie, Transco, TypeEcart
+from reco.domaine.rapprochement import DATE_ARRETE
+from reco.domaine.sources import lire_parametrage
+
+log = logging.getLogger("reco.api.referentiel")
+
+TRANSCOS = ("TRANSCO_SOUS_COMPTES", "TRANSCO_DEPOSITAIRE_A", "TRANSCO_DEPOSITAIRE_B", "TRANSCO_DEPOSITAIRE_C")  # fmt: skip
+# Ni le paramétrage ni la base ne les portent : repris de l'énoncé (limite connue).
+CONSERVATEURS = [
+    Conservateur(code="A", nom="CACEIS"),
+    Conservateur(code="B", nom="Euroclear"),
+    Conservateur(code="C", nom="BNP Paribas (BP2S)"),
+]
+EXCLUSIONS = [
+    "Sous-compte P3G (compte technique de passage)",
+    "Ligne sans sous-compte (saisie incomplète)",
+    "Item conservateur C annulé (ACTION=S)",
+]
+
+
+def _lire_base(base: Path, requete: str) -> list[tuple]:
+    db = sqlite3.connect(f"file:{base}?mode=ro", uri=True)
+    try:
+        return db.execute(requete).fetchall()
+    finally:
+        db.close()
+
+
+def base_disponible(base: Path) -> bool:
+    try:
+        _lire_base(base, "SELECT 1 FROM portefeuilles LIMIT 1")
+        return True
+    except sqlite3.Error:
+        return False
+
+
+def codes_fonds(base: Path) -> dict[str, str]:
+    try:
+        return dict(_lire_base(base, "SELECT nom, code FROM portefeuilles"))
+    except sqlite3.Error:
+        return {}
+
+
+def parametrage(reglages: Reglages) -> ParametrageSortie:
+    try:
+        param = lire_parametrage(reglages.parametrage)
+    except Exception as exc:
+        log.warning("parametrage illisible : %s", exc)
+        raise ErreurApi(503, "PARAMETRAGE_INDISPONIBLE", f"parametrage.xlsx illisible : {exc}") from exc  # fmt: skip
+    tables = dict(zip(TRANSCOS, (param.sous_comptes, param.comptes_a, param.desks_b, param.comptes_c), strict=True))  # fmt: skip
+    entites = list(dict.fromkeys(e for table in tables.values() for e in table.values()))
+    codes = codes_fonds(reglages.base)
+    return ParametrageSortie(
+        date_arrete=DATE_ARRETE.isoformat(),
+        fonds=[Fonds(entite=e, code=codes.get(e, "")) for e in entites],
+        conservateurs=CONSERVATEURS,
+        types_ecarts=[
+            TypeEcart(code=code, libelle=str(libelle), action_attendue=str(action))
+            for code, (libelle, action) in param.types_ecarts.items()
+        ],
+        transcos={
+            nom: [Transco(cle=cle, entite=entite) for cle, entite in table.items()]
+            for nom, table in tables.items()
+        },
+        exclusions=EXCLUSIONS,
+    )

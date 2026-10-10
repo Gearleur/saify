@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from reco import rapprocher_dossier
-from reco.rapprochement import formater_quantite
+from reco.domaine.rapprochement import formater_quantite
 
 
 def _qte(q: Decimal | None) -> str:

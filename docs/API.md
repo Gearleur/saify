@@ -1,0 +1,159 @@
+# Contrat d'API : rapprochement Orsay Gestion
+
+Source de vérité partagée entre le back (`reco/api.py`) et le front (`reco/web/` : `index.html`, `app.css`, `app.js`).
+Toute évolution du contrat passe par ce fichier d'abord.
+
+Lancement : `uv run uvicorn reco.api:app --reload` puis http://127.0.0.1:8000
+
+## Conventions
+- JSON en UTF-8, champs en français, `snake_case`.
+- **Quantités et écarts : chaînes décimales** (`"250000"`, `"-1000"`, `"5000.5"`), jamais des nombres JSON : on ne repasse pas par `float`. `null` = absent de ce côté.
+- Dates : ISO `YYYY-MM-DD` ; horodatages : ISO 8601 UTC (`2026-10-10T14:03:22Z`).
+- Toute erreur renvoie `{"erreur": {"code": "...", "message": "...", "details": ...}}` avec le statut HTTP adapté. Jamais de trace Python.
+- Chaque réponse porte un en-tête `X-Request-ID` (repris de la requête s'il est fourni, sinon généré).
+
+## Garde-fous
+| Garde-fou | Valeur | Réponse si dépassé |
+|---|---|---|
+| Rate limit `POST` | 20 requêtes / minute / IP | `429 RATE_LIMIT` + en-tête `Retry-After` (secondes) |
+| Rate limit `GET` | 120 requêtes / minute / IP | idem |
+| Taille du corps | 15 Mo | `413 CORPS_TROP_GROS` |
+| Taille d'un fichier décodé | 5 Mo | `413 FICHIER_TROP_GROS` |
+| Nombre de fichiers | 1 à 8 | `422 VALIDATION` |
+| Nom de fichier | nom de base seul (pas de `/`, `\`, `..`), extensions `.csv .xlsx .txt .xml` | `422 VALIDATION` |
+| Base64 | décodage strict | `422 VALIDATION` |
+| Source non reconnue | préfixes `positions_internes`, `depositaire_A`, `depositaire_B`, `depositaire_C` | `422 FICHIER_NON_RECONNU` (le message liste les préfixes attendus) |
+| XML | refus de `<!DOCTYPE` / `<!ENTITY>` (entités externes, billion laughs) | rapprochement `BLOQUE`, règle `FORMAT` |
+| `orsay.db` | ouverte en lecture seule (`mode=ro`) | — |
+| En-têtes de sécurité | CSP stricte : `default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'` (donc **ni script inline, ni `<style>` inline, ni attribut `style=""`, ni `onclick=`** côté front), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` | — |
+| Historique en mémoire | 20 derniers rapprochements | les plus anciens sont oubliés |
+
+Un fichier refusé par le *métier* (date, total de contrôle…) n'est **pas** une erreur HTTP : la réponse est `200` avec `statut: "BLOQUE"` et le journal explique quoi faire (`remede`).
+
+Autres codes : `404 INTROUVABLE`, `405 METHODE_NON_AUTORISEE`, `503 PARAMETRAGE_INDISPONIBLE` (`/api/parametrage` si `parametrage.xlsx` est illisible), `503 PAGE_INDISPONIBLE` (`GET /` sans `index.html`), `500 ERREUR_INTERNE` (sans trace). Swagger (`/docs`) est désactivé : incompatible avec la CSP stricte.
+
+## Routes
+
+### `GET /` → la page HTML (`reco/web/index.html`)
+### `GET /static/app.css`, `GET /static/app.js` → fichiers du dossier `reco/web/`
+
+### `GET /api/sante`
+```json
+{"statut": "ok", "version": "0.3.0", "date_arrete": "2026-09-25", "base_disponible": true}
+```
+
+### `GET /api/parametrage`
+Référentiel pour les filtres et la vue Paramétrage (lecture seule).
+```json
+{
+  "date_arrete": "2026-09-25",
+  "fonds": [{"entite": "ORSAY OBLIGATIONS", "code": "OBL"}],
+  "conservateurs": [{"code": "A", "nom": "CACEIS"}, {"code": "B", "nom": "Euroclear"}, {"code": "C", "nom": "BNP Paribas (BP2S)"}],
+  "types_ecarts": [{"code": "QTE", "libelle": "Quantité différente", "action_attendue": "Vérifier les opérations de la veille non dénouées"}],
+  "transcos": {"TRANSCO_SOUS_COMPTES": [{"cle": "SC-PAT-01", "entite": "ORSAY PATRIMOINE"}], "TRANSCO_DEPOSITAIRE_A": [], "TRANSCO_DEPOSITAIRE_B": [], "TRANSCO_DEPOSITAIRE_C": []},
+  "exclusions": ["Sous-compte P3G (compte technique de passage)", "Ligne sans sous-compte (saisie incomplète)", "Item conservateur C annulé (ACTION=S)"]
+}
+```
+
+### `POST /api/rapprochements`
+Corps :
+```json
+{"fichiers": [{"nom": "positions_internes.csv", "contenu_b64": "ZGF0ZV9h..."}]}
+```
+→ `201` + objet **Rapprochement** (ci-dessous) si `statut = "OK"` ; `200` si `statut = "BLOQUE"` (le rapprochement est quand même enregistré dans l'historique).
+
+### `POST /api/rapprochements/exemple`
+Rapproche les fichiers du 25/09 fournis (`data/donnees`). Pas de corps. → `201` (ou `200` si BLOQUE) + **Rapprochement**.
+
+### `GET /api/rapprochements` → `[RapprochementResume]`, le plus récent d'abord
+```json
+[{"id": "r_8f3a2c", "cree_le": "2026-10-10T14:03:22Z", "date_arrete": "2026-09-25", "statut": "OK", "nb_suspens": 7, "nb_a_traiter": 5}]
+```
+
+### `GET /api/rapprochements/{id}` → **Rapprochement** · `404 INTROUVABLE`
+
+### `GET /api/rapprochements/{id}/suspens.csv`
+CSV `;`, UTF-8 avec BOM (ouverture directe dans Excel), quantités en texte. Colonnes :
+`priorite;fonds;entite;isin;titre;conservateur;type;libelle_type;qte_pms;qte_conservateur;ecart;action;piste;signalements;sources`.
+En-tête `Content-Disposition: attachment; filename="suspens_2026-09-25.csv"`.
+
+### `GET /api/rapprochements/{id}/point-de-situation`
+```json
+{"texte": "Point de situation · rapprochement du 25/09/2026\n..."}
+```
+Texte brut, prêt à coller dans un mail : statut, synthèse par fonds et conservateur, suspens par priorité avec action attendue, exclusions et signalements.
+
+### `POST /api/questions` (besoin 2, réservé)
+Corps `{"question": "Encours valorisé du fonds OBL ?"}` → **aujourd'hui `501 NON_DISPONIBLE`**.
+Format de réponse prévu (le front sait déjà l'afficher) :
+```json
+{
+  "question": "Encours valorisé du fonds OBL ?",
+  "reponse": "L'encours valorisé d'ORSAY OBLIGATIONS au 25/09/2026 est de 1 234 567,89 EUR.",
+  "chiffres": [{"libelle": "Encours valorisé", "valeur": "1234567.89", "unite": "EUR"}],
+  "requete_sql": "SELECT ... FROM positions JOIN cours ...",
+  "lignes_sources": [{"table": "positions", "valeurs": {"isin": "FR0000011488", "quantite": "40000"}}],
+  "confiance": "haute",
+  "avertissements": ["Obligations valorisées au pied de coupon, sans coupon couru."]
+}
+```
+
+## Objets
+
+### Rapprochement
+```json
+{
+  "id": "r_8f3a2c",
+  "cree_le": "2026-10-10T14:03:22Z",
+  "date_arrete": "2026-09-25",
+  "statut": "OK",
+  "fichiers": [{"nom": "positions_internes.csv", "source": "PMS", "taille": 2345, "sha256": "ab12…"}],
+  "synthese": {
+    "nb_suspens": 7,
+    "par_priorite": {"critique": 0, "a_relever": 5, "en_attente": 2},
+    "par_type": {"QTE": 3, "ABS_DEP": 2, "ABS_INT": 1, "DEP": 1},
+    "par_fonds": [{"code": "OBL", "entite": "ORSAY OBLIGATIONS", "nb_suspens": 5}],
+    "par_conservateur": {"A": 3, "B": 2, "C": 1, "A→B": 1},
+    "journal": {"BLOQUANT": 0, "SIGNALE": 2, "EXCLU": 3, "NORMALISE": 69}
+  },
+  "suspens": [Suspens],
+  "journal": [Anomalie]
+}
+```
+Si `statut = "BLOQUE"` : `suspens = []`, les compteurs de suspens valent 0, et le journal contient au moins un `BLOQUANT` avec son `remede`.
+
+### Suspens
+```json
+{
+  "id": "S1",
+  "priorite": "a_relever",
+  "fonds": "OBL",
+  "entite": "ORSAY OBLIGATIONS",
+  "isin": "FR0000015927",
+  "libelle_titre": "AFD 3.5% 2035",
+  "conservateur": "A→B",
+  "type": "DEP",
+  "libelle_type": "Titre détenu chez un autre dépositaire que prévu",
+  "qte_pms": "250000",
+  "qte_dep": "250000",
+  "ecart": "0",
+  "action": "Corriger le référentiel dépositaire",
+  "piste": "",
+  "signalements": [],
+  "sources": ["positions_internes.csv:36", "depositaire_B_20260925.txt:10"]
+}
+```
+`id` : `S1…Sn` dans l'ordre de la liste (tri : priorité, puis entité, type, ISIN).
+
+**Priorité** (règle métier, calculée côté back) :
+- `critique` : au moins un signalement de risque CSDR (opération non dénouée à sa date prévue).
+- `en_attente` : `QTE` dont la piste dit « écart entièrement expliqué », sans aucun signalement : il suffit d'attendre le dénouement.
+- `a_relever` : tout le reste (absences, DEP, écarts non ou partiellement expliqués, signalements).
+
+### Anomalie (ligne du journal de nettoyage)
+```json
+{"fichier": "positions_internes.csv", "ligne": 18, "niveau": "EXCLU", "regle": "SANS_SOUS_COMPTE", "brut": "2026-09-25;;FR0000011850;SANOFI;12345;EUROCLEAR FRANCE", "retenu": "", "motif": "ligne sans sous-compte : anomalie de saisie", "remede": ""}
+```
+`niveau` ∈ `NORMALISE`, `EXCLU`, `SIGNALE`, `BLOQUANT`. `remede` est non vide pour tout `BLOQUANT`.
+
+Exemple complet, données réelles du 25/09 : [`docs/exemple_rapprochement.json`](exemple_rapprochement.json).

@@ -1,0 +1,152 @@
+"""Modèles d'entrée et de sortie (contrat : docs/API.md). Quantités en chaînes décimales, jamais de float."""
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from reco.api.config import EXTENSIONS
+
+# Entrées : champs inconnus refusés
+
+
+class Entree(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class FichierEntree(Entree):
+    nom: str = Field(min_length=1, max_length=255)
+    contenu_b64: str
+
+    @field_validator("nom")
+    @classmethod
+    def nom_de_base(cls, nom: str) -> str:
+        if "/" in nom or "\\" in nom or ".." in nom or any(ord(c) < 32 for c in nom):
+            raise ValueError("nom de base seul attendu (ni chemin, ni « .. », ni caractère de contrôle)")  # fmt: skip
+        if not nom.lower().endswith(EXTENSIONS):
+            raise ValueError(f"extension non autorisée (attendu : {', '.join(EXTENSIONS)})")
+        return nom
+
+
+class DemandeRapprochement(Entree):
+    fichiers: list[FichierEntree] = Field(min_length=1, max_length=8)
+
+
+class Question(Entree):
+    question: str = Field(min_length=3, max_length=500)
+
+
+# Sorties : rapprochement
+
+
+class FichierSortie(BaseModel):
+    nom: str
+    source: str
+    taille: int
+    sha256: str
+
+
+class FondsSynthese(BaseModel):
+    code: str
+    entite: str
+    nb_suspens: int
+
+
+class Synthese(BaseModel):
+    nb_suspens: int
+    par_priorite: dict[str, int]
+    par_type: dict[str, int]
+    par_fonds: list[FondsSynthese]
+    par_conservateur: dict[str, int]
+    journal: dict[str, int]
+
+
+class SuspensSortie(BaseModel):
+    id: str
+    priorite: str
+    fonds: str
+    entite: str
+    isin: str
+    libelle_titre: str
+    conservateur: str
+    type: str
+    libelle_type: str
+    qte_pms: str | None
+    qte_dep: str | None
+    ecart: str
+    action: str
+    piste: str
+    signalements: list[str]
+    sources: list[str]
+
+
+class AnomalieSortie(BaseModel):
+    fichier: str
+    ligne: int
+    niveau: str
+    regle: str
+    brut: str
+    retenu: str
+    motif: str
+    remede: str
+
+
+class Rapprochement(BaseModel):
+    id: str
+    cree_le: str
+    date_arrete: str
+    statut: str
+    fichiers: list[FichierSortie]
+    synthese: Synthese
+    suspens: list[SuspensSortie]
+    journal: list[AnomalieSortie]
+
+
+class RapprochementResume(BaseModel):
+    id: str
+    cree_le: str
+    date_arrete: str
+    statut: str
+    nb_suspens: int
+    nb_a_traiter: int
+
+
+class PointDeSituation(BaseModel):
+    texte: str
+
+
+# Sorties : santé et référentiel
+
+
+class Sante(BaseModel):
+    statut: str
+    version: str
+    date_arrete: str
+    base_disponible: bool
+
+
+class Fonds(BaseModel):
+    entite: str
+    code: str
+
+
+class Conservateur(BaseModel):
+    code: str
+    nom: str
+
+
+class TypeEcart(BaseModel):
+    code: str
+    libelle: str
+    action_attendue: str
+
+
+class Transco(BaseModel):
+    cle: str
+    entite: str
+
+
+class ParametrageSortie(BaseModel):
+    date_arrete: str
+    fonds: list[Fonds]
+    conservateurs: list[Conservateur]
+    types_ecarts: list[TypeEcart]
+    transcos: dict[str, list[Transco]]
+    exclusions: list[str]

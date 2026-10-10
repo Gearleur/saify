@@ -114,3 +114,12 @@ Un commit à chaque étape verte, au moins toutes les 15 minutes.
 - **Paramétrage contrôlé** : feuille absente, code absent de TYPES_ECARTS ou transco contradictoire (même clé, deux fonds) → BLOQUANT `PARAMETRAGE`. Avant, le programme plantait, ou le dernier fonds lu gagnait en silence.
 - **Blocage total mais actionnable** : tout BLOQUANT porte un `remede` (« Ajouter « SC-XXX-01 » à la table TRANSCO_SOUS_COMPTES… »). Alternative écartée : blocage par fonds. Un sous-compte inconnu, c'est un fonds inconnu, donc aucun fonds n'est garanti.
 - Traces ajoutées : décodage latin-1 (NORMALISE `ENCODAGE`), colonnes CSV absentes (BLOQUANT `FORMAT` lisible, au lieu d'un `KeyError`).
+- Limites acceptées (revue étape 2) : le motif `\d[.,]\d{3}$` signale à tort un nominal légitime noté « 2.500 » (faux positif accepté) ; les remèdes des BLOQUANT sont rédigés par nous et **à valider avec le middle office d'Orsay** (procédure réelle de relance d'un conservateur).
+
+## Étape 3 : choix
+- Rate limit maison (fenêtre glissante en mémoire, par IP) plutôt que `slowapi` : aucune dépendance ajoutée ; suffisant pour un process unique (limite : non partagé entre plusieurs workers).
+- Contrat d'API écrit d'abord (`docs/API.md`), puis back et front développés en parallèle par deux sous-agents à partir de ce contrat.
+- Export CSV et point de situation exposés dès l'étape 3 (une partie de l'étape 4 avancée), car le front en a besoin.
+- Front prêt pour le besoin 2 : la vue « Questions sur la base » et la route `POST /api/questions` (501 pour l'instant) sont réservées, avec le format de réponse (chiffre + requête + lignes sources) déjà défini.
+- **Architecture en 3 couches** (refactor du 10/10, demandé après lecture d'un `api.py` de 650 lignes) : `reco/domaine/` (métier pur : sources, rapprochement, situation ; aucun HTTP), `reco/api/` (HTTP : `config`, `schemas`, `erreurs`, `limiteur`, `middleware`, `services/`, `routes/`, `app.py` qui assemble, dépendances injectées via `app.state` et `Depends`), `reco/web/` (front). Le besoin 2 s'y branchera en `domaine/questions` + `api/routes/questions.py`. Refactor sans changement de comportement : les 95 tests passent sans modification (seul le chemin d'un monkeypatch change).
+- Limite citée : les noms des conservateurs (CACEIS, Euroclear, BNP Paribas) sont codés en dur dans `api/services/referentiel.py`, car ni le paramétrage ni la base ne les portent.
