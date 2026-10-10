@@ -28,6 +28,9 @@ class Reglages:
 
     limite_post: int = 20  # requêtes par fenêtre et par IP
     limite_get: int = 120
+    limite_questions: int = (
+        10  # questions par fenêtre et par IP (chaque question peut coûter un appel LLM)
+    )
     fenetre: float = 60.0  # secondes
     taille_corps_max: int = 15 * MO
     taille_fichier_max: int = 5 * MO
@@ -36,6 +39,9 @@ class Reglages:
     historique_max: int = 20  # nombre de rapprochements listés (et gardés, si en mémoire)
     # SQLite à part, hors git (positions du client) ; None : en mémoire, perdu au redémarrage.
     fichier_historique: Path | None = RACINE.parent / "var" / "historique.db"
+    llm_budget_jour: int = 300  # appels LLM réels par jour, au-delà : mots-clés
+    llm_concurrence: int = 4  # appels LLM simultanés
+    llm_timeout: float = 10.0  # secondes, une seule nouvelle tentative
 
     @property
     def parametrage(self) -> Path:

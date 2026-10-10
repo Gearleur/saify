@@ -4,6 +4,7 @@ import io
 import shutil
 import sqlite3
 from pathlib import Path
+from types import SimpleNamespace
 
 import openpyxl
 
@@ -84,3 +85,19 @@ def parametrage_modifie(dossier: Path, feuille: str, modifier) -> Path:
     copie = dossier / "parametrage.xlsx"
     wb.save(copie)
     return copie
+
+
+class FauxClient:
+    """Imite `client.messages.parse(...)` : renvoie une intention fixée, ou lève une erreur."""
+
+    def __init__(self, intention=None, erreur: Exception | None = None,
+                 stop_reason: str = "end_turn"):  # fmt: skip
+        self.appels: list[dict] = []
+        self.messages = SimpleNamespace(parse=self._parse)
+        self._intention, self._erreur, self._stop = intention, erreur, stop_reason
+
+    def _parse(self, **kwargs):
+        self.appels.append(kwargs)
+        if self._erreur:
+            raise self._erreur
+        return SimpleNamespace(parsed_output=self._intention, stop_reason=self._stop)

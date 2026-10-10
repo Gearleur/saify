@@ -5,7 +5,6 @@ Aucun appel réseau : un faux client simule Claude Haiku 5.5, ses réponses et s
 
 from datetime import date
 from decimal import Decimal
-from types import SimpleNamespace
 
 import anthropic
 import httpx2
@@ -17,26 +16,10 @@ from reco.domaine.questions.comprehension import (
     comprendre,
     repondre,
 )
-from tests.fabrique import DONNEES
+from tests.fabrique import DONNEES, FauxClient
 
 BASE = DONNEES / "orsay.db"
 ARRETE = date(2026, 9, 25)
-
-
-class FauxClient:
-    """Imite `client.messages.parse(...)` : renvoie une intention fixée, ou lève une erreur."""
-
-    def __init__(self, intention: IntentionLLM | None = None, erreur: Exception | None = None,
-                 stop_reason: str = "end_turn"):  # fmt: skip
-        self.appels: list[dict] = []
-        self.messages = SimpleNamespace(parse=self._parse)
-        self._intention, self._erreur, self._stop = intention, erreur, stop_reason
-
-    def _parse(self, **kwargs):
-        self.appels.append(kwargs)
-        if self._erreur:
-            raise self._erreur
-        return SimpleNamespace(parsed_output=self._intention, stop_reason=self._stop)
 
 
 def _llm(

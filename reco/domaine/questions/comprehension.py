@@ -45,6 +45,10 @@ catalogue. Dans ces cas, propose 2 ou 3 `reformulations` courtes, en français, 
 exactement à des entrées du catalogue."""
 
 
+class LLMIndisponible(Exception):
+    """Levée par l'encadrement de l'API (budget, concurrence, modèle) : on se replie sur les mots-clés."""
+
+
 class IntentionLLM(BaseModel):
     """Sortie structurée attendue de Claude, validée par pydantic avant tout usage."""
 
@@ -153,6 +157,8 @@ def _par_llm(
         return f"LLM indisponible (HTTP {exc.status_code})"
     except ValidationError:
         return "LLM indisponible (sortie non conforme au schéma)"
+    except LLMIndisponible as exc:
+        return f"LLM indisponible ({exc})"
     if reponse.stop_reason == "refusal" or reponse.parsed_output is None:
         return f"LLM sans réponse exploitable ({reponse.stop_reason})"
     sortie: IntentionLLM = reponse.parsed_output
@@ -208,15 +214,9 @@ def _blocage(c: Comprehension, question: str) -> tuple[str, list[str]] | None:
     return None
 
 
-def repondre(question: str, base: Path, date_ref: date, client=None,
+def executer(c: Comprehension, question: str, base: Path, date_ref: date,
              suspens: list[dict] | None = None, id_rapprochement: str | None = None) -> Reponse:  # fmt: skip
-    c = comprendre(question, base, client, date_ref)
-    log.info(
-        "question comprise : intention=%s source=%s confiance=%.2f",
-        c.intention,
-        c.source,
-        c.confiance,
-    )
+    """Second temps : à partir de l'intention comprise, la requête du catalogue (ou un refus motivé)."""
     if blocage := _blocage(c, question):
         motif, par_defaut = blocage
         # Une reformulation du LLM n'est proposée que si elle mène vraiment au catalogue.
@@ -238,3 +238,15 @@ def repondre(question: str, base: Path, date_ref: date, client=None,
     reponse.question = question
     reponse.comprehension = c.trace()
     return reponse
+
+
+def repondre(question: str, base: Path, date_ref: date, client=None,
+             suspens: list[dict] | None = None, id_rapprochement: str | None = None) -> Reponse:  # fmt: skip
+    c = comprendre(question, base, client, date_ref)
+    log.info(
+        "question comprise : intention=%s source=%s confiance=%.2f",
+        c.intention,
+        c.source,
+        c.confiance,
+    )
+    return executer(c, question, base, date_ref, suspens, id_rapprochement)

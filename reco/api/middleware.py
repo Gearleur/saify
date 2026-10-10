@@ -62,6 +62,8 @@ class Garde:
 
     def _limiter(self, scope) -> JSONResponse | None:
         famille = "GET" if scope["method"] in ("GET", "HEAD") else "POST"
+        if famille == "POST" and scope["path"].startswith("/api/questions"):
+            famille = "QUESTIONS"  # quota à part : une question peut consommer la clé API
         ip = (scope.get("client") or ("inconnue",))[0]
         attente = self.limiteurs[famille].attente(ip)
         if not attente:

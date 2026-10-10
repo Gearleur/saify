@@ -17,6 +17,9 @@ Lancement : `uv run uvicorn reco.api:app --reload` puis http://127.0.0.1:8000
 |---|---|---|
 | Rate limit `POST` | 20 requêtes / minute / IP | `429 RATE_LIMIT` + en-tête `Retry-After` (secondes) |
 | Rate limit `GET` | 120 requêtes / minute / IP | idem |
+| Rate limit questions (`POST /api/questions*`) | 10 requêtes / minute / IP, quota à part | idem |
+| Usage du LLM (clé API) | modèle imposé `claude-haiku-5-5`, 300 appels réels / jour, 4 simultanés, timeout 10 s, 1 nouvelle tentative, cache des questions identiques, interrupteur `RECO_LLM_ACTIF=0` | **pas d'erreur** : repli par mots-clés, raison dans `comprehension.detail` |
+| Question | 3 à 500 caractères, caractères de contrôle retirés, champs inconnus refusés | `422 VALIDATION` |
 | Taille du corps | 15 Mo | `413 CORPS_TROP_GROS` |
 | Taille d'un fichier décodé | 5 Mo | `413 FICHIER_TROP_GROS` |
 | Nombre de fichiers | 1 à 8 | `422 VALIDATION` |
@@ -39,7 +42,8 @@ Autres codes : `404 INTROUVABLE`, `405 METHODE_NON_AUTORISEE`, `503 PARAMETRAGE_
 
 ### `GET /api/sante`
 ```json
-{"statut": "ok", "version": "0.3.0", "date_arrete": "2026-09-25", "base_disponible": true}
+{"statut": "ok", "version": "0.3.0", "date_arrete": "2026-09-25", "base_disponible": true,
+ "llm": {"actif": true, "modele": "claude-haiku-5-5", "appels_aujourdhui": 2, "budget_jour": 300}}
 ```
 
 ### `GET /api/parametrage`
@@ -83,20 +87,42 @@ En-tête `Content-Disposition: attachment; filename="suspens_2026-09-25.csv"`.
 ```
 Texte brut, prêt à coller dans un mail : statut, synthèse par fonds et conservateur, suspens par priorité avec action attendue, exclusions et signalements.
 
-### `POST /api/questions` (besoin 2, réservé)
-Corps `{"question": "Encours valorisé du fonds OBL ?"}` → **aujourd'hui `501 NON_DISPONIBLE`**.
-Format de réponse prévu (le front sait déjà l'afficher) :
+### `POST /api/questions` (besoin 2)
+Corps `{"question": "Combien pèse le fonds obligataire ?"}` → `200` + **ReponseQuestion**.
+Le LLM (Haiku 5.5) ne fait que **classer** la question dans le catalogue (encours, échéances, concentration,
+opérations non dénouées, origine d'un suspens) ; il ne reçoit aucune donnée de la base. Les chiffres viennent
+de requêtes SQL fixes, en lecture seule, calculées en `Decimal` ; la phrase est un gabarit.
 ```json
 {
-  "question": "Encours valorisé du fonds OBL ?",
-  "reponse": "L'encours valorisé d'ORSAY OBLIGATIONS au 25/09/2026 est de 1 234 567,89 EUR.",
-  "chiffres": [{"libelle": "Encours valorisé", "valeur": "1234567.89", "unite": "EUR"}],
-  "requete_sql": "SELECT ... FROM positions JOIN cours ...",
-  "lignes_sources": [{"table": "positions", "valeurs": {"isin": "FR0000011488", "quantite": "40000"}}],
+  "question": "Combien pèse le fonds obligataire ?",
+  "reponse": "L'encours valorisé d'ORSAY OBLIGATIONS au 25/09/2026 est de 724 836,00 EUR (10 lignes valorisées au cours de clôture du 25/09/2026).",
+  "chiffres": [{"libelle": "Encours valorisé", "valeur": "724836.00", "unite": "EUR"}],
+  "requete_sql": "SELECT p.portefeuille, f.nom, p.isin, ... WHERE p.date_arrete = :date AND (:fonds IS NULL OR p.portefeuille = :fonds) ...",
+  "parametres_sql": {"date": "2026-09-25", "fonds": "OBL"},
+  "lignes_sources": [{"table": "positions × titres × cours", "valeurs": {"isin": "FR0000015927", "quantite": "250000", "cours": "97.0", "valorisation": "242500.00"}}],
   "confiance": "haute",
-  "avertissements": ["Obligations valorisées au pied de coupon, sans coupon couru."]
+  "avertissements": ["Obligations valorisées au pied de coupon (cours en % du nominal), sans coupon couru."],
+  "vigilances": [],
+  "reformulations": [],
+  "comprehension": {"intention": "ENCOURS", "fonds": "OBL", "horizon_mois": null, "isin": null, "source": "llm", "confiance": 0.95, "detail": ""}
 }
 ```
+- `vigilances` (concentration uniquement) : `[{"code": "EMETTEUR_AU_DESSUS_DU_SEUIL", "message": "...", "emetteurs": ["Kering"], "valeur": "87.54"}]`, seuils **internes** (10 % par émetteur ; cumul des > 5 % au-delà de 40 %), jamais un verdict réglementaire.
+- Pas de réponse sûre (confiance < 0,7, hors catalogue, fonds ou titre manquant, demande d'écriture) : `reponse` commence par **« Attention : »**, `chiffres = []`, `confiance = "basse"`, et `reformulations` propose 2 ou 3 questions qui mènent au catalogue.
+- `requete_sql` + `parametres_sql` : la requête exacte exécutée, rejouable telle quelle.
+
+### `POST /api/questions/flux` (même corps, réponse en flux SSE)
+`Content-Type: text/event-stream`. L'entrée est validée **avant** l'ouverture du flux (422 normal). Événements, dans l'ordre :
+```
+event: etape          data: {"etape": "comprehension", "message": "Analyse de la question…"}
+event: comprehension  data: {"intention": "ENCOURS", "fonds": "OBL", ..., "source": "llm"}
+event: etape          data: {"etape": "calcul", "message": "Requête en lecture seule sur la base de gestion…"}
+event: reponse        data: <ReponseQuestion, identique à la route JSON>
+event: fin            data: {}
+```
+En cas de panne : `event: erreur` (`{"code": "ERREUR_INTERNE", "message": ...}`, sans trace), puis `fin`.
+Côté navigateur : `fetch` en `POST` et lecture de `response.body` (pas d'`EventSource`, qui ne fait que du `GET`).
+Le premier événement part immédiatement ; le LLM prend environ 2 à 3 s ; le calcul quelques millisecondes.
 
 ## Objets
 

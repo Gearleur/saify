@@ -127,12 +127,13 @@ def test_point_de_situation(client, cree):
 
 def test_sante_et_parametrage(client):
     sante = client.get("/api/sante").json()
-    assert sante == {
+    assert {k: sante[k] for k in ("statut", "version", "date_arrete", "base_disponible")} == {
         "statut": "ok",
         "version": "0.3.0",
         "date_arrete": "2026-09-25",
         "base_disponible": True,
     }
+    assert sante["llm"]["actif"] is False  # coupé dans les tests (conftest.py)
     param = client.get("/api/parametrage").json()
     assert {"entite": "ORSAY OBLIGATIONS", "code": "OBL"} in param["fonds"]
     assert len(param["fonds"]) == 3
@@ -249,8 +250,8 @@ def test_fichier_trop_gros():
 def test_rate_limit_post():
     client = TestClient(create_app(limite_post=2))
     for _ in range(2):
-        assert client.post("/api/questions", json={"question": "Encours ?"}).status_code == 501
-    reponse = client.post("/api/questions", json={"question": "Encours ?"})
+        assert client.post("/api/rapprochements", json={}).status_code == 422
+    reponse = client.post("/api/rapprochements", json={})
     _erreur(reponse, 429, "RATE_LIMIT")
     assert 1 <= int(reponse.headers["retry-after"]) <= 60
     assert client.get("/api/sante").status_code == 200  # compteur GET séparé
@@ -277,11 +278,6 @@ def test_en_tetes_de_securite_et_request_id(client):
     repris = client.get("/api/sante", headers={"X-Request-ID": "abc-123"})
     assert repris.headers["x-request-id"] == "abc-123"
     assert "x-request-id" in client.get("/api/nimporte").headers
-
-
-def test_questions_non_disponible(client):
-    _erreur(client.post("/api/questions", json={"question": "Encours de OBL ?"}), 501, "NON_DISPONIBLE")  # fmt: skip
-    _erreur(client.post("/api/questions", json={"question": "a"}), 422, "VALIDATION")
 
 
 def test_erreur_interne_sans_trace(monkeypatch):

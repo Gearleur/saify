@@ -32,6 +32,15 @@ class DemandeRapprochement(Entree):
 class Question(Entree):
     question: str = Field(min_length=3, max_length=500)
 
+    @field_validator("question")
+    @classmethod
+    def texte_propre(cls, question: str) -> str:
+        """Caractères de contrôle retirés, espaces normalisés : ce qui part au LLM et aux logs reste propre."""
+        nettoyee = " ".join("".join(c if c.isprintable() else " " for c in question).split())
+        if len(nettoyee) < 3:
+            raise ValueError("question trop courte")
+        return nettoyee
+
 
 # Sorties : rapprochement
 
@@ -115,11 +124,19 @@ class PointDeSituation(BaseModel):
 # Sorties : santé et référentiel
 
 
+class EtatLLM(BaseModel):
+    actif: bool
+    modele: str
+    appels_aujourdhui: int
+    budget_jour: int
+
+
 class Sante(BaseModel):
     statut: str
     version: str
     date_arrete: str
     base_disponible: bool
+    llm: EtatLLM
 
 
 class Fonds(BaseModel):
@@ -150,3 +167,48 @@ class ParametrageSortie(BaseModel):
     types_ecarts: list[TypeEcart]
     transcos: dict[str, list[Transco]]
     exclusions: list[str]
+
+
+# Sorties : questions sur la base (besoin 2)
+
+
+class ChiffreSortie(BaseModel):
+    libelle: str
+    valeur: str  # décimal en texte
+    unite: str
+
+
+class LigneSourceSortie(BaseModel):
+    table: str
+    valeurs: dict[str, str]
+
+
+class VigilanceSortie(BaseModel):
+    code: str
+    message: str
+    emetteurs: list[str]
+    valeur: str  # en %
+
+
+class ComprehensionSortie(BaseModel):
+    intention: str
+    fonds: str | None
+    horizon_mois: int | None
+    isin: str | None
+    source: str  # llm ou mots_cles
+    confiance: float
+    detail: str
+
+
+class ReponseQuestion(BaseModel):
+    question: str
+    reponse: str
+    chiffres: list[ChiffreSortie]
+    requete_sql: str
+    parametres_sql: dict[str, str | None]
+    lignes_sources: list[LigneSourceSortie]
+    confiance: str
+    avertissements: list[str]
+    vigilances: list[VigilanceSortie]
+    reformulations: list[str]
+    comprehension: ComprehensionSortie
