@@ -15,7 +15,7 @@ export function SidebarHistory() {
           <button
             onClick={() => void ouvrir(r.id).catch(() => undefined)}
             className={cn(
-              "flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-xs text-muted-foreground transition-colors duration-150 hover:bg-hover hover:text-foreground",
+              "flex h-control w-full items-center gap-2 rounded-md px-2 text-left text-xs text-muted-foreground transition-colors duration-150 hover:bg-hover hover:text-foreground",
               courant?.id === r.id && "bg-hover text-foreground",
             )}
             title={`Lancé le ${formatStamp(r.cree_le)}`}

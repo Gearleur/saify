@@ -18,7 +18,7 @@ from pydantic import BaseModel, ValidationError
 
 from middle_office.domaine.questions import catalogue
 from middle_office.domaine.questions.base import connexion_lecture_seule
-from middle_office.domaine.questions.modeles import Reponse
+from middle_office.domaine.questions.modeles import ContexteRapprochement, Reponse
 
 log = logging.getLogger("middle_office.questions")
 
@@ -215,7 +215,7 @@ def _blocage(c: Comprehension, question: str) -> tuple[str, list[str]] | None:
 
 
 def executer(c: Comprehension, question: str, base: Path, date_ref: date,
-             suspens: list[dict] | None = None, id_rapprochement: str | None = None) -> Reponse:  # fmt: skip
+             contexte: ContexteRapprochement | None = None) -> Reponse:  # fmt: skip
     """Second temps : à partir de l'intention comprise, la requête du catalogue (ou un refus motivé)."""
     if blocage := _blocage(c, question):
         motif, par_defaut = blocage
@@ -234,14 +234,14 @@ def executer(c: Comprehension, question: str, base: Path, date_ref: date,
     elif c.intention == "NON_DENOUEES":
         reponse = catalogue.operations_non_denouees(base, c.fonds, date_ref)
     else:
-        reponse = catalogue.origine_suspens(base, c.isin, suspens, id_rapprochement)
+        reponse = catalogue.origine_suspens(base, c.isin, contexte)
     reponse.question = question
     reponse.comprehension = c.trace()
     return reponse
 
 
 def repondre(question: str, base: Path, date_ref: date, client=None,
-             suspens: list[dict] | None = None, id_rapprochement: str | None = None) -> Reponse:  # fmt: skip
+             contexte: ContexteRapprochement | None = None) -> Reponse:  # fmt: skip
     c = comprendre(question, base, client, date_ref)
     log.info(
         "question comprise : intention=%s source=%s confiance=%.2f",
@@ -249,4 +249,4 @@ def repondre(question: str, base: Path, date_ref: date, client=None,
         c.source,
         c.confiance,
     )
-    return executer(c, question, base, date_ref, suspens, id_rapprochement)
+    return executer(c, question, base, date_ref, contexte)

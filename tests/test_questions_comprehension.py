@@ -16,6 +16,7 @@ from middle_office.domaine.questions.comprehension import (
     comprendre,
     repondre,
 )
+from middle_office.domaine.questions.modeles import ContexteRapprochement
 from tests.fabrique import DONNEES, FauxClient
 
 BASE = DONNEES / "orsay.db"
@@ -125,7 +126,7 @@ def test_origine_suspens_utilise_le_dernier_rapprochement():
                 "qte_pms": "250000", "qte_dep": "225000", "ecart": "25000", "action": "Vérifier",
                 "piste": "", "signalements": [], "sources": ["positions_internes.csv:21"]}]  # fmt: skip
     reponse = repondre("Pourquoi un suspens sur SCHNEIDER ?", BASE, ARRETE, client=None,
-                       suspens=suspens, id_rapprochement="r_123abc")  # fmt: skip
+                       contexte=ContexteRapprochement("r_123abc", "2026-09-25", suspens))  # fmt: skip
     assert "r_123abc" in reponse.reponse and reponse.chiffres[0].valeur == Decimal("25000")
 
 

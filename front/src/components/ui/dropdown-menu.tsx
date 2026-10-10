@@ -31,7 +31,7 @@ const DropdownMenuContent = React.forwardRef<
 DropdownMenuContent.displayName = "DropdownMenuContent";
 
 const itemBase =
-  "relative flex h-8 cursor-default select-none items-center gap-2 rounded-md px-2 outline-none transition-colors duration-100 data-[highlighted]:bg-hover data-[disabled]:opacity-50";
+  "relative flex h-control cursor-default select-none items-center gap-2 rounded-md px-2 outline-none transition-colors duration-100 data-[highlighted]:bg-hover data-[disabled]:opacity-50";
 
 const DropdownMenuItem = React.forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.Item>,

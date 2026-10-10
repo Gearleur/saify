@@ -11,7 +11,13 @@ from decimal import Decimal
 from pathlib import Path
 
 from middle_office.domaine.questions.base import connexion_lecture_seule, decimal
-from middle_office.domaine.questions.modeles import Chiffre, LigneSource, Reponse, montant
+from middle_office.domaine.questions.modeles import (
+    Chiffre,
+    ContexteRapprochement,
+    LigneSource,
+    Reponse,
+    montant,
+)
 from middle_office.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
 from middle_office.domaine.rapprochement.moteur import formater_quantite
 
@@ -51,9 +57,9 @@ ORDER BY m.date_denouement, m.id
 """.strip()
 
 SQL_MOUVEMENTS_TITRE = """
-SELECT id, date_operation, date_denouement, sens, quantite, prix, statut
+SELECT id, portefeuille, date_operation, date_denouement, sens, quantite, statut
 FROM mouvements
-WHERE portefeuille = :fonds AND isin = :isin
+WHERE isin = :isin
 ORDER BY id
 """.strip()
 
@@ -291,19 +297,39 @@ def operations_non_denouees(base: Path, fonds: str | None, date_ref: date) -> Re
                    avertissements=avertissements)  # fmt: skip
 
 
-def origine_suspens(base: Path, isin: str, suspens: list[dict] | None, id_rapprochement: str | None) -> Reponse:  # fmt: skip
-    """Pont avec le besoin 1 : le suspens du dernier rapprochement, ses lignes sources et les mouvements du titre."""
-    if suspens is None or id_rapprochement is None:
-        return Reponse("Aucun rapprochement disponible : lancez d'abord le rapprochement du jour.",
-                       [], SQL_MOUVEMENTS_TITRE, {"fonds": None, "isin": isin}, [], confiance="basse")  # fmt: skip
-    trouves = [s for s in suspens if s["isin"] == isin]
-    if not trouves:
-        return Reponse(f"Aucun suspens sur {isin} dans le rapprochement {id_rapprochement}.",
-                       [], SQL_MOUVEMENTS_TITRE, {"fonds": None, "isin": isin}, [])  # fmt: skip
+def origine_suspens(base: Path, isin: str, contexte: ContexteRapprochement | None) -> Reponse:
+    """Pont avec le besoin 1 : le suspens du dernier rapprochement exploitable, ses lignes sources
+    et les mouvements du titre. Un rapprochement plus récent mais bloqué est toujours signalé."""
+    parametres: dict[str, str | None] = {"isin": isin}
+    if contexte is None or contexte.id is None:
+        if contexte is not None and contexte.bloque_plus_recent:
+            motif = (
+                f"Le dernier rapprochement ({contexte.bloque_plus_recent}) est bloqué et aucun "
+                "rapprochement exploitable n'existe : corrigez les fichiers, puis relancez."
+            )
+        else:
+            motif = "Aucun rapprochement disponible : lancez d'abord le rapprochement du jour."
+        return Reponse(motif, [], SQL_MOUVEMENTS_TITRE, parametres, [], confiance="basse")
 
-    parametres = {"fonds": trouves[0]["fonds"], "isin": isin}
+    jour = (
+        _jour(date.fromisoformat(contexte.date_arrete)) if contexte.date_arrete else "date inconnue"
+    )
+    reference = f"le rapprochement {contexte.id} (arrêté du {jour})"
+    avertissements = []
+    if contexte.bloque_plus_recent:
+        avertissements.append(
+            f"Le rapprochement le plus récent ({contexte.bloque_plus_recent}) est bloqué : cette réponse "
+            f"vient de {reference}, le dernier exploitable. Elle peut ne plus être à jour."
+        )
+    confiance = "basse" if contexte.bloque_plus_recent else "haute"
+    trouves = [s for s in contexte.suspens if s["isin"] == isin]
+    if not trouves:
+        return Reponse(f"Aucun suspens sur {isin} dans {reference}.", [], SQL_MOUVEMENTS_TITRE,
+                       parametres, [], confiance=confiance, avertissements=avertissements)  # fmt: skip
+
+    fonds = {s["fonds"] for s in trouves}
     with connexion_lecture_seule(base) as db:
-        mouvements = db.execute(SQL_MOUVEMENTS_TITRE, parametres).fetchall()
+        mouvements = [m for m in db.execute(SQL_MOUVEMENTS_TITRE, parametres) if m[1] in fonds]
 
     def qte(valeur: str | None) -> str:
         return "absent" if valeur is None else formater_quantite(Decimal(valeur))
@@ -312,7 +338,7 @@ def origine_suspens(base: Path, isin: str, suspens: list[dict] | None, id_rappro
     for s in trouves:
         phrase = (
             f"Suspens {s['type']} ({s['libelle_type']}) sur {s['libelle_titre']} ({s['fonds'] or s['entite']}, "
-            f"conservateur {s['conservateur']}) dans le rapprochement {id_rapprochement} : PMS {qte(s['qte_pms'])}, "
+            f"conservateur {s['conservateur']}) dans {reference} : PMS {qte(s['qte_pms'])}, "
             f"conservateur {qte(s['qte_dep'])}, écart {qte(s['ecart'])}. Action attendue : {s['action']}."
         )
         if s["piste"]:
@@ -324,6 +350,7 @@ def origine_suspens(base: Path, isin: str, suspens: list[dict] | None, id_rappro
             "mouvements",
             {
                 "id": str(id_),
+                "portefeuille": pf,
                 "date_operation": d_op,
                 "date_denouement": d_den,
                 "sens": sens,
@@ -331,9 +358,9 @@ def origine_suspens(base: Path, isin: str, suspens: list[dict] | None, id_rappro
                 "statut": statut,
             },
         )  # fmt: skip
-        for id_, d_op, d_den, sens, q, _prix, statut in mouvements
+        for id_, pf, d_op, d_den, sens, q, statut in mouvements
     ]
     chiffres = [Chiffre(f"Écart {s['type']} ({s['conservateur']})", Decimal(s["ecart"]), "titres ou nominal") for s in trouves]  # fmt: skip
-    avertissements = [m for s in trouves for m in s["signalements"]]
+    avertissements += [m for s in trouves for m in s["signalements"]]
     return Reponse(" ".join(phrases), chiffres, SQL_MOUVEMENTS_TITRE, parametres, sources,
-                   avertissements=avertissements)  # fmt: skip
+                   confiance=confiance, avertissements=avertissements)  # fmt: skip

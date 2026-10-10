@@ -44,6 +44,20 @@ class Reponse:
     )  # intention retenue, paramètres, source (llm ou mots_cles)
 
 
+@dataclass(frozen=True)
+class ContexteRapprochement:
+    """Le rapprochement sur lequel répondre à « d'où vient le suspens sur X ? ».
+
+    `id` est le dernier rapprochement exploitable (statut OK) ; `bloque_plus_recent`, l'id d'un
+    rapprochement plus récent mais bloqué : la réponse doit le dire, sinon elle rassure à tort.
+    """
+
+    id: str | None
+    date_arrete: str | None = None
+    suspens: list[dict] = field(default_factory=list)
+    bloque_plus_recent: str | None = None
+
+
 def montant(valeur: Decimal) -> str:
     """724836.00 -> « 724 836,00 »"""
     return f"{valeur:,.2f}".replace(",", " ").replace(".", ",")

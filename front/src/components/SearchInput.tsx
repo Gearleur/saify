@@ -15,7 +15,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ({ value, onChange, placeholder, className }, ref) => (
     <label
       className={cn(
-        "group flex h-8 w-64 items-center gap-2 rounded-md border border-border-strong bg-background px-2.5 transition-colors duration-150 focus-within:border-ring",
+        "group flex h-control w-60 items-center gap-2 rounded-md border border-border-strong bg-background px-2.5 transition-colors duration-150 focus-within:border-ring",
         className,
       )}
     >

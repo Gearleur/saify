@@ -1,5 +1,6 @@
 """Besoin 2, étape 2.4 : POST /api/questions (JSON et flux SSE) et encadrement de l'usage du LLM."""
 
+import base64
 import json
 import threading
 
@@ -9,7 +10,7 @@ from fastapi.testclient import TestClient
 from middle_office.api import create_app
 from middle_office.api.services.llm import ClientEncadre
 from middle_office.domaine.questions.comprehension import MODELE, IntentionLLM, LLMIndisponible
-from tests.fabrique import FauxClient
+from tests.fabrique import FauxClient, fichiers
 
 
 def _client(**surcharges) -> TestClient:
@@ -60,6 +61,20 @@ def test_origine_suspens_lit_le_dernier_rapprochement():
     id_ = client.post("/api/rapprochements/exemple").json()["id"]
     corps = _poser(client, "D'où vient le suspens sur SCHNEIDER ?").json()
     assert id_ in corps["reponse"] and corps["chiffres"][0]["valeur"] == "25000"
+
+
+def test_origine_suspens_apres_un_rapprochement_bloque():
+    """Reproduit en revue : le dernier rapprochement bloqué faisait répondre « aucun suspens »."""
+    client = _client()
+    id_ok = client.post("/api/rapprochements/exemple").json()["id"]
+    sans_c = [{"nom": n, "contenu_b64": base64.b64encode(b).decode()}
+              for n, b in fichiers().items() if not n.startswith("depositaire_C")]  # fmt: skip
+    id_bloque = client.post("/api/rapprochements", json={"fichiers": sans_c}).json()["id"]
+    corps = _poser(client, "D'où vient le suspens sur FR0000051641 ?").json()
+    assert "aucun suspens" not in corps["reponse"].lower()
+    assert id_ok in corps["reponse"] and "SFIL" in corps["reponse"]
+    assert corps["confiance"] == "basse"
+    assert any(id_bloque in a for a in corps["avertissements"])
 
 
 @pytest.mark.parametrize(

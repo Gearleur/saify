@@ -15,6 +15,7 @@ from middle_office.domaine.questions.catalogue import (
     operations_non_denouees,
     origine_suspens,
 )
+from middle_office.domaine.questions.modeles import ContexteRapprochement
 from tests.fabrique import DONNEES, db_modifiee
 
 BASE = DONNEES / "orsay.db"
@@ -197,19 +198,45 @@ SUSPENS_SCHNEIDER = {
 }  # fmt: skip
 
 
+def _contexte(*suspens, bloque=None) -> ContexteRapprochement:
+    return ContexteRapprochement("r_abc123", "2026-09-25", list(suspens), bloque)
+
+
 def test_origine_suspens():
-    reponse = origine_suspens(BASE, "FR0000012965", [SUSPENS_SCHNEIDER], "r_abc123")
-    assert "SCHNEIDER" in reponse.reponse and "r_abc123" in reponse.reponse
+    reponse = origine_suspens(BASE, "FR0000012965", _contexte(SUSPENS_SCHNEIDER))
+    assert "SCHNEIDER" in reponse.reponse and "r_abc123 (arrêté du 25/09/2026)" in reponse.reponse
     assert reponse.chiffres[0].valeur == Decimal("25000")
     tables = [ligne.table for ligne in reponse.lignes_sources]
     assert "positions_internes.csv:21" in tables and "mouvements" in tables
 
 
 def test_origine_suspens_absent():
-    reponse = origine_suspens(BASE, "FR0000010001", [SUSPENS_SCHNEIDER], "r_abc123")
+    reponse = origine_suspens(BASE, "FR0000010001", _contexte(SUSPENS_SCHNEIDER))
     assert "aucun suspens" in reponse.reponse.lower() and reponse.confiance == "haute"
 
 
 def test_origine_suspens_sans_rapprochement():
-    reponse = origine_suspens(BASE, "FR0000012965", None, None)
+    reponse = origine_suspens(BASE, "FR0000012965", None)
     assert reponse.confiance == "basse" and "rapprochement" in reponse.reponse.lower()
+
+
+def test_origine_suspens_dit_qu_un_rapprochement_plus_recent_est_bloque():
+    reponse = origine_suspens(BASE, "FR0000010001", _contexte(SUSPENS_SCHNEIDER, bloque="r_bloque"))
+    assert reponse.confiance == "basse"
+    assert any("r_bloque" in a and "bloqué" in a for a in reponse.avertissements)
+
+
+def test_origine_suspens_seul_rapprochement_bloque():
+    contexte = ContexteRapprochement(None, bloque_plus_recent="r_bloque")
+    reponse = origine_suspens(BASE, "FR0000012965", contexte)
+    assert "r_bloque" in reponse.reponse and "aucun suspens" not in reponse.reponse.lower()
+
+
+def test_origine_suspens_cite_les_mouvements_de_chaque_fonds(tmp_path):
+    """Un même ISIN en suspens dans deux fonds : les mouvements des deux sont cités, pas du premier seul."""
+    base = db_modifiee(tmp_path, "INSERT INTO mouvements VALUES (99, '2026-09-24', '2026-09-26', 'PAT',"
+                                 " 'FR0000012965', 'VENTE', 100, 400, 'X', 'EN_ATTENTE')")  # fmt: skip
+    pat = {**SUSPENS_SCHNEIDER, "id": "S7", "fonds": "PAT", "entite": "ORSAY PATRIMOINE"}
+    reponse = origine_suspens(base, "FR0000012965", _contexte(SUSPENS_SCHNEIDER, pat))
+    lignes = [ligne.valeurs for ligne in reponse.lignes_sources if ligne.table == "mouvements"]
+    assert sorted(m["portefeuille"] for m in lignes) == ["ACT", "PAT"]

@@ -20,11 +20,11 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
   <div className="flex items-center gap-2 border-b border-border px-3">
-    <Search className="size-4 text-subtle" />
+    <Search className="size-3.5 text-subtle" />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "h-11 w-full bg-transparent text-sm outline-none placeholder:text-subtle",
+        "h-10 w-full bg-transparent text-sm outline-none placeholder:text-subtle",
         className,
       )}
       {...props}
@@ -70,7 +70,7 @@ function CommandItem({ className, ...props }: React.ComponentProps<typeof Comman
   return (
     <CommandPrimitive.Item
       className={cn(
-        "flex h-9 cursor-default select-none items-center gap-2.5 rounded-md px-2 outline-none data-[selected=true]:bg-hover data-[disabled=true]:opacity-50 [&_svg]:size-4 [&_svg]:text-muted-foreground",
+        "flex h-8 cursor-default select-none items-center gap-2 rounded-md px-2 outline-none data-[selected=true]:bg-hover data-[disabled=true]:opacity-50 [&_svg]:size-[15px] [&_svg]:text-muted-foreground",
         className,
       )}
       {...props}

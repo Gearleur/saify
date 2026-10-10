@@ -33,7 +33,7 @@ export function Shell() {
     <div className="flex min-h-screen">
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-[240px] shrink-0 border-r border-border transition-transform duration-150 min-[900px]:sticky min-[900px]:top-0 min-[900px]:h-screen min-[900px]:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-sidebar shrink-0 border-r border-border transition-transform duration-150 min-[900px]:sticky min-[900px]:top-0 min-[900px]:h-screen min-[900px]:translate-x-0",
           tiroir ? "translate-x-0 shadow-pop" : "-translate-x-full",
         )}
       >
@@ -47,7 +47,7 @@ export function Shell() {
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenu={() => setTiroir(true)} />
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-16 pt-7 md:px-8">
+        <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 pb-16 pt-6 md:px-6">
           <View key={route.id} />
         </main>
       </div>

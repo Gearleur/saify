@@ -16,9 +16,9 @@ const buttonVariants = cva(
         link: "h-auto px-0 text-link underline-offset-2 hover:underline",
       },
       size: {
-        default: "h-8 px-3",
-        sm: "h-7 px-2.5 text-xs",
-        icon: "size-7",
+        default: "h-control px-2.5",
+        sm: "h-6 px-2 text-xs",
+        icon: "size-control",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

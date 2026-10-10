@@ -1,67 +1,49 @@
 @import "tailwindcss";
 
-/* Le sombre suit le système (prefers-color-scheme). */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* Thème : `data-theme` (light | dark) sur <html>, posé par lib/theme.ts avant le premier rendu.
+   Chaque token est écrit une seule fois avec light-dark() ; `color-scheme` choisit la branche.
+   Sans attribut (avant le script), `color-scheme: light dark` suit le système : pas de flash. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* Tokens shadcn calés sur Attio. La couleur ne porte que de l'information (points de 7 px). */
 :root {
-  --background: #ffffff;
-  --foreground: #1e1f22;
-  --sidebar: #fafafa;
-  --surface: #f7f7f8;
-  --muted: #f7f7f8;
-  --muted-foreground: #5f6167;
-  --subtle-foreground: #9a9da3;
-  --border: #ebecee;
-  --border-strong: #dfe1e4;
-  --hover: #f4f5f6;
-  --selected: #f2f5fe;
-  --primary: #1e1f22;
-  --primary-foreground: #ffffff;
-  --primary-hover: #34363b;
-  --ring: #2d6bf0;
-  --link: #2d6bf0;
-  --tag: #f4f5f6;
-  --tag-border: #e8e9eb;
-  --popover: #ffffff;
-  --danger-wash: #fdf3f3;
-  --danger-line: #f6d6d7;
+  color-scheme: light dark;
+  --background: light-dark(#ffffff, #141516);
+  --foreground: light-dark(#1e1f22, #ececed);
+  --sidebar: light-dark(#fafafa, #18191b);
+  --surface: light-dark(#f7f7f8, #1b1c1e);
+  --muted: light-dark(#f7f7f8, #1b1c1e);
+  --muted-foreground: light-dark(#5f6167, #a2a4aa);
+  --subtle-foreground: light-dark(#9a9da3, #6e7177);
+  --border: light-dark(#ebecee, #262729);
+  --border-strong: light-dark(#dfe1e4, #303236);
+  --hover: light-dark(#f4f5f6, #1f2022);
+  --selected: light-dark(#f2f5fe, #1a2131);
+  --primary: light-dark(#1e1f22, #ececed);
+  --primary-foreground: light-dark(#ffffff, #141516);
+  --primary-hover: light-dark(#34363b, #d4d5d8);
+  --ring: light-dark(#2d6bf0, #5b8cff);
+  --link: light-dark(#2d6bf0, #7aa2ff);
+  --tag: light-dark(#f4f5f6, #1f2022);
+  --tag-border: light-dark(#e8e9eb, #2c2d30);
+  --popover: light-dark(#ffffff, #1b1c1e);
+  --danger-wash: light-dark(#fdf3f3, #2a1617);
+  --danger-line: light-dark(#f6d6d7, #4a2224);
   --dot-red: #e5484d;
   --dot-amber: #f0a000;
   --dot-green: #30a46c;
-  --dot-gray: #b3b6bb;
+  --dot-gray: light-dark(#b3b6bb, #6e7177);
   --dot-blue: #2d6bf0;
   --shadow-pop:
-    0 0 0 1px rgb(0 0 0 / 0.04), 0 4px 12px -2px rgb(16 17 19 / 0.08),
-    0 12px 32px -8px rgb(16 17 19 / 0.12);
+    0 0 0 1px light-dark(rgb(0 0 0 / 0.04), rgb(255 255 255 / 0.06)),
+    0 4px 12px -2px light-dark(rgb(16 17 19 / 0.08), rgb(0 0 0 / 0.3)),
+    0 12px 32px -8px light-dark(rgb(16 17 19 / 0.12), rgb(0 0 0 / 0.5));
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #141516;
-    --foreground: #ececed;
-    --sidebar: #18191b;
-    --surface: #1b1c1e;
-    --muted: #1b1c1e;
-    --muted-foreground: #a2a4aa;
-    --subtle-foreground: #6e7177;
-    --border: #262729;
-    --border-strong: #303236;
-    --hover: #1f2022;
-    --selected: #1a2131;
-    --primary: #ececed;
-    --primary-foreground: #141516;
-    --primary-hover: #d4d5d8;
-    --ring: #5b8cff;
-    --link: #7aa2ff;
-    --tag: #1f2022;
-    --tag-border: #2c2d30;
-    --popover: #1b1c1e;
-    --danger-wash: #2a1617;
-    --danger-line: #4a2224;
-    --dot-gray: #6e7177;
-    --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.06), 0 8px 24px -4px rgb(0 0 0 / 0.5);
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -94,10 +76,33 @@
   --color-dot-gray: var(--dot-gray);
   --color-dot-blue: var(--dot-blue);
   --shadow-pop: var(--shadow-pop);
+  /* Échelle typographique (Attio, Supabase) : 13 px de base, 12 px pour les métadonnées,
+     11 px pour les micro-textes ; titres et chiffres plafonnés à 18 et 20 px. */
   --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
   --text-xs: 12px;
+  --text-xs--line-height: 16px;
   --text-sm: 13px;
+  --text-sm--line-height: 20px;
   --text-base: 14px;
+  --text-base--line-height: 22px;
+  --text-heading: 15px;
+  --text-heading--line-height: 22px;
+  --text-heading--font-weight: 600;
+  --text-heading--letter-spacing: -0.005em;
+  --text-title: 18px;
+  --text-title--line-height: 26px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-figure: 20px;
+  --text-figure--line-height: 28px;
+  --text-figure--font-weight: 600;
+  --text-figure--letter-spacing: -0.015em;
+  /* Rythme vertical : contrôles (boutons, champs, items de navigation), lignes de table, barres. */
+  --spacing-control: 28px;
+  --spacing-row: 40px;
+  --spacing-bar: 44px;
+  --spacing-sidebar: 232px;
   --animate-fade-in: fade-in 140ms ease-out;
   --animate-slide-in: slide-in 160ms cubic-bezier(0.2, 0, 0, 1);
   --animate-pulse-soft: pulse-soft 1.4s ease-in-out infinite;
@@ -146,7 +151,7 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 20px;
     font-feature-settings: "cv11", "ss01";
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;

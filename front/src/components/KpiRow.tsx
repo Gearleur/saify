@@ -22,13 +22,13 @@ export function KpiRow({ items, className }: { items: Kpi[]; className?: string 
               {kpi.tone && <StatusDot tone={kpi.tone} />}
               {kpi.label}
             </span>
-            <span className="mt-1 block text-[24px] font-semibold leading-8 tracking-[-0.02em]">
+            <span className="mt-0.5 block text-figure">
               {kpi.value}
             </span>
             {kpi.hint && <span className="block text-xs text-subtle">{kpi.hint}</span>}
           </>
         );
-        const classes = "min-w-[132px] px-5 py-1 text-left first:pl-0";
+        const classes = "min-w-[120px] px-5 py-0.5 text-left first:pl-0";
         return kpi.onSelect ? (
           <button
             key={kpi.id}

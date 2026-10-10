@@ -12,7 +12,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { courant, chargement } = useReconciliation();
   const def = routeDef(route.id);
   return (
-    <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:px-8">
+    <header className="sticky top-0 z-30 flex h-bar shrink-0 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:px-6">
       <Button
         variant="ghost"
         size="icon"

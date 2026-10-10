@@ -8,16 +8,28 @@ from middle_office.api.schemas import (
     VigilanceSortie,
 )
 from middle_office.api.services.historique import Historique
-from middle_office.domaine.questions.modeles import Reponse
+from middle_office.domaine.questions.modeles import ContexteRapprochement, Reponse
 
 
-def contexte_suspens(historique: Historique) -> tuple[list[dict] | None, str | None]:
-    """Suspens du rapprochement le plus récent, pour « d'où vient le suspens sur X ? »."""
-    recents = historique.recents()
-    if not recents:
-        return None, None
-    dernier = recents[0]
-    return [s.model_dump() for s in dernier.suspens], dernier.id
+def contexte_suspens(historique: Historique) -> ContexteRapprochement | None:
+    """Dernier rapprochement exploitable (OK), pour « d'où vient le suspens sur X ? ».
+
+    Le plus récent n'est pas forcément le bon : bloqué, il n'a aucun suspens, et répondre « aucun
+    suspens sur X » rassurerait à tort. On répond sur le dernier OK en signalant le blocage.
+    """
+    dernier = historique.dernier()
+    if dernier is None:
+        return None
+    bloque = dernier.id if dernier.statut != "OK" else None
+    ok = dernier if bloque is None else historique.dernier("OK")
+    if ok is None:
+        return ContexteRapprochement(id=None, bloque_plus_recent=bloque)
+    return ContexteRapprochement(
+        id=ok.id,
+        date_arrete=ok.date_arrete,
+        suspens=[s.model_dump() for s in ok.suspens],
+        bloque_plus_recent=bloque,
+    )
 
 
 def vers_sortie(r: Reponse) -> ReponseQuestion:

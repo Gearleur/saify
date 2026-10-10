@@ -29,8 +29,8 @@ log = logging.getLogger("middle_office.api.questions")
 def poser(question: Question, reglages: ReglagesDep, historique: HistoriqueDep, llm: LLMDep) -> ReponseQuestion:  # fmt: skip
     jour = _date_de_reference(reglages.base)
     c = comprendre(question.question, reglages.base, llm, jour)
-    suspens, id_ = contexte_suspens(historique)
-    return vers_sortie(executer(c, question.question, reglages.base, jour, suspens, id_))
+    contexte = contexte_suspens(historique)
+    return vers_sortie(executer(c, question.question, reglages.base, jour, contexte))
 
 
 def _date_de_reference(base: Path) -> date:
@@ -63,8 +63,8 @@ def poser_en_flux(question: Question, reglages: ReglagesDep, historique: Histori
             c = comprendre(question.question, reglages.base, llm, jour)
             yield _evenement("comprehension", c.trace())
             yield _evenement("etape", {"etape": "calcul", "message": "Requête en lecture seule sur la base de gestion…"})  # fmt: skip
-            suspens, id_ = contexte_suspens(historique)
-            reponse = executer(c, question.question, reglages.base, jour, suspens, id_)
+            contexte = contexte_suspens(historique)
+            reponse = executer(c, question.question, reglages.base, jour, contexte)
             yield _evenement("reponse", vers_sortie(reponse).model_dump(mode="json"))
         except Exception:
             log.exception("erreur dans le flux de question")

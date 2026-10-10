@@ -93,6 +93,16 @@ class Historique:
         ((reponse, csv, situation),) = lignes
         return Entree(Rapprochement.model_validate_json(reponse), bytes(csv), situation)
 
+    def dernier(self, statut: str | None = None) -> Rapprochement | None:
+        """Le rapprochement le plus récent, éventuellement restreint à un statut (OK, BLOQUE)."""
+        lignes = self._lignes(
+            "SELECT reponse FROM rapprochements WHERE ? IS NULL OR statut = ?"
+            " ORDER BY rang DESC LIMIT 1",
+            statut,
+            statut,
+        )
+        return Rapprochement.model_validate_json(lignes[0][0]) if lignes else None
+
     def recents(self) -> list[Rapprochement]:
         lignes = self._lignes(
             "SELECT reponse FROM rapprochements ORDER BY rang DESC LIMIT ?", self.taille

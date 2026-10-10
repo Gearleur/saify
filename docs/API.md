@@ -93,6 +93,7 @@ Corps `{"question": "Combien pèse le fonds obligataire ?"}` → `200` + **Repon
 Le LLM (Haiku 5.5) ne fait que **classer** la question dans le catalogue (encours, échéances, concentration,
 opérations non dénouées, origine d'un suspens) ; il ne reçoit aucune donnée de la base. Les chiffres viennent
 de requêtes SQL fixes, en lecture seule, calculées en `Decimal` ; la phrase est un gabarit.
+« Origine d'un suspens » répond sur le **dernier rapprochement `OK`**, cité avec sa date d'arrêté. Si un rapprochement plus récent est bloqué, la réponse le signale dans `avertissements` et passe en `confiance: "basse"` (elle ne dit jamais « aucun suspens » sur la foi d'un rapprochement bloqué).
 ```json
 {
   "question": "Combien pèse le fonds obligataire ?",
