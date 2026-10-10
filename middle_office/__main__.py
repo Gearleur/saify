@@ -1,11 +1,11 @@
-"""Usage : uv run python -m reco data/donnees"""
+"""Usage : uv run python -m middle_office data/donnees"""
 
 import sys
 from decimal import Decimal
 from pathlib import Path
 
-from reco import rapprocher_dossier
-from reco.domaine.rapprochement import formater_quantite
+from middle_office import rapprocher_dossier
+from middle_office.domaine.rapprochement.moteur import formater_quantite
 
 
 def _qte(q: Decimal | None) -> str:

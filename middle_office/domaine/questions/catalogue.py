@@ -10,10 +10,10 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from reco.domaine.questions.base import connexion_lecture_seule, decimal
-from reco.domaine.questions.modeles import Chiffre, LigneSource, Reponse, montant
-from reco.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
-from reco.domaine.rapprochement import formater_quantite
+from middle_office.domaine.questions.base import connexion_lecture_seule, decimal
+from middle_office.domaine.questions.modeles import Chiffre, LigneSource, Reponse, montant
+from middle_office.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
+from middle_office.domaine.rapprochement.moteur import formater_quantite
 
 CENTIME = Decimal("0.01")
 HORIZON_DEFAUT_MOIS = 12  # à valider avec le client (NOTES.md, Q4)

@@ -2,11 +2,11 @@
 
 from fastapi import APIRouter
 
-from reco.api.config import VERSION
-from reco.api.dependances import LLMDep, ReglagesDep
-from reco.api.schemas import EtatLLM, ParametrageSortie, Sante
-from reco.api.services import referentiel
-from reco.domaine.questions.comprehension import MODELE
+from middle_office.api.config import VERSION
+from middle_office.api.dependances import LLMDep, ReglagesDep
+from middle_office.api.schemas import EtatLLM, ParametrageSortie, Sante
+from middle_office.api.services import referentiel
+from middle_office.domaine.questions.comprehension import MODELE
 
 router = APIRouter(prefix="/api", tags=["système"])
 

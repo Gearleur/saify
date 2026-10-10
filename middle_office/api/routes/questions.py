@@ -14,15 +14,15 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from reco.api.dependances import HistoriqueDep, LLMDep, ReglagesDep
-from reco.api.erreurs import ERREUR_INTERNE, ErreurApi
-from reco.api.schemas import Question, ReponseQuestion
-from reco.api.services.questions import contexte_suspens, vers_sortie
-from reco.domaine.questions.base import date_reference
-from reco.domaine.questions.comprehension import comprendre, executer
+from middle_office.api.dependances import HistoriqueDep, LLMDep, ReglagesDep
+from middle_office.api.erreurs import ERREUR_INTERNE, ErreurApi
+from middle_office.api.schemas import Question, ReponseQuestion
+from middle_office.api.services.questions import contexte_suspens, vers_sortie
+from middle_office.domaine.questions.base import date_reference
+from middle_office.domaine.questions.comprehension import comprendre, executer
 
 router = APIRouter(prefix="/api/questions", tags=["questions"])
-log = logging.getLogger("reco.api.questions")
+log = logging.getLogger("middle_office.api.questions")
 
 
 @router.post("")

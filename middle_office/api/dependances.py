@@ -4,9 +4,9 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from reco.api.config import Reglages
-from reco.api.services.historique import Historique
-from reco.api.services.llm import ClientEncadre
+from middle_office.api.config import Reglages
+from middle_office.api.services.historique import Historique
+from middle_office.api.services.llm import ClientEncadre
 
 
 def _reglages(request: Request) -> Reglages:

@@ -5,7 +5,12 @@ import io
 from collections import Counter
 from decimal import Decimal
 
-from reco.domaine.rapprochement import PRIORITES, Resultat, Suspens, formater_quantite
+from middle_office.domaine.rapprochement.moteur import (
+    PRIORITES,
+    Resultat,
+    Suspens,
+    formater_quantite,
+)
 
 COLONNES_CSV = (
     "priorite", "fonds", "entite", "isin", "titre", "conservateur", "type", "libelle_type",

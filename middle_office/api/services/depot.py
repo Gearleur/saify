@@ -4,9 +4,9 @@ import base64
 import binascii
 from pathlib import Path
 
-from reco.api.erreurs import ErreurApi
-from reco.api.schemas import DemandeRapprochement
-from reco.domaine.rapprochement import LECTEURS
+from middle_office.api.erreurs import ErreurApi
+from middle_office.api.schemas import DemandeRapprochement
+from middle_office.domaine.rapprochement.moteur import LECTEURS
 
 
 def source_de(nom: str) -> str:

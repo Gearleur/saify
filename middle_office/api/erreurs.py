@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-log = logging.getLogger("reco.api.erreurs")
+log = logging.getLogger("middle_office.api.erreurs")
 
 CODES_HTTP = {404: "INTROUVABLE", 405: "METHODE_NON_AUTORISEE"}
 ERREUR_INTERNE = (

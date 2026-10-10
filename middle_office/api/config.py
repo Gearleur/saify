@@ -56,8 +56,8 @@ class Reglages:
 
 
 def configurer_logs() -> logging.Logger:
-    """Logger `reco.api` (parent de tous les modules de l'API). uvicorn ne configure que les siens."""
-    log = logging.getLogger("reco.api")
+    """Logger `middle_office.api` (parent de tous les modules de l'API). uvicorn ne configure que les siens."""
+    log = logging.getLogger("middle_office.api")
     if not log.handlers:
         sortie = logging.StreamHandler()
         sortie.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))

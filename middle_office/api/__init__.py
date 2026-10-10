@@ -1,4 +1,4 @@
-"""API HTTP du rapprochement (contrat : docs/API.md). Lancement : uv run uvicorn reco.api:app --reload
+"""API HTTP du rapprochement (contrat : docs/API.md). Lancement : uv run uvicorn middle_office.api:app --reload
 
 Organisation :
 - config.py      réglages (limites, dossiers) et en-têtes de sécurité
@@ -10,7 +10,7 @@ Organisation :
 - app.py         assemblage (create_app)
 """
 
-from reco.api.app import create_app
+from middle_office.api.app import create_app
 
 app = create_app()
 

@@ -7,8 +7,8 @@ from decimal import Decimal
 
 import pytest
 
-from reco.domaine.questions.base import connexion_lecture_seule
-from reco.domaine.questions.catalogue import (
+from middle_office.domaine.questions.base import connexion_lecture_seule
+from middle_office.domaine.questions.catalogue import (
     concentration_emetteurs,
     echeances,
     encours_valorise,

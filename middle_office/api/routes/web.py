@@ -1,4 +1,4 @@
-"""Front : la page et ses fichiers statiques (reco/web/)."""
+"""Front : la page et ses fichiers statiques (middle_office/web/)."""
 
 from pathlib import Path
 
@@ -7,8 +7,8 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from reco.api.dependances import ReglagesDep
-from reco.api.erreurs import reponse_erreur
+from middle_office.api.dependances import ReglagesDep
+from middle_office.api.erreurs import reponse_erreur
 
 router = APIRouter(include_in_schema=False)
 
@@ -18,7 +18,7 @@ def page(reglages: ReglagesDep) -> Response:
     index = reglages.dossier_web / "index.html"
     if not index.is_file():
         return reponse_erreur(503, "PAGE_INDISPONIBLE",
-                              "Interface pas encore installée (reco/web/index.html absent) ; l'API répond sous /api")  # fmt: skip
+                              "Interface pas encore installée (middle_office/web/index.html absent) ; l'API répond sous /api")  # fmt: skip
     return FileResponse(index, media_type="text/html; charset=utf-8")
 
 

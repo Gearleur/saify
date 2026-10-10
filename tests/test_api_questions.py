@@ -6,9 +6,9 @@ import threading
 import pytest
 from fastapi.testclient import TestClient
 
-from reco.api import create_app
-from reco.api.services.llm import ClientEncadre
-from reco.domaine.questions.comprehension import MODELE, IntentionLLM, LLMIndisponible
+from middle_office.api import create_app
+from middle_office.api.services.llm import ClientEncadre
+from middle_office.domaine.questions.comprehension import MODELE, IntentionLLM, LLMIndisponible
 from tests.fabrique import FauxClient
 
 

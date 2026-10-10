@@ -2,9 +2,14 @@
 
 from decimal import Decimal
 
-from reco import rapprocher_dossier
-from reco.domaine.rapprochement import Suspens, priorite
-from reco.domaine.situation import COLONNES_CSV, point_de_situation, quantite_texte, suspens_csv
+from middle_office import rapprocher_dossier
+from middle_office.domaine.rapprochement.moteur import Suspens, priorite
+from middle_office.domaine.rapprochement.situation import (
+    COLONNES_CSV,
+    point_de_situation,
+    quantite_texte,
+    suspens_csv,
+)
 from tests.fabrique import DONNEES, C, db_modifiee, fichiers, lancer, remplacer
 
 ISINS = {

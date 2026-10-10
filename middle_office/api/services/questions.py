@@ -1,14 +1,14 @@
 """Pont entre l'API et le domaine des questions : contexte du dernier rapprochement, sérialisation."""
 
-from reco.api.schemas import (
+from middle_office.api.schemas import (
     ChiffreSortie,
     ComprehensionSortie,
     LigneSourceSortie,
     ReponseQuestion,
     VigilanceSortie,
 )
-from reco.api.services.historique import Historique
-from reco.domaine.questions.modeles import Reponse
+from middle_office.api.services.historique import Historique
+from middle_office.domaine.questions.modeles import Reponse
 
 
 def contexte_suspens(historique: Historique) -> tuple[list[dict] | None, str | None]:

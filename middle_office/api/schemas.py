@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from reco.api.config import EXTENSIONS
+from middle_office.api.config import EXTENSIONS
 
 # Entrées : champs inconnus refusés
 

@@ -5,13 +5,13 @@ from dataclasses import fields
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from reco.api.config import RACINE, VERSION, Reglages, configurer_logs
-from reco.api.erreurs import enregistrer_gestionnaires
-from reco.api.limiteur import Limiteur
-from reco.api.middleware import Garde
-from reco.api.routes import questions, rapprochements, systeme, web
-from reco.api.services.historique import Historique
-from reco.api.services.llm import ClientEncadre, client_depuis_environnement
+from middle_office.api.config import RACINE, VERSION, Reglages, configurer_logs
+from middle_office.api.erreurs import enregistrer_gestionnaires
+from middle_office.api.limiteur import Limiteur
+from middle_office.api.middleware import Garde
+from middle_office.api.routes import questions, rapprochements, systeme, web
+from middle_office.api.services.historique import Historique
+from middle_office.api.services.llm import ClientEncadre, client_depuis_environnement
 
 DEPUIS_ENVIRONNEMENT = object()
 

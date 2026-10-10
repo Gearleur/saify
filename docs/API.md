@@ -1,9 +1,9 @@
 # Contrat d'API : rapprochement Orsay Gestion
 
-Source de vérité partagée entre le back (`reco/api.py`) et le front (`reco/web/` : `index.html`, `app.css`, `app.js`).
+Source de vérité partagée entre le back (`middle_office/api/`) et le front (`middle_office/web/` : `index.html`, `app.css`, `app.js`).
 Toute évolution du contrat passe par ce fichier d'abord.
 
-Lancement : `uv run uvicorn reco.api:app --reload` puis http://127.0.0.1:8000
+Lancement : `uv run uvicorn middle_office.api:app --reload` puis http://127.0.0.1:8000
 
 ## Conventions
 - JSON en UTF-8, champs en français, `snake_case`.
@@ -37,8 +37,8 @@ Autres codes : `503 BASE_INDISPONIBLE` (questions, base de gestion illisible), `
 
 ## Routes
 
-### `GET /` → la page HTML (`reco/web/index.html`)
-### `GET /static/app.css`, `GET /static/app.js` → fichiers du dossier `reco/web/`
+### `GET /` → la page HTML (`middle_office/web/index.html`)
+### `GET /static/app.css`, `GET /static/app.js` → fichiers du dossier `middle_office/web/`
 
 ### `GET /api/sante`
 `date_arrete` : date de référence de la **base de gestion** (dernières positions de `orsay.db`), `null` si illisible. C'est la date des réponses aux questions et celle des fichiers d'exemple.

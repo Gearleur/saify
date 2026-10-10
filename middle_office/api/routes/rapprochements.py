@@ -2,14 +2,14 @@
 
 from fastapi import APIRouter, Response
 
-from reco.api.dependances import HistoriqueDep, ReglagesDep
-from reco.api.schemas import (
+from middle_office.api.dependances import HistoriqueDep, ReglagesDep
+from middle_office.api.schemas import (
     DemandeRapprochement,
     PointDeSituation,
     Rapprochement,
     RapprochementResume,
 )
-from reco.api.services import depot, rapprochements
+from middle_office.api.services import depot, rapprochements
 
 router = APIRouter(prefix="/api/rapprochements", tags=["rapprochements"])
 

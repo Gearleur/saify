@@ -2,8 +2,8 @@
 
 from decimal import Decimal
 
-from reco.domaine import rapprochement
-from reco.domaine.rapprochement import Suspens
+from middle_office.domaine.rapprochement import moteur as rapprochement
+from middle_office.domaine.rapprochement.moteur import Suspens
 from tests.fabrique import (
     DONNEES,
     PMS,

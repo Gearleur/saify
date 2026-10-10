@@ -4,13 +4,13 @@ import logging
 import sqlite3
 from pathlib import Path
 
-from reco.api.config import Reglages
-from reco.api.erreurs import ErreurApi
-from reco.api.schemas import Conservateur, Fonds, ParametrageSortie, Transco, TypeEcart
-from reco.domaine.questions.base import date_reference
-from reco.domaine.sources import lire_parametrage
+from middle_office.api.config import Reglages
+from middle_office.api.erreurs import ErreurApi
+from middle_office.api.schemas import Conservateur, Fonds, ParametrageSortie, Transco, TypeEcart
+from middle_office.domaine.questions.base import date_reference
+from middle_office.domaine.rapprochement.sources import lire_parametrage
 
-log = logging.getLogger("reco.api.referentiel")
+log = logging.getLogger("middle_office.api.referentiel")
 
 TRANSCOS = ("TRANSCO_SOUS_COMPTES", "TRANSCO_DEPOSITAIRE_A", "TRANSCO_DEPOSITAIRE_B", "TRANSCO_DEPOSITAIRE_C")  # fmt: skip
 # Ni le paramétrage ni la base ne les portent : repris de l'énoncé (limite connue).

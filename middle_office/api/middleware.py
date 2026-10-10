@@ -13,11 +13,11 @@ import uuid
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers, MutableHeaders
 
-from reco.api.config import EN_TETES_SECURITE, MO
-from reco.api.erreurs import ERREUR_INTERNE, reponse_erreur
-from reco.api.limiteur import Limiteur
+from middle_office.api.config import EN_TETES_SECURITE, MO
+from middle_office.api.erreurs import ERREUR_INTERNE, reponse_erreur
+from middle_office.api.limiteur import Limiteur
 
-log = logging.getLogger("reco.api.acces")
+log = logging.getLogger("middle_office.api.acces")
 
 
 def request_id(fourni: str | None) -> str:

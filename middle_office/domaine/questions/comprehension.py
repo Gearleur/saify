@@ -16,11 +16,11 @@ from typing import Literal
 import anthropic
 from pydantic import BaseModel, ValidationError
 
-from reco.domaine.questions import catalogue
-from reco.domaine.questions.base import connexion_lecture_seule
-from reco.domaine.questions.modeles import Reponse
+from middle_office.domaine.questions import catalogue
+from middle_office.domaine.questions.base import connexion_lecture_seule
+from middle_office.domaine.questions.modeles import Reponse
 
-log = logging.getLogger("reco.questions")
+log = logging.getLogger("middle_office.questions")
 
 MODELE = "claude-haiku-5-5"
 SEUIL_CONFIANCE = 0.7

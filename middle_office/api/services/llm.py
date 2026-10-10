@@ -20,9 +20,9 @@ from types import SimpleNamespace
 
 import anthropic
 
-from reco.domaine.questions.comprehension import MODELE, LLMIndisponible
+from middle_office.domaine.questions.comprehension import MODELE, LLMIndisponible
 
-log = logging.getLogger("reco.api.llm")
+log = logging.getLogger("middle_office.api.llm")
 
 
 class ClientEncadre:

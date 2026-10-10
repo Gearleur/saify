@@ -5,8 +5,8 @@ import logging
 from collections import Counter
 from datetime import UTC, datetime
 
-from reco.api.config import Reglages
-from reco.api.schemas import (
+from middle_office.api.config import Reglages
+from middle_office.api.schemas import (
     AnomalieSortie,
     FichierSortie,
     FondsSynthese,
@@ -15,15 +15,19 @@ from reco.api.schemas import (
     SuspensSortie,
     Synthese,
 )
-from reco.api.services.depot import source_de
-from reco.api.services.historique import Historique
-from reco.domaine.rapprochement import PRIORITES, Resultat, rapprocher
-from reco.domaine.situation import point_de_situation, quantite_texte, suspens_csv
-from reco.domaine.sources import TYPES_REQUIS
+from middle_office.api.services.depot import source_de
+from middle_office.api.services.historique import Historique
+from middle_office.domaine.rapprochement.moteur import PRIORITES, Resultat, rapprocher
+from middle_office.domaine.rapprochement.situation import (
+    point_de_situation,
+    quantite_texte,
+    suspens_csv,
+)
+from middle_office.domaine.rapprochement.sources import TYPES_REQUIS
 
 NIVEAUX = ("BLOQUANT", "SIGNALE", "EXCLU", "NORMALISE")
 
-log = logging.getLogger("reco.api.audit")
+log = logging.getLogger("middle_office.api.audit")
 
 
 def executer(depot: dict[str, bytes], reglages: Reglages, historique: Historique) -> Rapprochement:

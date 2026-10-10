@@ -3,7 +3,7 @@
 from decimal import Decimal
 from pathlib import Path
 
-from reco import rapprocher_dossier
+from middle_office import rapprocher_dossier
 
 DONNEES = Path(__file__).resolve().parents[1] / "data" / "donnees"
 

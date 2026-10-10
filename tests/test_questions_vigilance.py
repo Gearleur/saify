@@ -3,8 +3,8 @@
 from datetime import date
 from decimal import Decimal
 
-from reco.domaine.questions.catalogue import concentration_emetteurs
-from reco.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
+from middle_office.domaine.questions.catalogue import concentration_emetteurs
+from middle_office.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
 from tests.fabrique import DONNEES
 
 BASE = DONNEES / "orsay.db"

@@ -8,7 +8,7 @@ l'attention, le gérant et le RCCI jugent. Les seuils se changent ici, en un seu
 from dataclasses import dataclass
 from decimal import Decimal
 
-from reco.domaine.questions.modeles import Vigilance
+from middle_office.domaine.questions.modeles import Vigilance
 
 CENTIME = Decimal("0.01")
 

@@ -13,7 +13,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import NamedTuple
 
-from reco.domaine.sources import (
+from middle_office.domaine.rapprochement.sources import (
     Anomalie,
     Lecture,
     Parametrage,

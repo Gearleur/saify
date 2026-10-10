@@ -2,7 +2,7 @@
 
 import pytest
 
-from reco.domaine.sources import isin_valide
+from middle_office.domaine.rapprochement.sources import isin_valide
 from tests.fabrique import (
     PMS,
     B,

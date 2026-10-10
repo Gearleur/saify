@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from reco.api import create_app as _create_app
-from reco.api.config import RACINE, Reglages
+from middle_office.api import create_app as _create_app
+from middle_office.api.config import RACINE, Reglages
 from tests.fabrique import DONNEES, PMS, A, B, C, fichiers, remplacer
 
 
@@ -284,7 +284,7 @@ def test_erreur_interne_sans_trace(monkeypatch):
     def panne(*_args, **_kwargs):
         raise RuntimeError("détail interne secret")
 
-    monkeypatch.setattr("reco.api.services.rapprochements.rapprocher", panne)
+    monkeypatch.setattr("middle_office.api.services.rapprochements.rapprocher", panne)
     client = TestClient(create_app(), raise_server_exceptions=False)
     reponse = client.post("/api/rapprochements/exemple")
     erreur = _erreur(reponse, 500, "ERREUR_INTERNE")
@@ -323,7 +323,7 @@ def test_static_sans_dossier_web_404(tmp_path):
 
 
 def test_logs_requete_et_audit_sans_contenu(client, caplog):
-    caplog.set_level("INFO", logger="reco.api")
+    caplog.set_level("INFO", logger="middle_office.api")
     corps = client.post("/api/rapprochements", json=_corps()).json()
     texte = caplog.text
     assert f"audit rapprochement id={corps['id']} statut=OK nb_suspens=7" in texte

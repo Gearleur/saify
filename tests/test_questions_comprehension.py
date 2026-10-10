@@ -10,7 +10,7 @@ import anthropic
 import httpx2
 import pytest
 
-from reco.domaine.questions.comprehension import (
+from middle_office.domaine.questions.comprehension import (
     SEUIL_CONFIANCE,
     IntentionLLM,
     comprendre,

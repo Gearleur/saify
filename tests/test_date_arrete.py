@@ -4,9 +4,9 @@ from datetime import date
 
 from fastapi.testclient import TestClient
 
-from reco import rapprocher
-from reco.api import create_app
-from reco.domaine.questions.base import date_reference
+from middle_office import rapprocher
+from middle_office.api import create_app
+from middle_office.domaine.questions.base import date_reference
 from tests.fabrique import DONNEES, PMS, A, B, C, fichiers, regles, remplacer, xlsx_a
 
 PARAM = DONNEES / "parametrage.xlsx"

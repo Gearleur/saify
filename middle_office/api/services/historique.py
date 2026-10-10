@@ -10,8 +10,8 @@ import threading
 from pathlib import Path
 from typing import NamedTuple
 
-from reco.api.erreurs import ErreurApi
-from reco.api.schemas import Rapprochement
+from middle_office.api.erreurs import ErreurApi
+from middle_office.api.schemas import Rapprochement
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS rapprochements (

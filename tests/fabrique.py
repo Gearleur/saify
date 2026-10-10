@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import openpyxl
 
-from reco import rapprocher
+from middle_office import rapprocher
 
 DONNEES = Path(__file__).resolve().parents[1] / "data" / "donnees"
 PMS, A, B, C = (
