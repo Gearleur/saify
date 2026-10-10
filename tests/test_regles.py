@@ -109,6 +109,13 @@ def test_piste_seulement_possible_si_plusieurs_conservateurs():
     c = _c_avec(_item_c("ORS-ACT", SCHNEIDER, "SCHNEIDER", "1000,00"))
     (schneider,) = _suspens(lancer(fichiers(pms=pms, c=c)), SCHNEIDER)
     assert "explication possible" in schneider.piste
+    # Un vrai signalement, pour que l'opérateur n'oublie pas de vérifier le conservateur concerné.
+    assert any("à vérifier" in m and "plusieurs conservateurs" in m for m in schneider.signalements)
+
+
+def test_pas_de_signalement_si_un_seul_conservateur():
+    (schneider,) = _suspens(lancer(fichiers()), SCHNEIDER)
+    assert schneider.signalements == []
 
 
 # A. Opération non dénouée à sa date prévue : défaut de règlement-livraison, risque CSDR.

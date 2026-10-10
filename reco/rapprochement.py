@@ -255,7 +255,13 @@ def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arre
         if not s.libelle_titre and base.referentiel:
             s.libelle_titre = base.referentiel.get(s.isin, "")
         mouvements = [m for m in base.en_attente if m.portefeuille == s.fonds and m.isin == s.isin]
-        s.piste = _piste(mouvements, s.ecart, len(conservateurs[(s.entite, s.isin)]) > 1)
+        plusieurs = sorted(conservateurs[(s.entite, s.isin)])
+        s.piste = _piste(mouvements, s.ecart, len(plusieurs) > 1)
+        if mouvements and len(plusieurs) > 1:
+            s.signalements.append(
+                f"piste à vérifier : titre détenu chez plusieurs conservateurs ({', '.join(plusieurs)}),"
+                " l'opération peut concerner l'autre"
+            )
         for m in mouvements:
             if m.date_denouement <= date_arrete:
                 s.signalements.append(
