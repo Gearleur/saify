@@ -1,0 +1,13 @@
+# Fichiers générés : repliés dans les diffs GitHub et exclus des statistiques de langage.
+front/package-lock.json linguist-generated=true
+uv.lock linguist-generated=true
+middle_office/web/** linguist-generated=true
+docs/exemple_rapprochement.json linguist-generated=true
+
+# Exports de conversations Claude Code : archive, pas du code.
+docs/sessions/** linguist-documentation=true
+
+# Fins de ligne normalisées, sauf les fichiers clients qui gardent leurs CRLF d'origine
+# (ce sont des pièges testés) : la règle la plus spécifique vient en dernier, c'est elle qui gagne.
+* text=auto
+data/** -text
