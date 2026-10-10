@@ -1,4 +1,8 @@
-"""Rapprochement PMS ↔ conservateurs à la maille (fonds, ISIN, conservateur). Déterministe, sans LLM."""
+"""Rapprochement PMS ↔ conservateurs à la maille (fonds, ISIN, conservateur). Déterministe, sans LLM.
+
+Quatre temps : comparer les quantités agrégées, fusionner les DEP, compléter chaque suspens
+(action du paramétrage, piste orsay.db, signalements), trier.
+"""
 
 import sqlite3
 from collections import defaultdict
@@ -6,10 +10,12 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import NamedTuple
 
 from reco.sources import (
     Anomalie,
     Lecture,
+    Parametrage,
     Position,
     isin_valide,
     lire_depositaire_a,
@@ -30,17 +36,24 @@ DATE_ARRETE = date(2026, 9, 25)
 
 @dataclass
 class Suspens:
-    fonds: str
+    entite: str  # clé fonds : nom d'entité du paramétrage (la référence)
     isin: str
     conservateur: str  # A, B, C, ou « A→B » pour un DEP
     type: str  # QTE, ABS_DEP, ABS_INT, DEP
     qte_pms: Decimal | None
     qte_dep: Decimal | None
     libelle_titre: str
-    libelle_type: str
-    action: str
-    piste: str
     sources: list[str]
+    fonds: str = ""  # code court (PAT, OBL, ACT) lu dans orsay.db, vide si la base manque
+    libelle_type: str = ""
+    action: str = ""
+    piste: str = ""
+    signalements: list[str] = field(default_factory=list)
+
+    @property
+    def ecart(self) -> Decimal:
+        """PMS − conservateur : positif si le PMS en a plus (achat non dénoué, par exemple)."""
+        return (self.qte_pms or Decimal(0)) - (self.qte_dep or Decimal(0))
 
 
 @dataclass
@@ -50,34 +63,73 @@ class Resultat:
     journal: list[Anomalie] = field(default_factory=list)
 
 
-def _agreger(positions: list[Position]) -> dict[tuple[str, str, str], list[Position]]:
-    groupes: dict[tuple[str, str, str], list[Position]] = defaultdict(list)
-    for p in positions:
-        groupes[(p.entite, p.isin, p.conservateur)].append(p)
-    return groupes
+class Mouvement(NamedTuple):
+    id: int
+    date_denouement: date
+    portefeuille: str
+    isin: str
+    sens: str
+    quantite: Decimal
+
+    @property
+    def signe(self) -> Decimal:
+        """Effet sur PMS − conservateur tant que l'opération n'est pas dénouée."""
+        return self.quantite if self.sens == "ACHAT" else -self.quantite
 
 
-def _somme(positions: list[Position]) -> Decimal:
-    return sum((p.quantite for p in positions), Decimal(0))
+@dataclass
+class Base:
+    """Ce qu'on lit dans orsay.db, à titre d'information uniquement."""
+
+    codes_fonds: dict[str, str] = field(default_factory=dict)
+    referentiel: dict[str, str] | None = None  # None : référentiel indisponible
+    en_attente: list[Mouvement] = field(default_factory=list)
 
 
-def _libelle(*groupes: list[Position]) -> str:
-    return next((p.libelle for g in groupes for p in g if p.libelle), "")
+def formater_quantite(q: Decimal) -> str:
+    texte = f"{q:,.0f}" if q == q.to_integral_value() else f"{q:,}"
+    return texte.replace(",", " ")
 
 
-def _piste(db: sqlite3.Connection, fonds: str, isin: str) -> str:
-    lignes = db.execute(
-        "SELECT sens, quantite, date_denouement FROM mouvements"
-        " WHERE portefeuille = ? AND isin = ? AND statut = 'EN_ATTENTE' ORDER BY id",
-        (fonds, isin),
-    ).fetchall()
-    pistes = [f"{sens} {qte} EN_ATTENTE (dén. {d[8:10]}/{d[5:7]})" for sens, qte, d in lignes]
-    if not isin_valide(isin):
-        pistes.append("ISIN à clé invalide, probable erreur de saisie")
-    return " ; ".join(pistes)
+def _date_fr(d: date) -> str:
+    return f"{d:%d/%m/%Y}"
 
 
-def _signaler(positions: list[Position], referentiel: dict[str, str]) -> list[Anomalie]:
+def _lire_base(db_path: Path | None, journal: list[Anomalie]) -> Base:
+    try:
+        if db_path is None:
+            raise sqlite3.OperationalError("aucune base fournie")
+        db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            return Base(
+                codes_fonds=dict(db.execute("SELECT nom, code FROM portefeuilles")),
+                referentiel=dict(db.execute("SELECT isin, libelle FROM titres")),
+                en_attente=[
+                    Mouvement(i, date.fromisoformat(d), pf, isin, sens, Decimal(q))
+                    for i, d, pf, isin, sens, q in db.execute(
+                        "SELECT id, date_denouement, portefeuille, isin, sens, quantite"
+                        " FROM mouvements WHERE statut = 'EN_ATTENTE' ORDER BY id"
+                    )
+                ],
+            )
+        finally:
+            db.close()
+    except sqlite3.Error as erreur:
+        journal.append(
+            Anomalie(
+                "orsay.db",
+                0,
+                "SIGNALE",
+                "BASE_INDISPONIBLE",
+                str(db_path),
+                "",
+                f"orsay.db illisible ({erreur}) : suspens sans code fonds ni piste",
+            )  # fmt: skip
+        )
+        return Base()
+
+
+def _signaler(positions: list[Position], base: Base) -> list[Anomalie]:
     """ISIN douteux et libellés divergents : conservés, mais remontés à un humain."""
     anomalies = []
     vus: set[str] = set()
@@ -88,7 +140,7 @@ def _signaler(positions: list[Position], referentiel: dict[str, str]) -> list[An
         if not isin_valide(p.isin):
             anomalies.append(Anomalie(p.fichier, p.ligne, "SIGNALE", "ISIN_CLE_INVALIDE", p.isin, p.isin,
                                       "clé de contrôle ISIN invalide : probable erreur de saisie"))  # fmt: skip
-        if p.isin not in referentiel:
+        if base.referentiel is not None and p.isin not in base.referentiel:
             anomalies.append(Anomalie(p.fichier, p.ligne, "SIGNALE", "ISIN_HORS_REFERENTIEL", p.isin, p.isin,
                                       "ISIN absent du référentiel titres"))  # fmt: skip
     libelles: dict[str, dict[str, Position]] = defaultdict(dict)
@@ -106,41 +158,143 @@ def _signaler(positions: list[Position], referentiel: dict[str, str]) -> list[An
     return anomalies
 
 
-def rapprocher(
-    fichiers: dict[str, bytes], parametrage: Path, db_path: Path, date_arrete: date = DATE_ARRETE
-) -> Resultat:
-    """`fichiers` : nom de fichier -> contenu brut, une entrée par source (PMS, A, B, C).
+def _agreger(positions: list[Position]) -> dict[tuple[str, str, str], list[Position]]:
+    groupes: dict[tuple[str, str, str], list[Position]] = defaultdict(list)
+    for p in positions:
+        groupes[(p.entite, p.isin, p.conservateur)].append(p)
+    return groupes
+
+
+def _comparer(pms: list[Position], dep: list[Position]) -> list[Suspens]:
+    """Jointure complète : une clé présente d'un seul côté est un suspens (sinon LVMH serait raté)."""
+    cote_pms, cote_dep = _agreger(pms), _agreger(dep)
+    suspens = []
+    for cle in sorted(cote_pms.keys() | cote_dep.keys()):
+        g_pms, g_dep = cote_pms.get(cle, []), cote_dep.get(cle, [])
+        # Une position nulle est une absence : pas de suspens « ABS_DEP » pour 0 titre.
+        q_pms = sum((p.quantite for p in g_pms), Decimal(0)) or None
+        q_dep = sum((p.quantite for p in g_dep), Decimal(0)) or None
+        if q_pms == q_dep:  # tolérance nulle : une seule unité d'écart est un suspens
+            continue
+        type_ = "ABS_DEP" if q_dep is None else "ABS_INT" if q_pms is None else "QTE"
+        entite, isin, conservateur = cle
+        libelle = next((p.libelle for p in g_pms + g_dep if p.libelle), "")
+        sources = [p.ref for p in g_pms + g_dep]
+        suspens.append(Suspens(entite, isin, conservateur, type_, q_pms, q_dep, libelle, sources))
+    return suspens
+
+
+def _fusionner_dep(suspens: list[Suspens]) -> list[Suspens]:
+    """Attendu chez X, livré chez Y : un seul suspens DEP (énoncé), même si les quantités diffèrent.
+
+    Plusieurs candidats (2 conservateurs possibles) : on ne devine pas, on signale sur chaque suspens.
+    """
+    par_titre: dict[tuple[str, str], list[Suspens]] = defaultdict(list)
+    for s in suspens:
+        if s.type in ("ABS_DEP", "ABS_INT"):
+            par_titre[(s.entite, s.isin)].append(s)
+    for groupe in par_titre.values():
+        absents = [s for s in groupe if s.type == "ABS_DEP"]
+        trouves = [s for s in groupe if s.type == "ABS_INT"]
+        if not absents or not trouves:
+            continue
+        if len(absents) == 1 and len(trouves) == 1:
+            x, y = absents[0], trouves[0]
+            suspens = [s for s in suspens if s is not x and s is not y]
+            suspens.append(
+                Suspens(
+                    x.entite,
+                    x.isin,
+                    f"{x.conservateur}→{y.conservateur}",
+                    "DEP",
+                    x.qte_pms,
+                    y.qte_dep,
+                    x.libelle_titre or y.libelle_titre,
+                    x.sources + y.sources,
+                )  # fmt: skip
+            )
+        else:
+            message = (
+                f"DEP ambigu : absent chez {', '.join(s.conservateur for s in absents)}, "
+                f"trouvé chez {', '.join(s.conservateur for s in trouves)} : à trancher par l'opérateur"
+            )
+            for s in groupe:
+                s.signalements.append(message)
+    return suspens
+
+
+def _piste(mouvements: list[Mouvement], ecart: Decimal, plusieurs_conservateurs: bool) -> str:
+    """Cite les opérations en attente et dit, calcul signé à l'appui, si elles expliquent l'écart."""
+    if not mouvements:
+        return ""
+    operations = ", ".join(
+        f"op. n°{m.id} {m.sens} {formater_quantite(m.quantite)} dén. {_date_fr(m.date_denouement)}"
+        for m in mouvements
+    )
+    net = sum((m.signe for m in mouvements), Decimal(0))
+    if net == ecart:
+        verdict = "écart entièrement expliqué"
+    elif net * ecart > 0 and abs(net) < abs(ecart):
+        verdict = f"écart partiellement expliqué, reste {formater_quantite(ecart - net)}"
+    else:
+        verdict = "n'explique pas l'écart"
+    if plusieurs_conservateurs:  # mouvements n'indique pas le conservateur
+        verdict += " (explication possible seulement : titre détenu chez plusieurs conservateurs)"
+    return f"{operations} → {verdict}"
+
+
+def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arrete: date,
+               conservateurs: dict[tuple[str, str], set[str]]) -> None:  # fmt: skip
+    for s in suspens:
+        s.fonds = base.codes_fonds.get(s.entite, "")
+        s.libelle_type, s.action = param.types_ecarts[s.type]
+        if s.type == "DEP" and s.ecart:
+            s.action += (
+                f" ; puis {param.types_ecarts['QTE'][1]} (écart {formater_quantite(s.ecart)})"
+            )
+        if not s.libelle_titre and base.referentiel:
+            s.libelle_titre = base.referentiel.get(s.isin, "")
+        mouvements = [m for m in base.en_attente if m.portefeuille == s.fonds and m.isin == s.isin]
+        s.piste = _piste(mouvements, s.ecart, len(conservateurs[(s.entite, s.isin)]) > 1)
+        for m in mouvements:
+            if m.date_denouement <= date_arrete:
+                s.signalements.append(
+                    f"op. n°{m.id} non dénouée au {_date_fr(m.date_denouement)} : "
+                    "défaut de règlement-livraison, risque CSDR"
+                )
+        if not isin_valide(s.isin):
+            s.signalements.append("ISIN à clé invalide, probable erreur de saisie")
+
+
+def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | None,
+               date_arrete: date = DATE_ARRETE) -> Resultat:  # fmt: skip
+    """`fichiers` : nom de fichier -> contenu brut, un fichier par source (PMS, A, B, C).
 
     Une seule anomalie BLOQUANT suffit à refuser le rapprochement : un rapprochement partiel
-    rendrait des faux négatifs invisibles.
+    rendrait des faux négatifs invisibles. orsay.db est facultative : elle informe, elle ne décide pas.
     """
     param = lire_parametrage(parametrage)
     resultat = Resultat()
     pms: list[Position] = []
     dep: list[Position] = []
     for source, (prefixe, lecteur) in LECTEURS.items():
-        nom = next((n for n in fichiers if Path(n).name.startswith(prefixe)), None)
-        if nom is None:
+        noms = [n for n in fichiers if Path(n).name.startswith(prefixe)]
+        if len(noms) != 1:
+            regle, motif = (
+                ("FICHIER_MANQUANT", f"fichier {source} absent")
+                if not noms
+                else ("FICHIERS_MULTIPLES", f"{len(noms)} fichiers {source} : lequel est le bon ?")
+            )
             resultat.journal.append(
-                Anomalie(
-                    prefixe, 0, "BLOQUANT", "FICHIER_MANQUANT", "", "", f"fichier {source} absent"
-                )
+                Anomalie(prefixe, 0, "BLOQUANT", regle, ", ".join(noms), "", motif)
             )
             continue
+        nom = noms[0]
         try:
             lecture: Lecture = lecteur(nom, fichiers[nom], param, date_arrete)
         except Exception as erreur:  # fichier corrompu ou format inattendu : refusé, pas deviné
-            resultat.journal.append(
-                Anomalie(
-                    nom,
-                    0,
-                    "BLOQUANT",
-                    "FORMAT_ILLISIBLE",
-                    "",
-                    "",
-                    f"{type(erreur).__name__} : {erreur}",
-                )
-            )
+            resultat.journal.append(Anomalie(nom, 0, "BLOQUANT", "FORMAT_ILLISIBLE", "", "",
+                                             f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
             continue
         if not lecture.positions:
             lecture.noter("BLOQUANT", "AUCUNE_LIGNE", 0, "", "", "0 position lue")
@@ -151,56 +305,31 @@ def rapprocher(
         resultat.statut = "BLOQUE"
         return resultat
 
-    db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-    fonds_par_entite = dict(db.execute("SELECT nom, code FROM portefeuilles").fetchall())
-    referentiel = dict(db.execute("SELECT isin, libelle FROM titres").fetchall())
-    resultat.journal.extend(_signaler(pms + dep, referentiel))
-
-    cote_pms, cote_dep = _agreger(pms), _agreger(dep)
-    bruts: list[tuple[str, tuple[str, str, str], list[Position], list[Position]]] = []
-    for cle in sorted(cote_pms.keys() | cote_dep.keys()):
-        g_pms, g_dep = cote_pms.get(cle, []), cote_dep.get(cle, [])
-        if not g_dep:
-            bruts.append(("ABS_DEP", cle, g_pms, g_dep))
-        elif not g_pms:
-            bruts.append(("ABS_INT", cle, g_pms, g_dep))
-        elif _somme(g_pms) != _somme(g_dep):
-            bruts.append(("QTE", cle, g_pms, g_dep))
-
-    # Un ABS_DEP chez X et un ABS_INT chez Y pour le même (fonds, ISIN) forment un seul DEP.
-    absents: dict[tuple[str, str], dict[str, list]] = defaultdict(lambda: defaultdict(list))
-    for brut in bruts:
-        if brut[0] in ("ABS_DEP", "ABS_INT"):
-            absents[brut[1][:2]][brut[0]].append(brut)
-    for (entite, isin), par_type in absents.items():
-        if len(par_type["ABS_DEP"]) == 1 and len(par_type["ABS_INT"]) == 1:
-            (_, cle_x, g_pms, _), (_, cle_y, _, g_dep) = (
-                par_type["ABS_DEP"][0],
-                par_type["ABS_INT"][0],
+    base = _lire_base(db_path, resultat.journal)
+    resultat.journal.extend(_signaler(pms + dep, base))
+    for m in base.en_attente:
+        if m.date_denouement <= date_arrete:
+            resultat.journal.append(
+                Anomalie(
+                    "orsay.db",
+                    m.id,
+                    "SIGNALE",
+                    "DENOUEMENT_DEPASSE",
+                    f"mouvement {m.id}",
+                    "",
+                    f"{m.portefeuille} {m.isin} {m.sens} {formater_quantite(m.quantite)} non dénoué "
+                    f"au {_date_fr(m.date_denouement)} : risque CSDR",
+                )  # fmt: skip
             )
-            bruts = [b for b in bruts if b[1] not in (cle_x, cle_y)]
-            bruts.append(("DEP", (entite, isin, f"{cle_x[2]}→{cle_y[2]}"), g_pms, g_dep))
 
-    for type_, (entite, isin, conservateur), g_pms, g_dep in bruts:
-        fonds = fonds_par_entite[entite]
-        libelle_type, action = param.types_ecarts[type_]
-        resultat.suspens.append(
-            Suspens(
-                fonds=fonds,
-                isin=isin,
-                conservateur=conservateur,
-                type=type_,
-                qte_pms=_somme(g_pms) if g_pms else None,
-                qte_dep=_somme(g_dep) if g_dep else None,
-                libelle_titre=_libelle(g_pms, g_dep) or referentiel.get(isin, ""),
-                libelle_type=libelle_type,
-                action=action,
-                piste=_piste(db, fonds, isin),
-                sources=[p.ref for p in g_pms + g_dep],
-            )
-        )
-    db.close()
-    resultat.suspens.sort(key=lambda s: (s.fonds, s.type, s.isin))
+    conservateurs: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for p in pms + dep:
+        if p.quantite:
+            conservateurs[(p.entite, p.isin)].add(p.conservateur)
+
+    resultat.suspens = _fusionner_dep(_comparer(pms, dep))
+    _completer(resultat.suspens, param, base, date_arrete, conservateurs)
+    resultat.suspens.sort(key=lambda s: (s.entite, s.type, s.isin))
     return resultat
 
 

@@ -61,6 +61,7 @@ class Lecture:
     fichier: str
     positions: list[Position] = field(default_factory=list)
     journal: list[Anomalie] = field(default_factory=list)
+    _vues: set[tuple] = field(default_factory=set)
 
     def noter(self, niveau: str, regle: str, ligne: int, brut, retenu, motif: str) -> None:
         self.journal.append(
@@ -68,7 +69,16 @@ class Lecture:
         )
 
     def ajouter(self, source: str, entite: str, isin: str, conservateur: str,
-                quantite: Decimal, libelle: str, ligne: int) -> None:  # fmt: skip
+                quantite: Decimal, libelle: str, ligne: int, compte: str | None = None) -> None:  # fmt: skip
+        """`compte` : identifiant de ligne côté source ; deux lignes au même (compte, ISIN) sont
+        additionnées (on ne devine pas laquelle est la bonne) mais signalées. C n'en passe pas :
+        ses lots multiples sont normaux."""
+        if compte is not None:
+            cle = (compte, isin, conservateur)
+            if cle in self._vues:
+                self.noter("SIGNALE", "DOUBLON", ligne, f"{compte} {isin}", quantite,
+                           "ligne en double (même compte et ISIN) : additionnée, à vérifier")  # fmt: skip
+            self._vues.add(cle)
         self.positions.append(
             Position(source, entite, isin, conservateur, quantite, libelle, self.fichier, ligne)
         )
@@ -220,7 +230,7 @@ def lire_pms(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) ->
 
         isin = _isin(lecture, num, ligne["isin"] or "")
         lecture.ajouter("PMS", param.sous_comptes[sous_compte], isin, conservateur, quantite,
-                        (ligne["libelle"] or "").strip(), num)  # fmt: skip
+                        (ligne["libelle"] or "").strip(), num, compte=sous_compte)  # fmt: skip
     return lecture
 
 
@@ -260,7 +270,7 @@ def lire_depositaire_a(nom: str, contenu: bytes, param: Parametrage, date_arrete
                 "NORMALISE", "SEPARATEUR_MILLIERS", num, brut, qte, "quantité texte → nombre"
             )
         lecture.ajouter("A", param.comptes_a[compte], _isin(lecture, num, str(isin)), "A", qte,
-                        str(designation or "").strip(), num)  # fmt: skip
+                        str(designation or "").strip(), num, compte=compte)  # fmt: skip
     return lecture
 
 
@@ -297,7 +307,9 @@ def lire_depositaire_b(nom: str, contenu: bytes, param: Parametrage, date_arrete
             continue
         qte = Decimal(brut).scaleb(-2)
         lecture.noter("NORMALISE", "DECIMALES_IMPLICITES", num, brut, qte, "2 décimales implicites")
-        lecture.ajouter("B", param.desks_b[desk], _isin(lecture, num, isin), "B", qte, "", num)
+        lecture.ajouter(
+            "B", param.desks_b[desk], _isin(lecture, num, isin), "B", qte, "", num, compte=desk
+        )
 
     if controle is None or not controle[1:].isdigit() or int(controle[1:]) != details:
         lecture.noter("BLOQUANT", "TOTAL_CONTROLE", len(lignes), controle, details,

@@ -35,8 +35,8 @@ def test_action_lue_dans_le_parametrage():
 def test_piste_mouvement_en_attente():
     resultat = rapprocher_dossier(DONNEES)
     pistes = {s.isin: s.piste for s in resultat.suspens}
-    assert "ACHAT 25000" in pistes["FR0000012965"] and "26/09" in pistes["FR0000012965"]
-    assert "VENTE 1000" in pistes["FR0000016297"]
+    assert pistes["FR0000012965"].startswith("op. n°19 ACHAT 25 000 dén. 26/09/2026")
+    assert pistes["FR0000016297"].startswith("op. n°20 VENTE 1 000 dén. 29/09/2026")
     assert pistes["FR0000051641"] == ""
 
 

@@ -1,57 +1,26 @@
 """Un test par piège : fichiers altérés en mémoire, niveau attendu dans le journal."""
 
-from pathlib import Path
-
 import pytest
 
-from reco import rapprocher
 from reco.sources import isin_valide
-
-DONNEES = Path(__file__).resolve().parents[1] / "data" / "donnees"
-PMS, A, B, C = (
-    "positions_internes.csv",
-    "depositaire_A_20260925.xlsx",
-    "depositaire_B_20260925.txt",
-    "depositaire_C_20260925.xml",
-)
-
-
-def _fichiers(**remplacements: bytes) -> dict[str, bytes]:
-    fichiers = {nom: (DONNEES / nom).read_bytes() for nom in (PMS, A, B, C)}
-    for cle, contenu in remplacements.items():
-        fichiers[{"pms": PMS, "a": A, "b": B, "c": C}[cle]] = contenu
-    return fichiers
-
-
-def _rapprocher(fichiers: dict[str, bytes]):
-    return rapprocher(fichiers, DONNEES / "parametrage.xlsx", DONNEES / "orsay.db")
-
-
-def _regles(resultat, niveau: str) -> set[str]:
-    return {a.regle for a in resultat.journal if a.niveau == niveau}
-
-
-def _remplacer(nom: str, avant: str, apres: str) -> bytes:
-    texte = (DONNEES / nom).read_bytes().decode()
-    assert avant in texte
-    return texte.replace(avant, apres).encode()
+from tests.fabrique import PMS, B, C, fichiers, lancer, regles, remplacer, xlsx_a
 
 
 def test_fichiers_du_jour_non_bloques():
-    resultat = _rapprocher(_fichiers())
+    resultat = lancer(fichiers())
     assert resultat.statut == "OK"
-    assert _regles(resultat, "BLOQUANT") == set()
+    assert regles(resultat, "BLOQUANT") == set()
 
 
 def test_normalisations_tracees():
-    resultat = _rapprocher(_fichiers())
+    resultat = lancer(fichiers())
     assert {
         "ISIN_FORMAT",
         "LIBELLE_CONSERVATEUR",
         "SEPARATEUR_MILLIERS",
         "DECIMALES_IMPLICITES",
         "VIRGULE_DECIMALE",
-    } <= _regles(resultat, "NORMALISE")
+    } <= regles(resultat, "NORMALISE")
     isin = next(a for a in resultat.journal if a.regle == "ISIN_FORMAT")
     assert isin.brut == " fr0000014078 " and isin.retenu == "FR0000014078"
 
@@ -59,15 +28,15 @@ def test_normalisations_tracees():
 def test_isin_cle_invalide_signale():
     assert isin_valide("FR0000012965")
     assert not isin_valide("FR0000012966")
-    resultat = _rapprocher(_fichiers())
+    resultat = lancer(fichiers())
     signales = [a for a in resultat.journal if a.regle == "ISIN_CLE_INVALIDE"]
     assert [a.retenu for a in signales] == ["FR0000012966"]
     suspens = next(s for s in resultat.suspens if s.isin == "FR0000012966")
-    assert "clé invalide" in suspens.piste
+    assert any("clé invalide" in m for m in suspens.signalements)
 
 
 def test_isin_hors_referentiel_signale():
-    resultat = _rapprocher(_fichiers())
+    resultat = lancer(fichiers())
     hors = {a.retenu for a in resultat.journal if a.regle == "ISIN_HORS_REFERENTIEL"}
     assert "FR0000012966" in hors
 
@@ -101,47 +70,31 @@ def test_isin_hors_referentiel_signale():
 )
 def test_piege_bloquant(fichier, avant, apres, regle):
     nom = {"pms": PMS, "b": B, "c": C}[fichier]
-    resultat = _rapprocher(_fichiers(**{fichier: _remplacer(nom, avant, apres)}))
+    resultat = lancer(fichiers(**{fichier: remplacer(nom, (avant, apres))}))
     assert resultat.statut == "BLOQUE"
-    assert regle in _regles(resultat, "BLOQUANT")
+    assert regle in regles(resultat, "BLOQUANT")
     assert resultat.suspens == []
 
 
-def _xlsx_a(titre: str | None = None, quantite: str | None = None) -> bytes:
-    import io
-
-    import openpyxl
-
-    wb = openpyxl.load_workbook(DONNEES / A)
-    ws = wb.worksheets[0]
-    if titre is not None:
-        ws["A1"] = titre
-    if quantite is not None:
-        ws["D4"] = quantite
-    sortie = io.BytesIO()
-    wb.save(sortie)
-    return sortie.getvalue()
-
-
 def test_a_date_arrete_bloquante():
-    resultat = _rapprocher(_fichiers(a=_xlsx_a(titre="RELEVE - ARRETE DU 24/09/2026")))
-    assert "DATE_ARRETE" in _regles(resultat, "BLOQUANT")
+    resultat = lancer(fichiers(a=xlsx_a(titre="RELEVE - ARRETE DU 24/09/2026")))
+    assert "DATE_ARRETE" in regles(resultat, "BLOQUANT")
 
 
 def test_a_quantite_illisible_bloquante():
-    resultat = _rapprocher(_fichiers(a=_xlsx_a(quantite="dix mille")))
-    assert "QUANTITE_ILLISIBLE" in _regles(resultat, "BLOQUANT")
+    resultat = lancer(fichiers(a=xlsx_a(quantite="dix mille")))
+    assert "QUANTITE_ILLISIBLE" in regles(resultat, "BLOQUANT")
 
 
 def test_fichier_manquant_bloquant():
-    fichiers = _fichiers()
-    del fichiers[B]
-    resultat = _rapprocher(fichiers)
-    assert "FICHIER_MANQUANT" in _regles(resultat, "BLOQUANT")
+    depot = fichiers()
+    del depot[B]
+    resultat = lancer(depot)
+    assert "FICHIER_MANQUANT" in regles(resultat, "BLOQUANT")
 
 
 def test_libelle_different_signale_sans_bloquer():
-    contenu = _remplacer(C, "DASSAULT SYSTEMES", "DASSAULT AVIATION")
-    resultat = _rapprocher(_fichiers(c=contenu))
+    contenu = remplacer(C, ("DASSAULT SYSTEMES", "DASSAULT AVIATION"))
+    resultat = lancer(fichiers(c=contenu))
     assert resultat.statut == "OK"
-    assert "LIBELLE_DIFFERENT" in _regles(resultat, "SIGNALE")
+    assert "LIBELLE_DIFFERENT" in regles(resultat, "SIGNALE")
