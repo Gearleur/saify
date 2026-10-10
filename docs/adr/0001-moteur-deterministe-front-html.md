@@ -1,6 +1,6 @@
 # ADR 0001 : moteur de rapprochement déterministe, front HTML servi par FastAPI, LLM limité au besoin 2
 
-- Statut : accepté
+- Statut : accepté ; la partie « front HTML natif » est remplacée par l'ADR 0002 (front React + shadcn/ui)
 - Date : 2026-10-10
 
 ## Contexte

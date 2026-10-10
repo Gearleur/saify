@@ -1,6 +1,7 @@
 [project]
 name = "saify"
-version = "0.1.0"
+version = "0.3.0"
+description = "Orsay Gestion : rapprochement quotidien des positions titres et questions sur la base de gestion"
 requires-python = ">=3.12"
 dependencies = [
     # API
@@ -8,21 +9,15 @@ dependencies = [
     "uvicorn",
     "pydantic>=2",
     "python-dotenv",
-    "httpx",
-    # agents / LLM
+    # LLM (compréhension des questions, besoin 2)
     "anthropic",
-    "langgraph",
-    "langchain-anthropic",
-    # données et recherche
-    "pandas",
+    # lecture des fichiers Excel du client
     "openpyxl",
-    "pdfplumber",
-    "rapidfuzz",
-    "rank-bm25",
 ]
 
 [dependency-groups]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "ruff", "httpx"]  # httpx : client de test FastAPI
+exploration = ["pandas>=3.0.6"]  # notebook exploration/Visual.ipynb uniquement
 
 [tool.ruff]
 line-length = 100

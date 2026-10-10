@@ -1,7 +1,7 @@
 """Préparation exploratoire des données Orsay : lecture, nettoyage tracé, export CSV.
 
-Usage : uv run python visualisation/prepare_data.py
-Sorties dans visualisation/clean/ :
+Usage : uv run python exploration/prepare_data.py
+Sorties dans exploration/clean/ :
 - positions_unifiees.csv : toutes les lignes PMS + conservateurs A/B/C au même format
 - journal_nettoyage.csv   : chaque transformation (fichier, ligne, brut, retenu, règle, niveau)
 - comparatif.csv          : une ligne par (fonds, ISIN), quantités PMS / A / B / C côte à côte

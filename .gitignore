@@ -8,3 +8,8 @@ logs/
 var/
 *.jsonl
 *:Zone.Identifier
+front/node_modules/
+front/dist/
+
+# Sorties régénérables de exploration/prepare_data.py
+exploration/clean/
