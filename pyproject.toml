@@ -1,0 +1,33 @@
+[project]
+name = "saify"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    # API
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2",
+    "python-dotenv",
+    "httpx",
+    # agents / LLM
+    "anthropic",
+    "langgraph",
+    "langchain-anthropic",
+    # données et recherche
+    "pandas",
+    "openpyxl",
+    "pdfplumber",
+    "rapidfuzz",
+    "rank-bm25",
+]
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
