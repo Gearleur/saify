@@ -206,12 +206,22 @@ def _isin(lecture: Lecture, ligne: int, brut: str) -> str:
     return isin
 
 
-def _controler_date(lecture: Lecture, ligne: int, lue: date | None, attendue: date, brut) -> None:
-    if lue != attendue:
+def _controler_date(
+    lecture: Lecture, ligne: int, lue: date | None, attendue: date | None, brut
+) -> None:
+    """`attendue` None : la date de référence n'a pas pu être établie, ce blocage est déjà tracé."""
+    if attendue is not None and lue != attendue:
         lecture.noter(
             "BLOQUANT", "DATE_ARRETE", ligne, brut, "",
             f"date d'arrêté {lue or 'introuvable'} ≠ {attendue:%d/%m/%Y}",
         )  # fmt: skip
+
+
+def dates_pms(contenu: bytes) -> set[str]:
+    """Dates d'arrêté distinctes du PMS : la source interne fixe la date du rapprochement."""
+    texte = _texte(Lecture(""), contenu)
+    lignes = csv.DictReader(io.StringIO(texte, newline=""), delimiter=";")
+    return {(ligne.get("date_arrete") or "").strip() for ligne in lignes}
 
 
 def _texte(lecture: Lecture, contenu: bytes) -> str:

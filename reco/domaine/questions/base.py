@@ -7,6 +7,7 @@ SQLite qui refuse toute opération autre qu'une lecture (y compris PRAGMA et ATT
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -31,3 +32,10 @@ def connexion_lecture_seule(base: Path) -> Iterator[sqlite3.Connection]:
 def decimal(valeur: float | int | None) -> Decimal | None:
     """Les cours sont stockés en REAL : on passe par leur écriture décimale, jamais par le binaire."""
     return None if valeur is None else Decimal(str(valeur))
+
+
+def date_reference(base: Path) -> date | None:
+    """Date de référence des questions : la dernière date de positions de la base elle-même."""
+    with connexion_lecture_seule(base) as db:
+        (valeur,) = db.execute("SELECT max(date_arrete) FROM positions").fetchone()
+    return date.fromisoformat(valeur) if valeur else None

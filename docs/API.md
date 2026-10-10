@@ -33,7 +33,7 @@ Lancement : `uv run uvicorn reco.api:app --reload` puis http://127.0.0.1:8000
 
 Un fichier refusé par le *métier* (date, total de contrôle…) n'est **pas** une erreur HTTP : la réponse est `200` avec `statut: "BLOQUE"` et le journal explique quoi faire (`remede`).
 
-Autres codes : `404 INTROUVABLE`, `405 METHODE_NON_AUTORISEE`, `503 PARAMETRAGE_INDISPONIBLE` (`/api/parametrage` si `parametrage.xlsx` est illisible), `503 PAGE_INDISPONIBLE` (`GET /` sans `index.html`), `500 ERREUR_INTERNE` (sans trace). Swagger (`/docs`) est désactivé : incompatible avec la CSP stricte.
+Autres codes : `503 BASE_INDISPONIBLE` (questions, base de gestion illisible), `404 INTROUVABLE`, `405 METHODE_NON_AUTORISEE`, `503 PARAMETRAGE_INDISPONIBLE` (`/api/parametrage` si `parametrage.xlsx` est illisible), `503 PAGE_INDISPONIBLE` (`GET /` sans `index.html`), `500 ERREUR_INTERNE` (sans trace). Swagger (`/docs`) est désactivé : incompatible avec la CSP stricte.
 
 ## Routes
 
@@ -41,6 +41,7 @@ Autres codes : `404 INTROUVABLE`, `405 METHODE_NON_AUTORISEE`, `503 PARAMETRAGE_
 ### `GET /static/app.css`, `GET /static/app.js` → fichiers du dossier `reco/web/`
 
 ### `GET /api/sante`
+`date_arrete` : date de référence de la **base de gestion** (dernières positions de `orsay.db`), `null` si illisible. C'est la date des réponses aux questions et celle des fichiers d'exemple.
 ```json
 {"statut": "ok", "version": "0.3.0", "date_arrete": "2026-09-25", "base_disponible": true,
  "llm": {"actif": true, "modele": "claude-haiku-5-5", "appels_aujourdhui": 2, "budget_jour": 300}}
@@ -123,6 +124,9 @@ event: fin            data: {}
 En cas de panne : `event: erreur` (`{"code": "ERREUR_INTERNE", "message": ...}`, sans trace), puis `fin`.
 Côté navigateur : `fetch` en `POST` et lecture de `response.body` (pas d'`EventSource`, qui ne fait que du `GET`).
 Le premier événement part immédiatement ; le LLM prend environ 2 à 3 s ; le calcul quelques millisecondes.
+
+## Date d'arrêté d'un rapprochement
+Elle n'est **jamais codée en dur** : elle est lue dans le PMS déposé (colonne `date_arrete`, une seule date admise), et les trois relevés conservateurs doivent porter la même. Si le PMS est absent ou porte plusieurs dates, le rapprochement est `BLOQUE` et `date_arrete` vaut `null`. Le réglage serveur `date_arrete_attendue` (en production : J-1 ouvré) refuse en plus des fichiers périmés (`BLOQUANT DATE_ARRETE`, « fichiers arrêtés au X, attendu le Y »).
 
 ## Objets
 

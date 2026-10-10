@@ -50,7 +50,7 @@ def csv_suspens(id_: str, historique: HistoriqueDep) -> Response:
         entree.csv,
         media_type="text/csv; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="suspens_{entree.modele.date_arrete}.csv"'
+            "Content-Disposition": f'attachment; filename="suspens_{entree.modele.date_arrete or "date-inconnue"}.csv"'
         },
     )
 

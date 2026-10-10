@@ -100,7 +100,7 @@ class AnomalieSortie(BaseModel):
 class Rapprochement(BaseModel):
     id: str
     cree_le: str
-    date_arrete: str
+    date_arrete: str | None  # lue dans le PMS ; None si absente ou ambiguë (rapprochement BLOQUE)
     statut: str
     fichiers: list[FichierSortie]
     synthese: Synthese
@@ -111,7 +111,7 @@ class Rapprochement(BaseModel):
 class RapprochementResume(BaseModel):
     id: str
     cree_le: str
-    date_arrete: str
+    date_arrete: str | None  # lue dans le PMS ; None si absente ou ambiguë (rapprochement BLOQUE)
     statut: str
     nb_suspens: int
     nb_a_traiter: int
@@ -134,7 +134,7 @@ class EtatLLM(BaseModel):
 class Sante(BaseModel):
     statut: str
     version: str
-    date_arrete: str
+    date_arrete: str | None  # date de référence de la base de gestion (dernières positions)
     base_disponible: bool
     llm: EtatLLM
 
@@ -161,7 +161,7 @@ class Transco(BaseModel):
 
 
 class ParametrageSortie(BaseModel):
-    date_arrete: str
+    date_arrete: str | None
     fonds: list[Fonds]
     conservateurs: list[Conservateur]
     types_ecarts: list[TypeEcart]

@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 VERSION = "0.3.0"
@@ -42,6 +43,8 @@ class Reglages:
     llm_budget_jour: int = 300  # appels LLM réels par jour, au-delà : mots-clés
     llm_concurrence: int = 4  # appels LLM simultanés
     llm_timeout: float = 10.0  # secondes, une seule nouvelle tentative
+    # Date d'arrêté exigée des fichiers (en production : J-1 ouvré) ; None : celle lue dans le PMS.
+    date_arrete_attendue: date | None = None
 
     @property
     def parametrage(self) -> Path:

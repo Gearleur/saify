@@ -4,6 +4,7 @@ Quatre temps : comparer les quantités agrégées, fusionner les DEP, compléter
 (action du paramétrage, piste orsay.db, signalements), trier.
 """
 
+import csv
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ from reco.domaine.sources import (
     Parametrage,
     Position,
     anomalie,
+    dates_pms,
     isin_valide,
     lire_depositaire_a,
     lire_depositaire_b,
@@ -32,7 +34,6 @@ LECTEURS = {
     "B": ("depositaire_B", lire_depositaire_b),
     "C": ("depositaire_C", lire_depositaire_c),
 }
-DATE_ARRETE = date(2026, 9, 25)
 PRIORITES = ("critique", "a_relever", "en_attente")  # ordre de traitement
 EXPLICATIONS = ("aucune", "totale", "partielle", "contraire")  # par les opérations en attente
 ALERTES = ("CSDR", "DEP_AMBIGU", "ISIN_INVALIDE", "PISTE_MULTI_CONSERVATEURS")
@@ -79,6 +80,7 @@ def priorite(s: Suspens) -> str:
 @dataclass
 class Resultat:
     statut: str = "OK"  # OK, ou BLOQUE si une anomalie BLOQUANT empêche le rapprochement
+    date_arrete: date | None = None  # lue dans le PMS ; None si absente ou ambiguë
     suspens: list[Suspens] = field(default_factory=list)
     journal: list[Anomalie] = field(default_factory=list)
 
@@ -301,12 +303,34 @@ def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arre
             s.signalements.append("ISIN à clé invalide, probable erreur de saisie")
 
 
+def _date_du_depot(fichiers: dict[str, bytes], date_attendue: date | None) -> tuple[date | None, Anomalie | None]:  # fmt: skip
+    """Date d'arrêté du PMS (source de référence) : une seule date, et l'attendue si elle est fixée."""
+    noms = [n for n in fichiers if Path(n).name.startswith(LECTEURS["PMS"][0])]
+    if len(noms) != 1:
+        return None, None  # FICHIER_MANQUANT ou FICHIERS_MULTIPLES, tracés par la boucle de lecture
+    try:
+        dates = dates_pms(fichiers[noms[0]])
+        lue = date.fromisoformat(dates.pop()) if len(dates) == 1 else None
+    except (ValueError, KeyError, csv.Error):
+        dates, lue = set(), None
+    if lue is None:
+        motif = (f"plusieurs dates d'arrêté dans le PMS ({', '.join(sorted(dates))})"
+                 if dates else "date d'arrêté du PMS illisible")  # fmt: skip
+        return None, anomalie(noms[0], 0, "BLOQUANT", "DATE_ARRETE", "", "", motif)
+    if date_attendue is not None and lue != date_attendue:
+        return None, anomalie(noms[0], 0, "BLOQUANT", "DATE_ARRETE", lue.isoformat(), "",
+                              f"fichiers arrêtés au {_date_fr(lue)}, attendu le {_date_fr(date_attendue)}")  # fmt: skip
+    return lue, None
+
+
 def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | None,
-               date_arrete: date = DATE_ARRETE) -> Resultat:  # fmt: skip
+               date_attendue: date | None = None) -> Resultat:  # fmt: skip
     """`fichiers` : nom de fichier -> contenu brut, un fichier par source (PMS, A, B, C).
 
     Une seule anomalie BLOQUANT suffit à refuser le rapprochement : un rapprochement partiel
     rendrait des faux négatifs invisibles. orsay.db est facultative : elle informe, elle ne décide pas.
+    La date d'arrêté est lue dans le PMS ; les conservateurs doivent porter la même. `date_attendue`
+    (en production : J-1 ouvré) refuse en plus des fichiers périmés.
     """
     resultat = Resultat()
     try:
@@ -316,6 +340,10 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
                                          f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
         resultat.statut = "BLOQUE"
         return resultat
+    date_arrete, refus = _date_du_depot(fichiers, date_attendue)
+    if refus:
+        resultat.journal.append(refus)
+    resultat.date_arrete = date_arrete
     pms: list[Position] = []
     dep: list[Position] = []
     for source, (prefixe, lecteur) in LECTEURS.items():

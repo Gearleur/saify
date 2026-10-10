@@ -17,7 +17,7 @@ from reco.api.schemas import (
 )
 from reco.api.services.depot import source_de
 from reco.api.services.historique import Historique
-from reco.domaine.rapprochement import DATE_ARRETE, PRIORITES, Resultat, rapprocher
+from reco.domaine.rapprochement import PRIORITES, Resultat, rapprocher
 from reco.domaine.situation import point_de_situation, quantite_texte, suspens_csv
 from reco.domaine.sources import TYPES_REQUIS
 
@@ -28,7 +28,7 @@ log = logging.getLogger("reco.api.audit")
 
 def executer(depot: dict[str, bytes], reglages: Reglages, historique: Historique) -> Rapprochement:
     """Rapproche, enregistre dans l'historique et trace l'audit (sha256 des fichiers, jamais leur contenu)."""
-    resultat = rapprocher(depot, reglages.parametrage, reglages.base)
+    resultat = rapprocher(depot, reglages.parametrage, reglages.base, reglages.date_arrete_attendue)
     cree_le = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     modele = vers_modele(historique.nouvel_id(), cree_le, depot, resultat)
     # CSV et point de situation figés maintenant : l'historique les relit sans garder `resultat`.
@@ -76,7 +76,7 @@ def vers_modele(id_: str, cree_le: str, depot: dict[str, bytes], r: Resultat) ->
     return Rapprochement(
         id=id_,
         cree_le=cree_le,
-        date_arrete=DATE_ARRETE.isoformat(),
+        date_arrete=r.date_arrete.isoformat() if r.date_arrete else None,
         statut=r.statut,
         fichiers=[
             FichierSortie(

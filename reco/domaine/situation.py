@@ -3,10 +3,9 @@
 import csv
 import io
 from collections import Counter
-from datetime import date
 from decimal import Decimal
 
-from reco.domaine.rapprochement import DATE_ARRETE, PRIORITES, Resultat, Suspens, formater_quantite
+from reco.domaine.rapprochement import PRIORITES, Resultat, Suspens, formater_quantite
 
 COLONNES_CSV = (
     "priorite", "fonds", "entite", "isin", "titre", "conservateur", "type", "libelle_type",
@@ -39,8 +38,9 @@ def _suspens(s: Suspens) -> list[str]:
     return lignes
 
 
-def point_de_situation(resultat: Resultat, date_arrete: date = DATE_ARRETE) -> str:
-    lignes = [f"Point de situation · rapprochement du {date_arrete:%d/%m/%Y}", ""]
+def point_de_situation(resultat: Resultat) -> str:
+    jour = f"{resultat.date_arrete:%d/%m/%Y}" if resultat.date_arrete else "date d'arrêté inconnue"
+    lignes = [f"Point de situation · rapprochement du {jour}", ""]
     if resultat.statut == "BLOQUE":
         bloquants = [a for a in resultat.journal if a.niveau == "BLOQUANT"]
         lignes += [

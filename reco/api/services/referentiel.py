@@ -7,7 +7,7 @@ from pathlib import Path
 from reco.api.config import Reglages
 from reco.api.erreurs import ErreurApi
 from reco.api.schemas import Conservateur, Fonds, ParametrageSortie, Transco, TypeEcart
-from reco.domaine.rapprochement import DATE_ARRETE
+from reco.domaine.questions.base import date_reference
 from reco.domaine.sources import lire_parametrage
 
 log = logging.getLogger("reco.api.referentiel")
@@ -42,6 +42,15 @@ def base_disponible(base: Path) -> bool:
         return False
 
 
+def date_de_la_base(base: Path) -> str | None:
+    """Date des dernières positions de orsay.db (ISO), None si la base est illisible."""
+    try:
+        jour = date_reference(base)
+    except sqlite3.Error:
+        return None
+    return jour.isoformat() if jour else None
+
+
 def codes_fonds(base: Path) -> dict[str, str]:
     try:
         return dict(_lire_base(base, "SELECT nom, code FROM portefeuilles"))
@@ -59,7 +68,7 @@ def parametrage(reglages: Reglages) -> ParametrageSortie:
     entites = list(dict.fromkeys(e for table in tables.values() for e in table.values()))
     codes = codes_fonds(reglages.base)
     return ParametrageSortie(
-        date_arrete=DATE_ARRETE.isoformat(),
+        date_arrete=date_de_la_base(reglages.base),
         fonds=[Fonds(entite=e, code=codes.get(e, "")) for e in entites],
         conservateurs=CONSERVATEURS,
         types_ecarts=[
