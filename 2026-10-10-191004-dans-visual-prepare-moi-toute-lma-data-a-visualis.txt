@@ -1,0 +1,360 @@
+
+❯ dans visual prepare moi toute lma data a visualiser et la cleaner pour vois a
+  quel type de data je dois faire face
+
+● Je commence par regarder ce qu'il y a dans les données et dans visualisation/.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Il y a déjà un notebook visualisation/Visual.ipynb. Je regarde son contenu,
+  les dépendances disponibles et les fichiers bruts.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Le notebook est vide. Je regarde les deux xlsx et la base SQLite via Python.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Les 6 sources sont lisibles avec pandas et openpyxl déjà installés, donc
+  aucune dépendance à ajouter. Je vais écrire un script qui lit les sources,
+  normalise les données (fonds, ISIN, conservateur, quantité en Decimal),
+  journalise les transformations et exporte des CSV propres dans
+  visualisation/clean/.
+
+● Write(visualisation/prepare_data.py)
+  ⎿  Wrote 320 lines to visualisation/prepare_data.py
+      1 """Préparation exploratoire des données Orsay : lecture, nettoyag
+        e tracé, export CSV.
+      3 Usage : uv run python visualisation/prepare_data.py
+      4 Sorties dans visualisation/clean/ :
+      5 - positions_unifiees.csv : toutes les lignes PMS + conservateurs
+      6 - journal_nettoyage.csv   : chaque transformation (fichier, ligne
+        , brut, retenu, règle, niveau)
+      7 - comparatif.csv          : une ligne par (fonds, ISIN), quantité
+      8 - db_<table>.csv          : tables de orsay.db (lecture seule)
+      9 """
+     … +379 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Le résultat correspond à l'oracle de NOTES.md : 7 lignes non rapprochées et 3
+  exclusions. Je corrige le lint, puis je remplis le notebook pour explorer les
+  CSV propres.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Mon exécuteur de test découpait mal les cellules reformatées. Je le refais
+  avec ast :
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● df.style a besoin de jinja2, qui n'est pas installé. Plutôt que d'ajouter une
+  dépendance, je remplace cette cellule par un affichage simple.
+
+● Bash(uv run python - <<'EOF' 2>&1 | grep -v "^Positions\|^Statuts\|^Journal
+      :\|^Règles\|^  [A-Z][A-Z]\|^  [A-Z][A-Z][A-Z]
+      FR\|^Comparatif\|^Fichiers\|^$"
+      import json…)
+  ⎿  Updated visualisation/Visual.ipynb (+1 -5)
+      121     "metadata": {},
+      122     "outputs": [],
+      123     "source": [
+      124 -    "def surligner(r):\n",                                    
+      125 -    "    return [\"background-color: #f8d7da\" if r.rapproche 
+          -== \"False\" else \"\" for _ in r]\n",                        
+      126 -    "\n",                                                     
+      127 -    "\n",                                                     
+      128 -    "comp.style.apply(surligner, axis=1)"                     
+      124 +    "comp  # trié : lignes non rapprochées en tête"           
+      125     ]
+      126    },
+      127    {
+
+● J'ai préparé et nettoyé toutes les données dans visualisation/. J'ai exécuté
+  le script et toutes les cellules du notebook : ils tournent sans erreur et le
+  lint passe. Le résultat retrouve exactement les 7 suspens de l'oracle de
+  NOTES.md. Je n'ai rien commité.
+
+  Ce qui a été créé
+
+  - prepare_data.py (visualisation/prepare_data.py) lit les 6 sources, met
+    toutes les positions au même format (fonds, ISIN, conservateur, quantité en
+    Decimal) et note chaque transformation dans un journal. Il écrit le résultat
+    dans visualisation/clean/ :
+    - positions_unifiees.csv : 68 lignes (PMS 37, A 9, B 13, C 9) ;
+    - journal_nettoyage.csv : 78 entrées, avec le fichier, la ligne, la valeur
+      brute, la valeur retenue, le niveau et la règle ;
+    - comparatif.csv : une ligne par (fonds, ISIN), avec les quantités PMS par
+      conservateur à côté de celles de A, B et C, puis les écarts ;
+    - db_*.csv et param_*.csv : les tables de orsay.db, ouverte en lecture
+      seule, et les onglets du paramétrage.
+  - Visual.ipynb (visualisation/Visual.ipynb) (il était vide) relance le script
+    puis montre : la volumétrie, le journal par règle, des exemples brut →
+    retenu, le comparatif et les données de la base.
+
+  À quel type de données tu as affaire
+
+  ┌────────────┬─────────────────┬─────────────────────────────────────────┐
+  │   Source   │     Format      │        Ce qu'il a fallu nettoyer        │
+  ├────────────┼─────────────────┼─────────────────────────────────────────┤
+  │            │ ;, fins de      │ 4 ISIN en minuscules avec espaces ; 37  │
+  │ PMS (CSV)  │ ligne CRLF      │ libellés de conservateur hétérogènes    │
+  │            │                 │ ramenés à A/B/C                         │
+  ├────────────┼─────────────────┼─────────────────────────────────────────┤
+  │            │ 2 lignes de     │ 9 quantités en texte ("10 000") ;       │
+  │ A (xlsx)   │ titre           │ comptes avec zéros en tête, gardés en   │
+  │            │                 │ texte                                   │
+  ├────────────┼─────────────────┼─────────────────────────────────────────┤
+  │ B (largeur │ en-tête H,      │ 13 quantités à 2 décimales implicites ; │
+  │  fixe)     │ lignes D, fin T │  contrôle T000013 correct               │
+  ├────────────┼─────────────────┼─────────────────────────────────────────┤
+  │ C (XML)    │ namespace, <Dim │ 9 quantités avec virgule décimale ;     │
+  │            │  prop=…>        │ date JJMMAAAA ; plusieurs lots à sommer │
+  ├────────────┼─────────────────┼─────────────────────────────────────────┤
+  │ orsay.db   │ SQLite          │ référentiel de 30 titres, cours, 20     │
+  │            │                 │ mouvements dont 2 EN_ATTENTE            │
+  └────────────┴─────────────────┴─────────────────────────────────────────┘
+
+  Toutes les dates d'arrêté sont bien le 25/09, et aucun cas n'est classé
+  bloquant.
+
+  Lignes retirées ou signalées :
+  - exclues : SANOFI sans sous-compte, le sous-compte P3G (BTF 999 999), et RTE
+    lot 2 annulé (S) ;
+  - signalée : FR0000012966, dont la clé ISIN est invalide.
+
+  Les 7 lignes non rapprochées :
+  - SCHNEIDER et SAFRAN : écart de quantité, expliqué par les 2 mouvements
+    EN_ATTENTE.
+  - SFIL : écart de quantité qu'aucun mouvement n'explique.
+  - EDF et l'ISIN invalide : présents au PMS, absents chez A.
+  - AFD : attendu chez A, trouvé chez B.
+  - LVMH : présent chez B, absent du PMS.
+
+  À savoir
+
+  - Pour ouvrir le notebook dans VS Code, il faut un kernel Jupyter (ipykernel),
+    qui n'est pas dans le projet. Je ne l'ai pas ajouté, car la règle est de te
+    demander avant toute nouvelle dépendance. Sans lui, tu peux lancer uv run
+    python visualisation/prepare_data.py, qui affiche le même résumé dans le
+    terminal.
+  - Pour la même raison, je n'ai fait aucun graphique (pas de matplotlib) ni de
+    couleurs dans les tableaux (pas de jinja2). Le notebook affiche des tableaux
+    pandas simples.
+  - Les quantités venant de C s'affichent avec deux décimales (50000.00). La
+    valeur est la même, c'est seulement l'affichage.
+  - Ce script sert à explorer les données. La logique de nettoyage pourra être
+    reprise dans src/ pour le vrai moteur.
+
+❯ <ide_opened_file>The user opened the file
+  /home/gearleur/projects/saify/visualisation/Visual.ipynb in the IDE. This may
+  or may not be related to the current task.</ide_opened_file>
+
+❯ en quoi une donnée est exclu et pouruqoi dans le notebook car elle n'a pas de
+  sous compte ca implique quioi ?
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Ce que veut dire « exclu »
+
+  Une ligne exclue est retirée du rapprochement : elle n'est comparée à aucun
+  relevé de conservateur et ne peut donc produire aucun suspens. Elle n'est pas
+  supprimée pour autant. Elle reste dans positions_unifiees.csv avec statut =
+  EXCLU, et le journal de nettoyage garde son fichier, sa ligne et la règle
+  appliquée. On peut ainsi toujours expliquer pourquoi elle n'a pas été
+  rapprochée.
+
+  Les 3 exclusions viennent toutes de l'énoncé (« Ce qui n'entre pas dans
+  l'inventaire ») :
+  - P3G : c'est un compte technique de passage, pas une détention réelle d'un
+    fonds.
+  - Ligne sans sous-compte : c'est une saisie incomplète.
+  - ACTION = S chez C : c'est une annulation, donc ce n'est plus une position.
+
+  Pourquoi l'absence de sous-compte pose problème
+
+  1. On ne peut pas savoir à quel fonds appartient la ligne. Le PMS n'indique
+     pas le fonds directement. Il passe par le sous-compte, puis par la table
+     TRANSCO_SOUS_COMPTES (SC-ACT-01 → ORSAY ACTIONS EUROPE → ACT). Or on
+     rapproche par (fonds, ISIN, conservateur). Sans sous-compte, le premier
+     élément de cette clé manque, et la ligne ne peut être comparée à rien.
+  2. La garder créerait un faux suspens. Le CSV contient deux lignes SANOFI :
+  SC-ACT-01;FR0000011850;SANOFI;25000;Euroclear          ← ligne normale
+           ;FR0000011850;SANOFI;12345;EUROCLEAR FRANCE  ← sans sous-compte
+     Le conservateur B détient 25 000 SANOFI pour ACT, et orsay.db indique aussi
+     25 000. La ligne normale suffit donc, et SANOFI se rapproche sans écart.
+     Si on gardait la ligne de 12 345 en la rattachant à ACT, on obtiendrait 37
+     345 contre 25 000 : un suspens QTE qui n'existe pas. Le montant 12 345
+     (1-2-3-4-5) a d'ailleurs tout l'air d'une saisie de test ou d'une erreur de
+     frappe.
+  3. Elle ne doit pas disparaître en silence. C'est la vraie conséquence. Une
+     erreur de saisie dans le PMS reste un problème à corriger. Et si, un autre
+     jour, une vraie position perdait son sous-compte, l'ignorer ferait rater un
+     suspens : c'est le faux négatif, le pire cas. Il faut donc la classer à
+     part : ce n'est pas un suspens (le conservateur n'est pas en cause), mais
+     une anomalie de saisie à remonter au middle office pour qu'il complète le
+     sous-compte dans le PMS.
+
+  En résumé, exclure veut dire « ne pas rapprocher », pas « ignorer ». Dans le
+  vrai moteur, ces lignes devront apparaître dans une section « anomalies hors
+  suspens » du point de situation, à côté de la liste des suspens.
+
+❯ expliquie moi correctement el metier comme si je n'y connaissait rien, les
+  implicaiton que ca et enquoi c'est un probleme le beosin clients on se situe
+  ou
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Le métier, en partant de zéro
+
+  1. Les acteurs
+
+  Orsay Gestion est une société de gestion : des épargnants lui confient leur
+  argent et elle l'investit pour eux. Cet argent est réparti dans 3 fonds (des
+  FCP, c'est-à-dire des « paniers » d'investissement) :
+  - PAT (Patrimoine) : un fonds diversifié ;
+  - OBL (Obligations) : il prête à des États et à des entreprises ;
+  - ACT (Actions Europe) : il détient des parts de grandes entreprises.
+
+  Pour la suite, deux mots servent partout. Une action est une part
+  d'entreprise, comme Safran ou Schneider. Une obligation est un prêt, par
+  exemple « EDF 4 % 2031 » : un prêt à EDF, à 4 % d'intérêt par an, remboursé en
+  2031.
+
+  Point clé : Orsay ne garde pas les titres elle-même. Comme toi avec ton argent
+  à la banque, elle les confie à des conservateurs, des banques spécialisées
+  qui tiennent les comptes-titres. Ici il y en a trois : A (CACEIS), B
+  (Euroclear) et C (BNP).
+
+  Il existe donc deux tenues de compte pour les mêmes titres :
+
+  ┌────────────────────────┬─────────────────┬─────────────────────────────┐
+  │                        │  Qui la tient   │       Ce qu'elle dit        │
+  ├────────────────────────┼─────────────────┼─────────────────────────────┤
+  │ Le PMS (logiciel       │ le middle       │ « voilà ce que je crois     │
+  │ interne d'Orsay)       │ office d'Orsay  │ posséder, et chez qui »     │
+  ├────────────────────────┼─────────────────┼─────────────────────────────┤
+  │ Les relevés des        │ les banques A,  │ « voilà ce que nous gardons │
+  │ conservateurs          │ B, C            │  vraiment pour vous »       │
+  └────────────────────────┴─────────────────┴─────────────────────────────┘
+
+  2. Le rapprochement : vérifier que les deux comptes disent la même chose
+
+  Chaque matin, un opérateur compare les deux, ligne par ligne. Exemple tiré des
+  données :
+
+  ▎ PMS : « le fonds ACT a 250 000 Schneider chez A »
+  ▎ Relevé de A : « le fonds ACT a 225 000 Schneider »
+
+  Il manque 25 000 titres. Cet écart s'appelle un suspens : une ligne « qui ne
+  tombe pas juste ». L'opérateur doit trouver pourquoi et agir.
+
+  Pourquoi des écarts existent, même sans erreur
+
+  Quand Orsay achète des titres, elle l'enregistre le jour de l'achat dans le
+  PMS. La banque, elle, ne voit les titres arriver qu'au dénouement,
+  c'est-à-dire 2 jours plus tard (J+2) : c'est le délai de livraison du marché.
+
+  C'est exactement le cas de Schneider. Dans orsay.db, il y a un achat de 25 000
+  Schneider, en statut EN_ATTENTE, livrable le 26/09. Le PMS l'a déjà compté,
+  la banque pas encore. L'écart est donc normal, mais il faut quand même le
+  vérifier : si la livraison n'arrive pas le 26, il y a un vrai problème.
+
+  3. Pourquoi c'est un problème pour le client
+
+  - Le temps. Le rapprochement prend 1 h 30 à la main chaque matin, sur 4
+    fichiers de formats tous différents.
+  - Le retard. Des suspens sont repérés plusieurs jours après leur apparition.
+  - L'argent. Le règlement européen CSDR fait payer des pénalités pour chaque
+    jour de retard de livraison. Plus un suspens est découvert tard, plus il
+    coûte.
+  - La conformité. Les suspens remontent au RCCI, le responsable conformité, qui
+    rend des comptes au régulateur, l'AMF.
+
+  D'où le pire scénario : rater un suspens (faux négatif). Personne ne le
+  traite, les pénalités courent et la conformité le découvre après coup.
+  Signaler un suspens qui n'en est pas un (faux positif) est moins grave, mais
+  fait perdre du temps et la confiance dans l'outil.
+
+  4. Les 4 types de suspens (définis dans parametrage.xlsx)
+
+  ┌─────────┬────────────────────────┬──────────────────┬───────────────────┐
+  │  Type   │     Signification      │ Exemple dans les │  Action attendue  │
+  │         │                        │      données     │                   │
+  ├─────────┼────────────────────────┼──────────────────┼───────────────────┤
+  │         │ même titre des deux    │ Schneider 250    │ vérifier les      │
+  │ QTE     │ côtés, mais pas la     │ 000 / 225 000    │ opérations non    │
+  │         │ même quantité          │                  │ dénouées          │
+  ├─────────┼────────────────────────┼──────────────────┼───────────────────┤
+  │         │ dans le PMS, absent    │ EDF 40 000       │ contacter la      │
+  │ ABS_DEP │ chez la banque         │ attendu chez A,  │ banque            │
+  │         │                        │ rien chez A      │                   │
+  ├─────────┼────────────────────────┼──────────────────┼───────────────────┤
+  │         │ chez la banque, absent │ LVMH 30 000 chez │ vérifier une      │
+  │ ABS_INT │  du PMS                │  B, inconnu du   │ saisie oubliée    │
+  │         │                        │ PMS              │                   │
+  ├─────────┼────────────────────────┼──────────────────┼───────────────────┤
+  │ DEP     │ le titre est chez une  │ AFD attendu chez │ corriger le       │
+  │         │ autre banque que prévu │  A, livré chez B │ référentiel       │
+  └─────────┴────────────────────────┴──────────────────┴───────────────────┘
+
+  Pour AFD, une comparaison naïve verrait deux problèmes (« absent chez A » et «
+  en trop chez B »). En réalité il n'y en a qu'un : le titre est simplement
+  chez la mauvaise banque. Le client insiste sur ce point.
+
+  5. Revenons aux exclusions (ta question précédente)
+
+  Le PMS ne dit pas directement « ce titre est au fonds ACT ». Il dit « ce titre
+  est sur le sous-compte SC-ACT-01 », et la table de paramétrage traduit
+  SC-ACT-01 en fonds ACT. Les sous-comptes servent à Orsay à s'organiser en
+  interne. La banque, elle, ne les connaît pas : elle ne voit que le compte du
+  fonds. C'est pourquoi on additionne d'abord les sous-comptes par fonds, puis
+  on compare.
+
+  Les 3 lignes exclues :
+  - Sans sous-compte (SANOFI 12 345) : on ne sait pas à quel fonds la rattacher,
+    donc on ne peut la comparer à rien. Le client dit lui-même que c'est une
+    saisie incomplète. Ce n'est pas un suspens (la banque n'y est pour rien),
+    c'est une erreur interne à signaler pour correction.
+  - P3G (BTF 999 999) : c'est un compte technique de transit, une sorte de «
+    salle d'attente ». Ce n'est pas une vraie détention.
+  - Annulation S chez C (RTE lot 2) : la banque a annulé ce mouvement, donc il
+    ne compte plus.
+
+  « Exclu » ne veut pas dire « effacé » : la ligne doit rester visible dans le
+  rapport, sinon on risque justement le faux négatif.
+
+  6. Le second besoin, en deux mots
+
+  Toute la journée, les gérants (qui décident des investissements) et le RCCI
+  posent des questions : « combien vaut mon fonds aujourd'hui ? », « quelles
+  obligations arrivent à échéance ? », « d'où vient ce suspens ? ». Aujourd'hui,
+  l'opérateur fouille la base à la main pour répondre.
+
+  Le client veut qu'ils puissent poser la question en français et obtenir une
+  réponse fiable et sourcée. C'est là qu'un LLM (Claude) peut servir, avec deux
+  contraintes :
+  - ne jamais inventer un chiffre ;
+  - ne jamais pouvoir modifier la base.
+
+  7. Où on en est
+
+  Étape: Comprendre le métier et les règles (NOTES.md, ADR 0001)
+  État: ✅ fait
+  ────────────────────────────────────────
+  Étape: Lire et nettoyer les 4 fichiers, avec traçabilité (visualisation/)
+  État: ✅ fait, en exploration ; résultat conforme aux 7 suspens attendus
+  ────────────────────────────────────────
+  Étape: Besoin 1 : le vrai moteur de rapprochement dans src/, avec : 1) les
+  tests sur l'oracle ; 2) le classement en QTE/ABS_DEP/ABS_INT/DEP ; 3)
+  l'action attendue ; 4) la page web pour déposer les fichiers ; 5) un point de
+   situation exportable
+  État: ⏳ c'est la prochaine étape
+  ────────────────────────────────────────
+  Étape: Besoin 2 : questions des gérants via Claude
+  État: ⏸ seulement s'il reste du temps (décision du 10/10)
+
+  En clair, on a compris les données et on sait déjà ce que le moteur doit
+  trouver. Il reste à construire l'outil que l'opérateur utilisera chaque matin.
+  L'essentiel de la logique de nettoyage existe déjà dans prepare_data.py et
+  pourra être reprise dans src/.

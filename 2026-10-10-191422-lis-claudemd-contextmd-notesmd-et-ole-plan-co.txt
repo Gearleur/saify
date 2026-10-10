@@ -1,0 +1,3148 @@
+
+❯ <ide_opened_file>The user opened the file
+  /home/gearleur/projects/saify/.gitignore in the IDE. This may or may not be
+  related to the current task.</ide_opened_file>
+
+❯ lis claude.md, context.md Notes.md et ole plan copmmence a implementer
+
+● Skill(implement)
+  ⎿  Successfully loaded skill
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Étape 1 visée : bout en bout en CLI. J'inspecte les données.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Je démarre l'étape 1 en plaçant le paquet dans reco/ à la racine pour que uv
+  run python -m reco fonctionne sans config de build, le code fonds
+  (PAT/OBL/ACT) étant lu en lecture seule depuis portefeuilles dans orsay.db. Je
+  commence maintenant par le test oracle.
+
+● Write(tests/test_oracle.py)
+  ⎿  Wrote 47 lines to tests/test_oracle.py
+       1 """Oracle : les 7 suspens calculés à la main (NOTES.md, « Résult
+         at attendu »)."""
+       2
+       4 from pathlib import Path
+       5
+       6 from reco import rapprocher_dossier
+       7
+         s"
+       9
+      10 ATTENDU = {
+     … +45 lines (ctrl+o to expand)
+
+● Bash(cat >> pyproject.toml <<'EOF'…)
+  ⎿  Updated pyproject.toml (+3 -0)
+      31  [tool.ruff.lint]
+      32  select = ["E", "F", "I", "UP", "B"]
+      33  ignore = ["E501"]
+      34 +                                                               
+      35 +[tool.pytest.ini_options]                                      
+      36 +pythonpath = ["."]                                             
+
+● Le test échoue comme prévu. J'écris l'implémentation :
+
+● Write(reco/sources.py)
+  ⎿  Wrote 194 lines to reco/sources.py
+       1 """Lecture des sources (PMS, conservateurs A/B/C, paramétrage) e
+         n positions normalisées.
+       2
+         rnal ce qu'il a écarté.
+       4 """
+       5
+       6 import csv
+       8 import re
+       9 import xml.etree.ElementTree as ET
+      10 from dataclasses import dataclass, field
+     … +212 lines (ctrl+o to expand)
+
+● Write(reco/rapprochement.py)
+  ⎿  Wrote 141 lines to reco/rapprochement.py
+       1 """Rapprochement PMS ↔ conservateurs à la maille (fonds, ISIN, c
+         onservateur). Déterministe, sans LLM."""
+       2
+       3 import sqlite3
+       4 from collections import defaultdict
+       6 from decimal import Decimal
+       7 from pathlib import Path
+       8
+       9 from reco.sources import (
+      10     Anomalie,
+     … +149 lines (ctrl+o to expand)
+
+● Write(reco/__init__.py)
+  ⎿  Wrote 3 lines to reco/__init__.py
+      1 from reco.rapprochement import Resultat, Suspens, rapprocher, rap
+        procher_dossier
+      2
+      3 __all__ = ["Resultat", "Suspens", "rapprocher", "rapprocher_dossi
+        er"]
+
+● Write(reco/__main__.py)
+  ⎿  Wrote 31 lines to reco/__main__.py
+       1 """Usage : uv run python -m reco data/donnees"""
+       2
+       3 import sys
+       4 from decimal import Decimal
+       5 from pathlib import Path
+       6
+       7 from reco import rapprocher_dossier
+       8
+       9
+      10 def _qte(q: Decimal | None) -> str:
+     … +26 lines (ctrl+o to expand)
+
+● Bash(uv run pytest -q 2>&1 | tail -15; uv run ruff check . ; uv run ruff
+      format reco tests; uv run python -m reco data/donnees)
+  ⎿  Updated reco/__main__.py (+3 -1)
+      15      dossier = Path(sys.argv[1] if len(sys.argv) > 1 else "data/
+          donnees")
+      16      resultat = rapprocher_dossier(dossier)
+      17      print(f"{len(resultat.suspens)} suspens\n")
+      18 -    print(f"{'Fonds':<5} {'ISIN':<12} {'Cons.':<5} {'Type':<7} 
+         -{'PMS':>9} {'Dép.':>9}  Titre / action / piste")               
+      18 +    print(                                                     
+      19 +        f"{'Fonds':<5} {'ISIN':<12} {'Cons.':<5} {'Type':<7} {'
+         +PMS':>9} {'Dép.':>9}  Titre / action / piste"                  
+      20 +    )                                                          
+      21      for s in resultat.suspens:
+      22          print(
+      23              f"{s.fonds:<5} {s.isin:<12} {s.conservateur:<5} {s.
+          type:<7} "
+  ⎿  Updated reco/rapprochement.py (+4 -1)
+      105              absents[brut[1][:2]][brut[0]].append(brut)
+      106      for (entite, isin), par_type in absents.items():
+      107          if len(par_type["ABS_DEP"]) == 1 and len(par_type["ABS
+           _INT"]) == 1:
+      108 -            (_, cle_x, g_pms, _), (_, cle_y, _, g_dep) = par_t
+          -ype["ABS_DEP"][0], par_type["ABS_INT"][0]                     
+      108 +            (_, cle_x, g_pms, _), (_, cle_y, _, g_dep) = (    
+      109 +                par_type["ABS_DEP"][0],                       
+      110 +                par_type["ABS_INT"][0],                       
+      111 +            )                                                 
+      112              bruts = [b for b in bruts if b[1] not in (cle_x, c
+           le_y)]
+      113              bruts.append(("DEP", (entite, isin, f"{cle_x[2]}→{
+           cle_y[2]}"), g_pms, g_dep))
+      114  
+  ⎿  Updated reco/sources.py (+18 -3)
+      69          comptes_a=transco("TRANSCO_DEPOSITAIRE_A"),
+      70          desks_b=transco("TRANSCO_DEPOSITAIRE_B"),
+      71          comptes_c=transco("TRANSCO_DEPOSITAIRE_C"),
+      72 -        types_ecarts={code: (libelle, action) for code, libelle
+         -, action, *_ in table("TYPES_ECARTS")},                        
+      72 +        types_ecarts={                                         
+      73 +            code: (libelle, action) for code, libelle, action, 
+         +*_ in table("TYPES_ECARTS")                                    
+      74 +        },                                                     
+      75      )
+      76  
+      77  
+     ...
+      102          brut = ";".join(v or "" for v in ligne.values())
+      103          if not sous_compte:
+      104              lecture.journal.append(
+      103 -                Anomalie(nom, num, "EXCLU", "SANS_SOUS_COMPTE"
+          -, brut, "", "ligne sans sous-compte : anomalie de saisie")    
+      105 +                Anomalie(                                     
+      106 +                    nom,                                      
+      107 +                    num,                                      
+      108 +                    "EXCLU",                                  
+      109 +                    "SANS_SOUS_COMPTE",                       
+      110 +                    brut,                                     
+      111 +                    "",                                       
+      112 +                    "ligne sans sous-compte : anomalie de sais
+          +ie",                                                          
+      113 +                )                                             
+      114              )
+      115              continue
+      116          if sous_compte in SOUS_COMPTES_EXCLUS:
+     ...
+      185          if dims["ACTION"] == "S":
+      186              lecture.journal.append(
+      187                  Anomalie(
+      178 -                    nom, num, "EXCLU", "ANNULATION_S", str(dim
+          -s), "",                                                       
+      188 +                    nom,                                      
+      189 +                    num,                                      
+      190 +                    "EXCLU",                                  
+      191 +                    "ANNULATION_S",                           
+      192 +                    str(dims),                                
+      193 +                    "",                                       
+      194                      "item annulé (ACTION=S), ni ajouté ni sous
+           trait",
+      195                  )
+      196              )
+
+● Tout est vert : 4 tests passent, ruff est propre et la sortie correspond
+  exactement aux 7 suspens de l'oracle. Je mets à jour NOTES.md et je commite,
+  en excluant test.py qui n'a pas de rapport avec le cas.
+
+● Bash(python3 - <<'EOF'
+      p='NOTES.md'; s=open(p).read()…)
+  ⎿  Updated NOTES.md (+4 -1)
+      60  
+      61  | # | Résultat vérifiable | Test | Durée | État |
+      62  |---|---|---|---|---|
+      63 -| 1 | Bout en bout en ligne de commande : 4 parseurs + rapproch
+         -ement, `uv run python -m reco data/donnees` affiche les 7 suspe
+         -ns | Test oracle = tableau « Résultat attendu » ci-dessus | 15 
+         -min | à faire |                                                
+      63 +| 1 | Bout en bout en ligne de commande : 4 parseurs + rapproch
+         +ement, `uv run python -m reco data/donnees` affiche les 7 suspe
+         +ns | Test oracle = tableau « Résultat attendu » ci-dessus | 15 
+         +min | fait |                                                   
+      64  | 2 | Journal de nettoyage (NORMALISE / EXCLU / SIGNALE / BLOQU
+          ANT) et contrôles bloquants (date, T/NbItems, transco, 0 ligne 
+          lue) | Un test par piège, avec des fichiers altérés en mémoire 
+          | 12 min | à faire |
+      65  | 3 | Page HTML + FastAPI : dépôt de fichiers en base64 ou bout
+          on « fichiers du 25/09 », tableau des suspens filtrable, onglet
+           journal | TestClient : POST → 7 suspens ; GET `/` → page | 12 
+          min | à faire |
+      66  | 4 | Point de situation : synthèse par fonds et conservateur, 
+          suspens, actions, anomalies ; copier et export CSV | Le texte c
+          ontient les 7 suspens et les 3 exclusions | 5 min | à faire |
+     ...
+      92  - HTML et JS natifs servis par FastAPI plutôt que React ou Stre
+          amlit : rien à compiler, lancement en une commande.
+      93  - BLOQUANT signifie que le fichier est refusé, pas rapproché pa
+          rtiellement : un rapprochement partiel rend des faux négatifs i
+          nvisibles.
+      94  - Pas de LLM dans le besoin 1 : l'ambigu (ISIN invalide) est si
+          gnalé à un humain, pas deviné.
+      95 +- Paquet `reco/` à la racine plutôt que `src/reco/` : `python -
+         +m reco` fonctionne sans packaging (`pythonpath = ["."]` pour py
+         +test).                                                         
+      96 +- Code fonds (PAT/OBL/ACT) lu dans `orsay.db.portefeuilles` (no
+         +m d'entité → code) plutôt que codé en dur : la transco ne donne
+         + que le nom d'entité.                                          
+      97 +- Le rapprochement prend `{nom de fichier: octets}` : la même f
+         +onction sert la ligne de commande et, plus tard, l'API (base64 
+         +→ octets).                                                     
+
+● Étape 1 commitée. Je passe à l'étape 2 (journal à 4 niveaux et contrôles
+  bloquants) : toute anomalie BLOQUANT empêchera tout rapprochement, avec statut
+  BLOQUE et justification dans le journal, tandis que les contrôles ISIN et
+  libellés interviendront après la lecture via orsay.db. Je commence par écrire
+  les tests.
+
+● Write(tests/test_nettoyage.py)
+  ⎿  Wrote 125 lines to tests/test_nettoyage.py
+       1 """Un test par piège : fichiers altérés en mémoire, niveau atten
+         du dans le journal."""
+       2
+       4
+       5 import pytest
+       6
+       7 from reco import rapprocher
+       9
+      10 DONNEES = Path(__file__).resolve().parents[1] / "data" / "donnee
+         s"
+     … +137 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Les tests échouent parce que isin_valide n'existe pas encore. Je réécris
+  sources.py :
+
+● Write(reco/sources.py)
+  ⎿  Added 184 lines, removed 94 lines
+      1  """Lecture des sources (PMS, conservateurs A/B/C, paramétrage) e
+         n positions normalisées.
+      2  
+      3 -Chaque parseur rend des `Position` en `Decimal` et ajoute au jou
+        -rnal ce qu'il a écarté.                                         
+      3 +Chaque parseur rend des `Position` en `Decimal` et trace dans so
+        +n journal toute transformation :                                
+      4 +NORMALISE (sens inchangé), EXCLU (règle client), SIGNALE (douteu
+        +x, conservé), BLOQUANT (fichier refusé).                        
+      5  """
+      6  
+      7  import csv
+     ...
+       9  import re
+      10  import xml.etree.ElementTree as ET
+      11  from dataclasses import dataclass, field
+      11 -from decimal import Decimal                                    
+      12 +from datetime import date                                      
+      13 +from decimal import Decimal, InvalidOperation                  
+      14  from pathlib import Path
+      15  
+      16  import openpyxl
+      17  
+      18  SOUS_COMPTES_EXCLUS = {"P3G"}
+      19  NS_C = {"c": "urn:orsay:depositaire-c:positions:2026"}
+      20 +PROPS_C = ("ACTION", "COMPTE", "CODE_ISIN", "LIBELLE_TITRE", "Q
+         +UANTITE")                                                      
+      21  
+      22  
+      23  @dataclass(frozen=True)
+     ...
+      28      conservateur: str  # A, B, C
+      29      quantite: Decimal
+      30      libelle: str
+      28 -    ref: str  # fichier:ligne                                  
+      31 +    fichier: str                                               
+      32 +    ligne: int  # numéro de ligne (n° d'Item pour le XML C)    
+      33  
+      34 +    @property                                                  
+      35 +    def ref(self) -> str:                                      
+      36 +        return f"{self.fichier}:{self.ligne}"                  
+      37  
+      38 +                                                               
+      39  @dataclass(frozen=True)
+      40  class Anomalie:
+      41      fichier: str
+     ...
+      58  
+      59  @dataclass
+      60  class Lecture:
+      61 +    fichier: str                                               
+      62      positions: list[Position] = field(default_factory=list)
+      63      journal: list[Anomalie] = field(default_factory=list)
+      64  
+      65 +    def noter(self, niveau: str, regle: str, ligne: int, brut, 
+         +retenu, motif: str) -> None:                                   
+      66 +        self.journal.append(Anomalie(self.fichier, ligne, nivea
+         +u, regle, str(brut), str(retenu), motif))                      
+      67  
+      68 +    def ajouter(self, source: str, entite: str, isin: str, cons
+         +ervateur: str,                                                 
+      69 +                quantite: Decimal, libelle: str, ligne: int) ->
+         + None:  # fmt: skip                                            
+      70 +        self.positions.append(                                 
+      71 +            Position(source, entite, isin, conservateur, quanti
+         +te, libelle, self.fichier, ligne)                              
+      72 +        )                                                      
+      73 +                                                               
+      74 +                                                               
+      75  def lire_parametrage(chemin: Path) -> Parametrage:
+      76      wb = openpyxl.load_workbook(chemin, read_only=True, data_on
+          ly=True)
+      77  
+     ...
+      87          comptes_a=transco("TRANSCO_DEPOSITAIRE_A"),
+      88          desks_b=transco("TRANSCO_DEPOSITAIRE_B"),
+      89          comptes_c=transco("TRANSCO_DEPOSITAIRE_C"),
+      72 -        types_ecarts={                                         
+      73 -            code: (libelle, action) for code, libelle, action, 
+         -*_ in table("TYPES_ECARTS")                                    
+      74 -        },                                                     
+      90 +        types_ecarts={code: (libelle, action) for code, libelle
+         +, action, *_ in table("TYPES_ECARTS")},                        
+      91      )
+      92  
+      93  
+      78 -def code_conservateur(libelle: str) -> str:                    
+      79 -    """CACEIS -> A, EUROCLEAR -> B, BNP/BP2S -> C (insensible à
+         - la casse)."""                                                 
+      94 +def code_conservateur(libelle: str) -> str | None:             
+      95 +    """CACEIS -> A, EUROCLEAR -> B, BNP/BP2S -> C (insensible à
+         + la casse) ; None si inconnu."""                               
+      96      haut = libelle.upper()
+      97      if "CACEIS" in haut:
+      98          return "A"
+     ...
+      100          return "B"
+      101      if "BNP" in haut or "BP2S" in haut:
+      102          return "C"
+       87 -    raise ValueError(f"libellé de conservateur inconnu : {libe
+          -lle!r}")                                                      
+      103 +    return None                                               
+      104  
+      105  
+      106 +def isin_valide(isin: str) -> bool:                           
+      107 +    """Format ISO 6166 et clé de Luhn (lettres converties en n
+          +ombres, A=10 … Z=35)."""                                      
+      108 +    if not re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}[0-9]", isin):   
+      109 +        return False                                          
+      110 +    chiffres = "".join(str(int(c, 36)) for c in isin)         
+      111 +    total = 0                                                 
+      112 +    for i, c in enumerate(reversed(chiffres)):                
+      113 +        n = int(c) * (2 if i % 2 else 1)                      
+      114 +        total += n - 9 if n > 9 else n                        
+      115 +    return total % 10 == 0                                    
+      116 +                                                              
+      117 +                                                              
+      118 +def _decimal(texte: str) -> Decimal | None:                   
+      119 +    try:                                                      
+      120 +        valeur = Decimal(texte)                               
+      121 +    except InvalidOperation:                                  
+      122 +        return None                                           
+      123 +    return valeur if valeur.is_finite() else None             
+      124 +                                                              
+      125 +                                                              
+      126 +def _isin(lecture: Lecture, ligne: int, brut: str) -> str:    
+      127 +    isin = re.sub(r"\s", "", brut).upper()                    
+      128 +    if isin != brut:                                          
+      129 +        lecture.noter("NORMALISE", "ISIN_FORMAT", ligne, brut,
+          + isin, "espaces et casse retirés")                            
+      130 +    return isin                                               
+      131 +                                                              
+      132 +                                                              
+      133 +def _controler_date(lecture: Lecture, ligne: int, lue: date | 
+          +None, attendue: date, brut) -> None:                          
+      134 +    if lue != attendue:                                       
+      135 +        lecture.noter(                                        
+      136 +            "BLOQUANT", "DATE_ARRETE", ligne, brut, "",       
+      137 +            f"date d'arrêté {lue or 'introuvable'} ≠ {attendue
+          +:%d/%m/%Y}",                                                  
+      138 +        )  # fmt: skip                                        
+      139 +                                                              
+      140 +                                                              
+      141  def _texte(contenu: bytes) -> str:
+      142      try:
+      143          return contenu.decode("utf-8-sig")
+     ...
+      145          return contenu.decode("latin-1")
+      146  
+      147  
+       97 -def lire_pms(nom: str, contenu: bytes, param: Parametrage) -> 
+          -Lecture:                                                      
+       98 -    lecture = Lecture()                                       
+      148 +def lire_pms(nom: str, contenu: bytes, param: Parametrage, dat
+          +e_arrete: date) -> Lecture:                                   
+      149 +    lecture = Lecture(nom)                                    
+      150      lignes = csv.DictReader(io.StringIO(_texte(contenu), newli
+           ne=""), delimiter=";")
+      151      for num, ligne in enumerate(lignes, start=2):
+      101 -        sous_compte = (ligne["sous_compte"] or "").strip()    
+      152          brut = ";".join(v or "" for v in ligne.values())
+      153 +        try:                                                  
+      154 +            lue = date.fromisoformat((ligne["date_arrete"] or 
+          +"").strip())                                                  
+      155 +        except ValueError:                                    
+      156 +            lue = None                                        
+      157 +        _controler_date(lecture, num, lue, date_arrete, brut) 
+      158 +                                                              
+      159 +        sous_compte = (ligne["sous_compte"] or "").strip()    
+      160          if not sous_compte:
+      104 -            lecture.journal.append(                           
+      105 -                Anomalie(                                     
+      106 -                    nom,                                      
+      107 -                    num,                                      
+      108 -                    "EXCLU",                                  
+      109 -                    "SANS_SOUS_COMPTE",                       
+      110 -                    brut,                                     
+      111 -                    "",                                       
+      112 -                    "ligne sans sous-compte : anomalie de sais
+          -ie",                                                          
+      113 -                )                                             
+      114 -            )                                                 
+      161 +            lecture.noter("EXCLU", "SANS_SOUS_COMPTE", num, br
+          +ut, "", "ligne sans sous-compte : anomalie de saisie")        
+      162              continue
+      163          if sous_compte in SOUS_COMPTES_EXCLUS:
+      117 -            lecture.journal.append(                           
+      118 -                Anomalie(nom, num, "EXCLU", "P3G", brut, "", "
+          -compte technique de passage exclu")                           
+      119 -            )                                                 
+      164 +            lecture.noter("EXCLU", "P3G", num, brut, "", "comp
+          +te technique de passage exclu")                               
+      165              continue
+      121 -        lecture.positions.append(                             
+      122 -            Position(                                         
+      123 -                source="PMS",                                 
+      124 -                entite=param.sous_comptes[sous_compte],       
+      125 -                isin=ligne["isin"].strip().upper(),           
+      126 -                conservateur=code_conservateur(ligne["deposita
+          -ire"]),                                                       
+      127 -                quantite=Decimal(ligne["quantite"].strip()),  
+      128 -                libelle=ligne["libelle"].strip(),             
+      129 -                ref=f"{nom}:{num}",                           
+      130 -            )                                                 
+      131 -        )                                                     
+      166 +        if sous_compte not in param.sous_comptes:             
+      167 +            lecture.noter("BLOQUANT", "TRANSCO", num, sous_com
+          +pte, "", "sous-compte absent de TRANSCO_SOUS_COMPTES")        
+      168 +            continue                                          
+      169 +                                                              
+      170 +        libelle_cons = (ligne["depositaire"] or "").strip()   
+      171 +        conservateur = code_conservateur(libelle_cons)        
+      172 +        if conservateur is None:                              
+      173 +            lecture.noter("BLOQUANT", "CONSERVATEUR_INCONNU", 
+          +num, libelle_cons, "", "libellé de conservateur inconnu")     
+      174 +            continue                                          
+      175 +        lecture.noter("NORMALISE", "LIBELLE_CONSERVATEUR", num
+          +, libelle_cons, conservateur, "libellé → code conservateur")  
+      176 +                                                              
+      177 +        quantite = _decimal((ligne["quantite"] or "").strip())
+      178 +        if quantite is None:                                  
+      179 +            lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+          +m, ligne["quantite"], "", "quantité non numérique")           
+      180 +            continue                                          
+      181 +                                                              
+      182 +        isin = _isin(lecture, num, ligne["isin"] or "")       
+      183 +        lecture.ajouter("PMS", param.sous_comptes[sous_compte]
+          +, isin, conservateur, quantite,                               
+      184 +                        (ligne["libelle"] or "").strip(), num)
+          +  # fmt: skip                                                 
+      185      return lecture
+      186  
+      187  
+      135 -def lire_depositaire_a(nom: str, contenu: bytes, param: Parame
+          -trage) -> Lecture:                                            
+      136 -    lecture = Lecture()                                       
+      188 +def lire_depositaire_a(nom: str, contenu: bytes, param: Parame
+          +trage, date_arrete: date) -> Lecture:                         
+      189 +    lecture = Lecture(nom)                                    
+      190      wb = openpyxl.load_workbook(io.BytesIO(contenu), read_only
+           =True, data_only=True)
+      191      lignes = list(wb.worksheets[0].iter_rows(values_only=True)
+           )
+      139 -    entete = next(i for i, ligne in enumerate(lignes) if ligne
+          -[0] == "Compte")                                              
+      140 -    for num, (compte, isin, designation, quantite, *_) in enum
+          -erate(                                                        
+      141 -        lignes[entete + 1 :], start=entete + 2                
+      142 -    ):                                                        
+      192 +                                                              
+      193 +    titre = str(lignes[0][0] or "") if lignes else ""         
+      194 +    trouvee = re.search(r"(\d{2})/(\d{2})/(\d{4})", titre)    
+      195 +    lue = date(int(trouvee[3]), int(trouvee[2]), int(trouvee[1
+          +])) if trouvee else None                                      
+      196 +    _controler_date(lecture, 1, lue, date_arrete, titre)      
+      197 +                                                              
+      198 +    entete = next((i for i, ligne in enumerate(lignes) if lign
+          +e and ligne[0] == "Compte"), None)                            
+      199 +    if entete is None:                                        
+      200 +        lecture.noter("BLOQUANT", "FORMAT", 0, "", "", "en-têt
+          +e « Compte » introuvable")                                    
+      201 +        return lecture                                        
+      202 +                                                              
+      203 +    for num, (compte, isin, designation, quantite, *_) in enum
+          +erate(lignes[entete + 1 :], start=entete + 2):                
+      204          if compte is None:
+      205              continue
+      145 -        lecture.positions.append(                             
+      146 -            Position(                                         
+      147 -                source="A",                                   
+      148 -                entite=param.comptes_a[str(compte).strip()],  
+      149 -                isin=str(isin).strip().upper(),               
+      150 -                conservateur="A",                             
+      151 -                quantite=Decimal(re.sub(r"\s", "", str(quantit
+          -e))),                                                         
+      152 -                libelle=str(designation).strip(),             
+      153 -                ref=f"{nom}:{num}",                           
+      154 -            )                                                 
+      155 -        )                                                     
+      206 +        compte = str(compte).strip()                          
+      207 +        if compte not in param.comptes_a:                     
+      208 +            lecture.noter("BLOQUANT", "TRANSCO", num, compte, 
+          +"", "compte absent de TRANSCO_DEPOSITAIRE_A")                 
+      209 +            continue                                          
+      210 +        brut = str(quantite)                                  
+      211 +        qte = _decimal(re.sub(r"\s", "", brut))               
+      212 +        if qte is None:                                       
+      213 +            lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+          +m, brut, "", "quantité non numérique")                        
+      214 +            continue                                          
+      215 +        if brut != str(qte):                                  
+      216 +            lecture.noter("NORMALISE", "SEPARATEUR_MILLIERS", 
+          +num, brut, qte, "quantité texte → nombre")                    
+      217 +        lecture.ajouter("A", param.comptes_a[compte], _isin(le
+          +cture, num, str(isin)), "A", qte,                             
+      218 +                        str(designation or "").strip(), num)  
+          +# fmt: skip                                                   
+      219      return lecture
+      220  
+      221  
+      159 -def lire_depositaire_b(nom: str, contenu: bytes, param: Parame
+          -trage) -> Lecture:                                            
+      160 -    """Largeur fixe : D + desk(3) + ISIN(12) + quantité(15, 2 
+          -décimales implicites)."""                                     
+      161 -    lecture = Lecture()                                       
+      162 -    for num, ligne in enumerate(_texte(contenu).splitlines(), 
+          -start=1):                                                     
+      222 +def lire_depositaire_b(nom: str, contenu: bytes, param: Parame
+          +trage, date_arrete: date) -> Lecture:                         
+      223 +    """Largeur fixe : H+date, D + desk(3) + ISIN(12) + quantit
+          +é(15, 2 décimales implicites), T+nb."""                       
+      224 +    lecture = Lecture(nom)                                    
+      225 +    lignes = _texte(contenu).splitlines()                     
+      226 +    entete = next((ligne for ligne in lignes if ligne.startswi
+          +th("H")), "")                                                 
+      227 +    try:                                                      
+      228 +        lue = date(int(entete[1:5]), int(entete[5:7]), int(ent
+          +ete[7:9]))                                                    
+      229 +    except ValueError:                                        
+      230 +        lue = None                                            
+      231 +    _controler_date(lecture, 1, lue, date_arrete, entete)     
+      232 +                                                              
+      233 +    details = 0                                               
+      234 +    controle = None                                           
+      235 +    for num, ligne in enumerate(lignes, start=1):             
+      236 +        if ligne.startswith("T"):                             
+      237 +            controle = ligne                                  
+      238          if not ligne.startswith("D"):
+      239              continue
+      165 -        lecture.positions.append(                             
+      166 -            Position(                                         
+      167 -                source="B",                                   
+      168 -                entite=param.desks_b[ligne[1:4]],             
+      169 -                isin=ligne[4:16].upper(),                     
+      170 -                conservateur="B",                             
+      171 -                quantite=Decimal(ligne[16:31]).scaleb(-2),    
+      172 -                libelle="",                                   
+      173 -                ref=f"{nom}:{num}",                           
+      174 -            )                                                 
+      175 -        )                                                     
+      240 +        details += 1                                          
+      241 +        desk, isin, brut = ligne[1:4], ligne[4:16], ligne[16:3
+          +1]                                                            
+      242 +        if len(ligne) != 31:                                  
+      243 +            lecture.noter("BLOQUANT", "FORMAT", num, ligne, ""
+          +, "ligne de détail de longueur ≠ 31")                         
+      244 +            continue                                          
+      245 +        if desk not in param.desks_b:                         
+      246 +            lecture.noter("BLOQUANT", "TRANSCO", num, desk, ""
+          +, "desk absent de TRANSCO_DEPOSITAIRE_B")                     
+      247 +            continue                                          
+      248 +        if not brut.isdigit():                                
+      249 +            lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+          +m, brut, "", "quantité non numérique")                        
+      250 +            continue                                          
+      251 +        qte = Decimal(brut).scaleb(-2)                        
+      252 +        lecture.noter("NORMALISE", "DECIMALES_IMPLICITES", num
+          +, brut, qte, "2 décimales implicites")                        
+      253 +        lecture.ajouter("B", param.desks_b[desk], _isin(lectur
+          +e, num, isin), "B", qte, "", num)                             
+      254 +                                                              
+      255 +    if controle is None or not controle[1:].isdigit() or int(c
+          +ontrole[1:]) != details:                                      
+      256 +        lecture.noter("BLOQUANT", "TOTAL_CONTROLE", len(lignes
+          +), controle, details,                                         
+      257 +                      f"total de contrôle {controle!r} ≠ {deta
+          +ils} lignes de détail")  # fmt: skip                          
+      258      return lecture
+      259  
+      260  
+      179 -def lire_depositaire_c(nom: str, contenu: bytes, param: Parame
+          -trage) -> Lecture:                                            
+      261 +def lire_depositaire_c(nom: str, contenu: bytes, param: Parame
+          +trage, date_arrete: date) -> Lecture:                         
+      262      """XML à namespace ; les lots d'un même (compte, ISIN) son
+           t additionnés au rapprochement."""
+      181 -    lecture = Lecture()                                       
+      263 +    lecture = Lecture(nom)                                    
+      264      racine = ET.fromstring(contenu)
+      183 -    for num, item in enumerate(racine.iterfind(".//c:Item", NS
+          -_C), start=1):                                                
+      265 +    brut_date = racine.findtext(".//c:DateArrete", "", NS_C).s
+          +trip()                                                        
+      266 +    try:                                                      
+      267 +        lue = date(int(brut_date[4:8]), int(brut_date[2:4]), i
+          +nt(brut_date[0:2]))                                           
+      268 +    except ValueError:                                        
+      269 +        lue = None                                            
+      270 +    _controler_date(lecture, 0, lue, date_arrete, brut_date)  
+      271 +                                                              
+      272 +    items = racine.findall(".//c:Item", NS_C)                 
+      273 +    nb_items = racine.findtext(".//c:NbItems", "", NS_C).strip
+          +()                                                            
+      274 +    if nb_items != str(len(items)):  # NbItems compte aussi le
+          +s annulations                                                 
+      275 +        lecture.noter("BLOQUANT", "TOTAL_CONTROLE", 0, nb_item
+          +s, len(items),                                                
+      276 +                      f"NbItems {nb_items!r} ≠ {len(items)} It
+          +em lus")  # fmt: skip                                         
+      277 +                                                              
+      278 +    for num, item in enumerate(items, start=1):               
+      279          dims = {dim.get("prop"): (dim.text or "").strip() for 
+           dim in item.iterfind("c:Dim", NS_C)}
+      280 +        manquants = [p for p in PROPS_C if p not in dims]     
+      281 +        if manquants:                                         
+      282 +            lecture.noter("BLOQUANT", "CHAMP_MANQUANT", num, d
+          +ims, "", f"Dim manquant : {', '.join(manquants)}")            
+      283 +            continue                                          
+      284          if dims["ACTION"] == "S":
+      186 -            lecture.journal.append(                           
+      187 -                Anomalie(                                     
+      188 -                    nom,                                      
+      189 -                    num,                                      
+      190 -                    "EXCLU",                                  
+      191 -                    "ANNULATION_S",                           
+      192 -                    str(dims),                                
+      193 -                    "",                                       
+      194 -                    "item annulé (ACTION=S), ni ajouté ni sous
+          -trait",                                                       
+      195 -                )                                             
+      196 -            )                                                 
+      285 +            lecture.noter("EXCLU", "ANNULATION_S", num, dims, 
+          +"", "item annulé (ACTION=S), ni ajouté ni soustrait")         
+      286              continue
+      198 -        lecture.positions.append(                             
+      199 -            Position(                                         
+      200 -                source="C",                                   
+      201 -                entite=param.comptes_c[dims["COMPTE"]],       
+      202 -                isin=dims["CODE_ISIN"].upper(),               
+      203 -                conservateur="C",                             
+      204 -                quantite=Decimal(dims["QUANTITE"].replace(",",
+          - ".")),                                                       
+      205 -                libelle=dims["LIBELLE_TITRE"],                
+      206 -                ref=f"{nom}:item {num}",                      
+      207 -            )                                                 
+      208 -        )                                                     
+      287 +        if dims["COMPTE"] not in param.comptes_c:             
+      288 +            lecture.noter("BLOQUANT", "TRANSCO", num, dims["CO
+          +MPTE"], "", "compte absent de TRANSCO_DEPOSITAIRE_C")         
+      289 +            continue                                          
+      290 +        brut = dims["QUANTITE"]                               
+      291 +        qte = _decimal(brut.replace(",", "."))                
+      292 +        if qte is None:                                       
+      293 +            lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+          +m, brut, "", "quantité non numérique")                        
+      294 +            continue                                          
+      295 +        if "," in brut:                                       
+      296 +            lecture.noter("NORMALISE", "VIRGULE_DECIMALE", num
+          +, brut, qte, "virgule décimale")                              
+      297 +        lecture.ajouter("C", param.comptes_c[dims["COMPTE"]], 
+          +_isin(lecture, num, dims["CODE_ISIN"]), "C",                  
+      298 +                        qte, dims["LIBELLE_TITRE"], num)  # fm
+          +t: skip                                                       
+      299      return lecture
+
+  Read 1 file (ctrl+o to expand)
+
+● Je mets à jour la fonction rapprocher pour gérer les fichiers manquants,
+  ajouter un filet de sécurité par fichier avec statut BLOQUE, vérifier les ISIN
+  et libellés, et utiliser le référentiel titres comme libellé de repli puisque
+  le fichier B n'en fournit pas.
+
+● Bash(python3 - <<'EOF'
+      p='reco/rapprochement.py'; s=open(p).read()…)
+  ⎿  Updated reco/rapprochement.py (+77 -8)
+      3  import sqlite3
+      4  from collections import defaultdict
+      5  from dataclasses import dataclass, field
+      6 +from datetime import date                                       
+      7  from decimal import Decimal
+      8  from pathlib import Path
+      9  
+     ...
+      11      Anomalie,
+      12      Lecture,
+      13      Position,
+      14 +    isin_valide,                                               
+      15      lire_depositaire_a,
+      16      lire_depositaire_b,
+      17      lire_depositaire_c,
+     ...
+      25      "B": ("depositaire_B", lire_depositaire_b),
+      26      "C": ("depositaire_C", lire_depositaire_c),
+      27  }
+      28 +DATE_ARRETE = date(2026, 9, 25)                                
+      29  
+      30  
+      31  @dataclass
+     ...
+      45  
+      46  @dataclass
+      47  class Resultat:
+      48 +    statut: str = "OK"  # OK, ou BLOQUE si une anomalie BLOQUAN
+         +T empêche le rapprochement                                     
+      49      suspens: list[Suspens] = field(default_factory=list)
+      50      journal: list[Anomalie] = field(default_factory=list)
+      51  
+     ...
+       71          " WHERE portefeuille = ? AND isin = ? AND statut = 'EN
+           _ATTENTE' ORDER BY id",
+       72          (fonds, isin),
+       73      ).fetchall()
+       70 -    return " ; ".join(                                        
+       71 -        f"{sens} {qte} EN_ATTENTE (dén. {date[8:10]}/{date[5:7
+          -]})" for sens, qte, date in lignes                            
+       72 -    )                                                         
+       74 +    pistes = [f"{sens} {qte} EN_ATTENTE (dén. {d[8:10]}/{d[5:7
+          +]})" for sens, qte, d in lignes]                              
+       75 +    if not isin_valide(isin):                                 
+       76 +        pistes.append("ISIN à clé invalide, probable erreur de
+          + saisie")                                                     
+       77 +    return " ; ".join(pistes)                                 
+       78  
+       79  
+     … 93 more lines (ctrl+o to expand)
+  ⎿  Updated reco/sources.py (+82 -14)
+      63      journal: list[Anomalie] = field(default_factory=list)
+      64  
+      65      def noter(self, niveau: str, regle: str, ligne: int, brut, 
+          retenu, motif: str) -> None:
+      66 -        self.journal.append(Anomalie(self.fichier, ligne, nivea
+         -u, regle, str(brut), str(retenu), motif))                      
+      66 +        self.journal.append(                                   
+      67 +            Anomalie(self.fichier, ligne, niveau, regle, str(br
+         +ut), str(retenu), motif)                                       
+      68 +        )                                                      
+      69  
+      70      def ajouter(self, source: str, entite: str, isin: str, cons
+          ervateur: str,
+      71                  quantite: Decimal, libelle: str, ligne: int) ->
+           None:  # fmt: skip
+     ...
+      89          comptes_a=transco("TRANSCO_DEPOSITAIRE_A"),
+      90          desks_b=transco("TRANSCO_DEPOSITAIRE_B"),
+      91          comptes_c=transco("TRANSCO_DEPOSITAIRE_C"),
+      90 -        types_ecarts={code: (libelle, action) for code, libelle
+         -, action, *_ in table("TYPES_ECARTS")},                        
+      92 +        types_ecarts={                                         
+      93 +            code: (libelle, action) for code, libelle, action, 
+         +*_ in table("TYPES_ECARTS")                                    
+      94 +        },                                                     
+      95      )
+      96  
+      97  
+     ...
+      162  
+      163          sous_compte = (ligne["sous_compte"] or "").strip()
+      164          if not sous_compte:
+      161 -            lecture.noter("EXCLU", "SANS_SOUS_COMPTE", num, br
+          -ut, "", "ligne sans sous-compte : anomalie de saisie")        
+      165 +            lecture.noter(                                    
+      166 +                "EXCLU",                                      
+      167 +                "SANS_SOUS_COMPTE",                           
+      168 +                num,                                          
+      169 +                brut,                                         
+      170 +                "",                                           
+      171 +                "ligne sans sous-compte : anomalie de saisie",
+      172 +            )                                                 
+      173              continue
+      174          if sous_compte in SOUS_COMPTES_EXCLUS:
+      175              lecture.noter("EXCLU", "P3G", num, brut, "", "comp
+           te technique de passage exclu")
+      176              continue
+      177          if sous_compte not in param.sous_comptes:
+      167 -            lecture.noter("BLOQUANT", "TRANSCO", num, sous_com
+          -pte, "", "sous-compte absent de TRANSCO_SOUS_COMPTES")        
+      178 +            lecture.noter(                                    
+      179 +                "BLOQUANT",                                   
+     … 120 more lines (ctrl+o to expand)
+  ⎿  Updated tests/test_nettoyage.py (+19 -4)
+      45  
+      46  def test_normalisations_tracees():
+      47      resultat = _rapprocher(_fichiers())
+      48 -    assert {"ISIN_FORMAT", "LIBELLE_CONSERVATEUR", "SEPARATEUR_
+         -MILLIERS", "DECIMALES_IMPLICITES",                             
+      49 -            "VIRGULE_DECIMALE"} <= _regles(resultat, "NORMALISE
+         -")                                                             
+      48 +    assert {                                                   
+      49 +        "ISIN_FORMAT",                                         
+      50 +        "LIBELLE_CONSERVATEUR",                                
+      51 +        "SEPARATEUR_MILLIERS",                                 
+      52 +        "DECIMALES_IMPLICITES",                                
+      53 +        "VIRGULE_DECIMALE",                                    
+      54 +    } <= _regles(resultat, "NORMALISE")                        
+      55      isin = next(a for a in resultat.journal if a.regle == "ISIN
+          _FORMAT")
+      56      assert isin.brut == " fr0000014078 " and isin.retenu == "FR
+          0000014078"
+      57  
+     ...
+      75  @pytest.mark.parametrize(
+      76      "fichier, avant, apres, regle",
+      77      [
+      73 -        ("pms", "2026-09-25;SC-ACT-01; fr0000014078", "2026-09-
+         -24;SC-ACT-01; fr0000014078", "DATE_ARRETE"),                   
+      78 +        (                                                      
+      79 +            "pms",                                             
+      80 +            "2026-09-25;SC-ACT-01; fr0000014078",              
+      81 +            "2026-09-24;SC-ACT-01; fr0000014078",              
+      82 +            "DATE_ARRETE",                                     
+      83 +        ),                                                     
+      84          ("pms", "SC-OBL-01;FR0000011488", "SC-XXX-01;FR00000114
+          88", "TRANSCO"),
+      85          ("pms", ";40000;CACEIS BANK", ";4O000;CACEIS BANK", "QU
+          ANTITE_ILLISIBLE"),
+      86          ("pms", ";5000;Euroclear\r\n", ";5000;SOCIETE GENERALE\
+          r\n", "CONSERVATEUR_INCONNU"),
+     ...
+       89          ("b", "DOROFR0000010373", "DXXXFR0000010373", "TRANSCO
+           "),
+       90          ("c", "<DateArrete>25092026", "<DateArrete>24092026", 
+           "DATE_ARRETE"),
+       91          ("c", "<NbItems>9</NbItems>", "<NbItems>8</NbItems>", 
+           "TOTAL_CONTROLE"),
+       82 -        ("c", 'xmlns="urn:orsay:depositaire-c:positions:2026"'
+          -, 'xmlns="urn:autre"', "AUCUNE_LIGNE"),                       
+       92 +        (                                                     
+       93 +            "c",                                              
+       94 +            'xmlns="urn:orsay:depositaire-c:positions:2026"', 
+       95 +            'xmlns="urn:autre"',                              
+       96 +            "AUCUNE_LIGNE",                                   
+       97 +        ),                                                    
+       98          ("c", '<Dim prop="COMPTE">ORS-PAT</Dim>', "", "CHAMP_M
+           ANQUANT"),
+       99          ("c", "ORS-OBL", "ORS-XXX", "TRANSCO"),
+     … 1 more lines (ctrl+o to expand)
+
+● Les 23 tests passent du premier coup, ce qui me rend méfiant. Je vais vérifier
+  que le journal réel est cohérent et que les tests BLOQUANT ne réussissent pas
+  pour une mauvaise raison, comme FORMAT_ILLISIBLE.
+  Ran 1 shell command (ctrl+o to expand)
+
+● Le journal est cohérent : 3 exclusions, 2 signalements sur l'ISIN saisi à la
+  main, 69 normalisations, aucun faux bloquant, et les cas altérés bloquent pour
+  la bonne règle. J'ajoute un test pour LIBELLE_DIFFERENT, qui n'était pas
+  encore couvert.
+
+● Bash(cat >> tests/test_nettoyage.py <<'EOF'…)
+  ⎿  Updated tests/test_nettoyage.py (+7 -0)
+      138      del fichiers[B]
+      139      resultat = _rapprocher(fichiers)
+      140      assert "FICHIER_MANQUANT" in _regles(resultat, "BLOQUANT")
+      141 +                                                              
+      142 +                                                              
+      143 +def test_libelle_different_signale_sans_bloquer():            
+      144 +    contenu = _remplacer(C, "DASSAULT SYSTEMES", "DASSAULT AVI
+          +ATION")                                                       
+      145 +    resultat = _rapprocher(_fichiers(c=contenu))              
+      146 +    assert resultat.statut == "OK"                            
+      147 +    assert "LIBELLE_DIFFERENT" in _regles(resultat, "SIGNALE")
+
+● Bash(python3 - <<'EOF'
+      p='NOTES.md'; s=open(p).read()…)
+  ⎿  Updated NOTES.md (+4 -1)
+      61  | # | Résultat vérifiable | Test | Durée | État |
+      62  |---|---|---|---|---|
+      63  | 1 | Bout en bout en ligne de commande : 4 parseurs + rapproch
+          ement, `uv run python -m reco data/donnees` affiche les 7 suspe
+          ns | Test oracle = tableau « Résultat attendu » ci-dessus | 15 
+          min | fait |
+      64 -| 2 | Journal de nettoyage (NORMALISE / EXCLU / SIGNALE / BLOQU
+         -ANT) et contrôles bloquants (date, T/NbItems, transco, 0 ligne 
+         -lue) | Un test par piège, avec des fichiers altérés en mémoire 
+         -| 12 min | à faire |                                           
+      64 +| 2 | Journal de nettoyage (NORMALISE / EXCLU / SIGNALE / BLOQU
+         +ANT) et contrôles bloquants (date, T/NbItems, transco, 0 ligne 
+         +lue) | Un test par piège, avec des fichiers altérés en mémoire 
+         +| 12 min | fait |                                              
+      65  | 3 | Page HTML + FastAPI : dépôt de fichiers en base64 ou bout
+          on « fichiers du 25/09 », tableau des suspens filtrable, onglet
+           journal | TestClient : POST → 7 suspens ; GET `/` → page | 12 
+          min | à faire |
+      66  | 4 | Point de situation : synthèse par fonds et conservateur, 
+          suspens, actions, anomalies ; copier et export CSV | Le texte c
+          ontient les 7 suspens et les 3 exclusions | 5 min | à faire |
+      67  | 5 | Mesure sur jeu étiqueté : 6 à 8 mutations, chacune avec s
+          on suspens attendu | Rappel 100 %, 0 faux positif, chiffres rep
+          ortés dans le README | 6 min | à faire |
+     ...
+       95  - Paquet `reco/` à la racine plutôt que `src/reco/` : `python 
+           -m reco` fonctionne sans packaging (`pythonpath = ["."]` pour 
+           pytest).
+       96  - Code fonds (PAT/OBL/ACT) lu dans `orsay.db.portefeuilles` (n
+           om d'entité → code) plutôt que codé en dur : la transco ne don
+           ne que le nom d'entité.
+       97  - Le rapprochement prend `{nom de fichier: octets}` : la même 
+           fonction sert la ligne de commande et, plus tard, l'API (base6
+           4 → octets).
+       98 +- Une anomalie BLOQUANT sur n'importe quel fichier donne le st
+          +atut `BLOQUE` et 0 suspens (pas de rapprochement des seules so
+          +urces saines) : sinon, de faux ABS_DEP apparaissent, ou de vra
+          +is suspens disparaissent.                                     
+       99 +- Une exception imprévue dans un parseur devient BLOQUANT `FOR
+          +MAT_ILLISIBLE` : on refuse le fichier, on ne devine pas.      
+      100 +- Contrôles ISIN (clé de Luhn, présence dans `titres`) et libe
+          +llés divergents faits après la lecture, dans le rapprochement,
+          + parce qu'ils ont besoin de `orsay.db`. Libellé de repli lu da
+          +ns `titres` (B n'a pas de libellé).                           
+
+● Étape 2 commitée. Je passe à l'étape 3 (API et page) : parametrage.xlsx et
+  orsay.db restent des données de référence serveur, seuls les 4 fichiers du
+  jour sont déposés, et les quantités seront transmises en JSON sous forme de
+  chaînes pour éviter les conversions en float.
+
+● Write(tests/test_api.py)
+  ⎿  User rejected write to tests/test_api.py
+      1 import base64
+      2 from pathlib import Path
+      3
+      4 from fastapi.testclient import TestClient
+      5
+      6 from reco.api import app
+      7
+      8 DONNEES = Path(__file__).resolve().parents[1] / "data" / "donnees
+        "
+      9 client = TestClient(app)
+     … +44 lines
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ <ide_opened_file>The user opened the file
+  /home/gearleur/projects/saify/visualisation/Visual.ipynb in the IDE. This may
+  or may not be related to the current task.</ide_opened_file>
+
+❯ on fait etape par etape on va reprendre ll"tape 1 ensemble voir le code le
+  review ensemble avant de apsser a l'etape 2 je veux que tu me challenge qu'on
+  comprennen ensemble pouruqoi on implemente ca et pourquoi
+
+  Ran 2 shell commands, wrote 1 memory (ctrl+o to expand)
+
+● Avant tout, un point de transparence : je suis allé plus loin que l'étape 1.
+  L'étape 2 est déjà commitée (dfa0704, journal 4 niveaux et contrôles
+  bloquants, 24 tests au vert). Je n'avais pas encore écrit de code pour l'étape
+  3. Deux options : on garde ce commit et on le revoit juste après l'étape 1,
+  ou je l'annule (git revert) et on le refait ensemble. À toi de choisir. Je
+  retiens pour la suite : une étape, puis une revue avec toi, puis ton feu vert.
+
+  Pour voir le code exact de l'étape 1 : git show 7f13b2a. Il tient en 3
+  fichiers : reco/sources.py, reco/rapprochement.py et reco/main.py
+  (reco/__main__.py).
+
+  Revue de l'étape 1
+
+  1. Tout ramener à un format commun avant de comparer.
+  Chaque source parle sa propre langue : sous-compte côté PMS, compte 0041872
+  chez A, desk ORO chez B, ORS-OBL chez C. Chaque parseur traduit sa source en
+  Position(entite, isin, conservateur, quantite, ref). Le rapprochement ne
+  connaît ensuite aucun format de fichier.
+  Pourquoi : ajouter un 4ᵉ conservateur demain revient à écrire un parseur, sans
+  toucher au rapprochement.
+
+  2. Le cœur : une jointure complète sur (fonds, ISIN, conservateur).
+  On additionne d'abord les sous-comptes PMS d'un même fonds et les lots de C,
+  puis il y a trois cas : absent chez le dépositaire → ABS_DEP ; absent du PMS →
+  ABS_INT ; quantités différentes → QTE, sans tolérance.
+  Pourquoi une jointure complète : ne partir que du PMS ferait rater LVMH,
+  présent uniquement chez B. Ce serait un faux négatif, le pire cas selon le
+  cadrage.
+
+  3. La fusion en DEP.
+  AFD donne « absent chez A » et « présent chez B sans PMS ». On fusionne les
+  deux en un seul DEP A→B, comme le demande l'énoncé, mais seulement s'il y a
+  exactement 1 ABS_DEP et 1 ABS_INT pour le même fonds et le même ISIN.
+
+  4. La piste dans orsay.db.
+  On cherche les mouvements EN_ATTENTE du même fonds et du même ISIN. Ils
+  servent à titre d'information : ils ne changent jamais le type du suspens.
+
+  5. Le test oracle.
+  On compare par égalité d'ensembles avec les 7 suspens calculés à la main. Un
+  faux positif comme un faux négatif fait échouer le test.
+
+  Ce que je te demande de challenger
+
+  1. DEP avec écart de quantité. Si le PMS dit 250 000 chez A et que B en a 200
+     000, on sort un DEP qui affiche les deux quantités, mais rien ne signale
+     l'écart de 50 000. NOTES.md prévoyait de le mentionner dans le libellé, et
+     je ne l'ai pas fait. C'est un vrai trou. Faut-il le mentionner, ou produire
+     un DEP plus un QTE ?
+  2. Plus d'un candidat. Avec 1 ABS_DEP et 2 ABS_INT (le titre est trouvé chez B
+     et chez C), on ne fusionne pas et on garde 3 suspens. Est-ce le bon choix,
+     ou faut-il laisser un humain trancher avec un signalement explicite ?
+  3. Le code fonds vient de orsay.db. Je lis portefeuilles pour passer de «
+     ORSAY OBLIGATIONS » à OBL. Or l'énoncé dit que la base sert uniquement
+     d'information. Si la base est indisponible, le rapprochement tombe. Faut-il
+     plutôt garder le nom d'entité du paramétrage ?
+  4. SCHNEIDER : écart de 25 000, achat en attente de 25 000. L'écart est
+     entièrement expliqué, mais on affiche juste la piste. Doit-on écrire «
+     écart expliqué par l'opération n°19 » ? Plus utile pour l'opérateur, mais
+     on commence alors à interpréter.
+  5. Le test oracle est circulaire. Il vérifie que le code reproduit ma lecture
+     des règles. Si je me suis trompé sur une règle, le code et l'oracle se
+     trompent ensemble. C'est ce que l'étape 5 (mutations) doit compenser.
+     Vois-tu une règle de l'oracle que tu contesterais ?
+
+  Dans l'étape 1 telle que commitée, il y avait aussi des fragilités, que
+  l'étape 2 a corrigées : un fichier manquant ou un compte absent de la transco
+  faisait planter le programme au lieu d'un refus propre.
+
+  Par quelle question veux-tu commencer ? Et dis-moi si on garde ou si on annule
+  le commit de l'étape 2.
+
+❯ 1 je pense qu'on peut le mentionner et produire un DEP et un QTE on va voir
+  pouruqoi ensmeble
+  2 dans une premeiere demo on gardse les 3 en suspend mais on faire un
+  signlaement
+  3 je ne sais pas
+  4 on afffiche operaiton n19 c'est explmicite comme ca et on peut retrouver
+  loperaétion
+  5 nan
+
+  essaye de voir avec ve qu'on a oublié et challenge mes reponse
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● J'ai relu l'énoncé pour appuyer mes contre-arguments. Je reprends tes réponses
+  une par une, puis ce qu'on a oublié.
+
+  Je challenge tes réponses
+
+  1. DEP + QTE : l'énoncé dit non.
+  Il dit mot pour mot : « Une valeur attendue chez un conservateur mais livrée
+  chez un autre est un seul suspens, pas deux. » Produire DEP + QTE revient
+  exactement à en compter deux. Il y a aussi une difficulté technique : un QTE
+  compare deux quantités à la même clé. Ici, la clé PMS est (OBL, AFD, A) et la
+  clé conservateur est (OBL, AFD, B). Le QTE porterait sur quelle clé ? Et le
+  responsable compterait deux suspens pour un seul problème.
+  Ton intuition est quand même juste : il y a bien deux actions à mener,
+  corriger le référentiel et chercher les 50 000 manquants.
+  → Ma proposition : un seul DEP qui porte un champ écart = −50 000 et une
+  action complémentaire (« et vérifier les opérations non dénouées »). On garde
+  un problème = un suspens, sans perdre l'information.
+  Qu'est-ce qui t'attirait dans le fait d'en produire deux ? Si c'est pour
+  pouvoir filtrer « tous les écarts de quantité », le champ écart le permet
+  aussi.
+
+  2. Garder les 3 suspens avec un signalement : d'accord.
+  C'est cohérent avec la règle du projet : l'ambigu va à l'humain, on ne le
+  devine pas. Deux conditions :
+  - le signalement doit apparaître sur les suspens eux-mêmes, par exemple «
+    candidat DEP ambigu : trouvé chez B et C ». S'il n'est que dans le journal,
+    l'opérateur ne le verra pas.
+  - il faut aussi couvrir le cas inverse, 2 ABS_DEP + 1 ABS_INT : le PMS
+    répartit le titre entre A et C, alors que tout est chez B.
+
+  3. Ta réponse était « je ne sais pas », alors je tranche.
+  L'énoncé dit : « orsay.db, base d'information, à ne pas utiliser comme source
+  du rapprochement ». Or je m'en sers pour transformer « ORSAY OBLIGATIONS » en
+  OBL, c'est-à-dire pour construire la clé du rapprochement. Deux risques
+  concrets :
+  - si la base est absente ou corrompue, plus aucun rapprochement ne tourne ;
+  - si un nom diffère d'un caractère entre le paramétrage et la base, le
+    programme plante (KeyError), et l'étape 2 ne couvre pas ce cas.
+
+  → Ma recommandation : la clé fonds devient le nom d'entité de
+  parametrage.xlsx, qui est la vraie référence. La base ne sert plus qu'à
+  afficher le code court et à chercher la piste. Si elle manque, on obtient les
+  suspens sans piste, plus une ligne SIGNALE.
+
+  4. « Opération n°19 » : oui. Mais attention au mot « expliqué ».
+  Tu veux afficher la référence ; je pousse plus loin : il faut aussi vérifier
+  que l'opération explique vraiment l'écart.
+  - SCHNEIDER : PMS − conservateur = +25 000, et un achat de 25 000 est en
+    attente → entièrement expliqué.
+  - SAFRAN : PMS − conservateur = −1 000, et une vente de 1 000 est en attente →
+    entièrement expliqué (le signe compte !).
+  - Si l'opération en attente est un achat de 10 000 pour un écart de 25 000 →
+    partiellement expliqué, et il reste 15 000 à trouver.
+  - Si l'opération va dans le mauvais sens → ce n'est pas une explication.
+
+  Sans ce calcul, afficher « op. n°19 » à côté d'un écart qu'elle n'explique pas
+  inciterait l'opérateur à classer le suspens à tort. Ce serait un faux négatif
+  humain.
+
+  5. Personne ne conteste l'oracle : ok.
+  Je n'ai pas non plus trouvé de règle douteuse en le relisant. Mais « personne
+  ne le conteste » ne veut pas dire « vrai » : les mutations de l'étape 5
+  restent nécessaires.
+
+  Ce qu'on a oublié
+
+  #: A
+  Oubli: Opération EN_ATTENTE dont la date de dénouement est déjà passée (≤ date
+
+  d'arrêté)
+  Risque: C'est un défaut de règlement-livraison, donc des pénalités CSDR : le
+  cœur du problème client. Il faut le signaler en priorité. On n'en a pas dans
+  les données, mais la règle doit exister.
+  Gravité: Haute
+  ────────────────────────────────────────
+  #: B
+  Oubli: Position à zéro : une ligne PMS à 0, ou un +100 et un −100 sur deux
+  sous-comptes
+  Risque: On produit un ABS_DEP pour 0 titre : un faux positif. Une quantité
+  nulle doit compter comme absente.
+  Gravité: Moyenne
+  ────────────────────────────────────────
+  #: C
+  Oubli: Doublon de ligne chez A ou B (même compte, même ISIN, deux fois)
+  Risque: On additionne en silence et on double la position. L'addition est
+  légitime pour les lots de C, pas pour A et B → SIGNALE.
+  Gravité: Moyenne
+  ────────────────────────────────────────
+  #: D
+  Oubli: mouvements n'a pas de colonne conservateur
+  Risque: Si un fonds détient le même ISIN chez A et chez C, on ne sait pas quel
+
+  écart l'opération explique. → Écrire « explication possible » plutôt que «
+  explique ».
+  Gravité: Moyenne
+  ────────────────────────────────────────
+  #: E
+  Oubli: Ancienneté des suspens (le même suspens que la veille)
+  Risque: Le client se plaint de suspens « détectés plusieurs jours après ».
+  Hors
+  périmètre de la démo, mais à citer dans les limites.
+  Gravité: Hors démo
+
+  Ce que je propose de modifier dans l'étape 1 avant de passer à la suite
+
+  1. Un seul DEP, avec un champ écart et une action complémentaire.
+  2. Fusion ambiguë : on garde les suspens séparés, avec un signalement visible
+     sur chacun.
+  3. Clé fonds = entité du paramétrage, et la base devient facultative.
+  4. Piste = « op. n°19 : ACHAT 25 000, dén. 26/09 → écart entièrement /
+     partiellement expliqué », avec le calcul signé.
+  5. Points A (dénouement dépassé) et B (quantité nulle) ; C et D si tu es
+     d'accord.
+
+  Pour chaque point : un test qui échoue d'abord, puis le code, puis on relit
+  ensemble.
+
+  Es-tu d'accord pour le DEP unique (point 1) et pour la base facultative (point
+  3) ? Et garde-t-on le commit de l'étape 2 ?
+
+❯ <ide_opened_file>The user opened the file
+  /home/gearleur/projects/saify/reco/rapprochement.py in the IDE. This may or
+  may not be related to the current task.</ide_opened_file>
+
+❯ vas y on refait l'etape 1 correctement avec tes justification et on avance a
+  letape 2n apres ce premier challenge voit tu des choses qu'on az oublié ?
+
+● Je garde le commit de l'étape 2 : le code actuel l'inclut déjà, et on le
+  relira ensemble ensuite. Je reprends l'étape 1 par-dessus, avec les 5
+  corrections et les oublis A à D. D'abord, ce que je vois encore comme oublis :
+
+  - Deux fichiers pour une même source (deux relevés A déposés) : le code prend
+    le premier sans rien dire. Il faut BLOQUANT. Ça coûte peu, je l'ajoute.
+  - Unités : on suppose que les obligations sont en nominal partout. Si un
+    conservateur envoie un nombre de titres (coupures de 1 000), on obtient de
+    faux QTE en masse. C'est invisible dans nos données ; à citer dans les
+    limites.
+  - Titre trouvé dans un autre fonds (attendu OBL chez A, trouvé PAT chez B) :
+    on produit deux suspens, alors que c'est probablement une erreur de transco.
+    Je ne fusionne pas, pour ne pas deviner ; c'est une piste pour la suite.
+
+  Je relis le code actuel avant de modifier.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Je commence par les tests. Les helpers de fichiers altérés passent dans
+  tests/fabrique.py, pour être partagés entre les fichiers de test.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(tests/fabrique.py)
+  ⎿  Wrote 66 lines to tests/fabrique.py
+       1 """Fabrique de jeux de test : fichiers du 25/09 altérés en mémoi
+         re, base copiée et modifiée."""
+       2
+       3 import io
+       4 import shutil
+       6 from pathlib import Path
+       7
+       8 import openpyxl
+       9
+      10 from reco import rapprocher
+     … +61 lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='tests/test_nettoyage.py'; s=open(p).read()…)
+  ⎿  Created tests/__init__.py (+0 -0)
+  ⎿  Updated tests/test_nettoyage.py (+21 -69)
+       1  """Un test par piège : fichiers altérés en mémoire, niveau atte
+          ndu dans le journal."""
+       2  
+       3 -from pathlib import Path                                       
+       4 -                                                               
+       3  import pytest
+       4  
+       7 -from reco import rapprocher                                    
+       5  from reco.sources import isin_valide
+       9 -                                                               
+      10 -DONNEES = Path(__file__).resolve().parents[1] / "data" / "donne
+         -es"                                                            
+      11 -PMS, A, B, C = (                                               
+      12 -    "positions_internes.csv",                                  
+      13 -    "depositaire_A_20260925.xlsx",                             
+      14 -    "depositaire_B_20260925.txt",                              
+      15 -    "depositaire_C_20260925.xml",                              
+      16 -)                                                              
+      17 -                                                               
+      18 -                                                               
+      19 -def _fichiers(**remplacements: bytes) -> dict[str, bytes]:     
+      20 -    fichiers = {nom: (DONNEES / nom).read_bytes() for nom in (P
+         -MS, A, B, C)}                                                  
+      21 -    for cle, contenu in remplacements.items():                 
+      22 -        fichiers[{"pms": PMS, "a": A, "b": B, "c": C}[cle]] = c
+         -ontenu                                                         
+      23 -    return fichiers                                            
+      24 -                                                               
+      25 -                                                               
+      26 -def _rapprocher(fichiers: dict[str, bytes]):                   
+      27 -    return rapprocher(fichiers, DONNEES / "parametrage.xlsx", D
+         -ONNEES / "orsay.db")                                           
+      28 -                                                               
+      29 -                                                               
+      30 -def _regles(resultat, niveau: str) -> set[str]:                
+      31 -    return {a.regle for a in resultat.journal if a.niveau == ni
+         -veau}                                                          
+      32 -                                                               
+      33 -                                                               
+      34 -def _remplacer(nom: str, avant: str, apres: str) -> bytes:     
+      35 -    texte = (DONNEES / nom).read_bytes().decode()              
+      36 -    assert avant in texte                                      
+      37 -    return texte.replace(avant, apres).encode()                
+      38 -                                                               
+       6 +from tests.fabrique import B, C, PMS, fichiers, lancer, regles,
+         + remplacer, xlsx_a                                             
+       7  
+     … 100 more lines (ctrl+o to expand)
+
+● Maintenant, les tests des nouvelles règles :
+
+● Write(tests/test_regles.py)
+  ⎿  Wrote 141 lines to tests/test_regles.py
+       1 """Règles de rapprochement issues de la revue de l'étape 1 (NOTE
+         S.md, « Revue étape 1 »)."""
+       2
+       3 from decimal import Decimal
+       4
+       6     A,
+       7     B,
+       8     C,
+       9     DONNEES,
+      10     PMS,
+     … +163 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Les 14 tests échouent tous, chacun pour la raison attendue (attribut ou règle
+  manquants). J'implémente, d'abord la détection de doublon dans les parseurs :
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='reco/sources.py'; s=open(p).read()…)
+  ⎿  Updated reco/sources.py (+14 -4)
+      61      fichier: str
+      62      positions: list[Position] = field(default_factory=list)
+      63      journal: list[Anomalie] = field(default_factory=list)
+      64 +    _vues: set[tuple] = field(default_factory=set)             
+      65  
+      66      def noter(self, niveau: str, regle: str, ligne: int, brut, 
+          retenu, motif: str) -> None:
+      67          self.journal.append(
+     ...
+      69          )
+      70  
+      71      def ajouter(self, source: str, entite: str, isin: str, cons
+          ervateur: str,
+      71 -                quantite: Decimal, libelle: str, ligne: int) ->
+         - None:  # fmt: skip                                            
+      72 +                quantite: Decimal, libelle: str, ligne: int, co
+         +mpte: str | None = None) -> None:  # fmt: skip                 
+      73 +        """`compte` : identifiant de ligne côté source ; deux l
+         +ignes au même (compte, ISIN) sont                              
+      74 +        additionnées (on ne devine pas laquelle est la bonne) m
+         +ais signalées. C n'en passe pas :                              
+      75 +        ses lots multiples sont normaux."""                    
+      76 +        if compte is not None:                                 
+      77 +            cle = (compte, isin, conservateur)                 
+      78 +            if cle in self._vues:                              
+      79 +                self.noter("SIGNALE", "DOUBLON", ligne, f"{comp
+         +te} {isin}", quantite,                                         
+      80 +                           "ligne en double (même compte et ISI
+         +N) : additionnée, à vérifier")  # fmt: skip                    
+      81 +            self._vues.add(cle)                                
+      82          self.positions.append(
+      83              Position(source, entite, isin, conservateur, quanti
+          te, libelle, self.fichier, ligne)
+      84          )
+     ...
+      230  
+      231          isin = _isin(lecture, num, ligne["isin"] or "")
+      232          lecture.ajouter("PMS", param.sous_comptes[sous_compte]
+           , isin, conservateur, quantite,
+      223 -                        (ligne["libelle"] or "").strip(), num)
+          -  # fmt: skip                                                 
+      233 +                        (ligne["libelle"] or "").strip(), num,
+          + compte=sous_compte)  # fmt: skip                             
+      234      return lecture
+      235  
+      236  
+     ...
+      270                  "NORMALISE", "SEPARATEUR_MILLIERS", num, brut,
+            qte, "quantité texte → nombre"
+      271              )
+      272          lecture.ajouter("A", param.comptes_a[compte], _isin(le
+           cture, num, str(isin)), "A", qte,
+      263 -                        str(designation or "").strip(), num)  
+          -# fmt: skip                                                   
+      273 +                        str(designation or "").strip(), num, c
+          +ompte=compte)  # fmt: skip                                    
+      274      return lecture
+      275  
+      276  
+     … 8 more lines (ctrl+o to expand)
+
+● Ensuite, je réécris le module de rapprochement. Les quatre temps (comparer,
+  fusionner les DEP, compléter, base facultative) y sont séparés, pour que
+  chacun se relise seul :
+
+● Write(reco/rapprochement.py)
+  ⎿  Added 200 lines, removed 100 lines
+       1 -"""Rapprochement PMS ↔ conservateurs à la maille (fonds, ISIN, 
+         -conservateur). Déterministe, sans LLM."""                      
+       1 +"""Rapprochement PMS ↔ conservateurs à la maille (fonds, ISIN, 
+         +conservateur). Déterministe, sans LLM.                         
+       2  
+       3 +Quatre temps : comparer les quantités agrégées, fusionner les D
+         +EP, compléter chaque suspens                                   
+       4 +(action du paramétrage, piste orsay.db, signalements), trier.  
+       5 +"""                                                            
+       6 +                                                               
+       7  import sqlite3
+       8  from collections import defaultdict
+       9  from dataclasses import dataclass, field
+      10  from datetime import date
+      11  from decimal import Decimal
+      12  from pathlib import Path
+      13 +from typing import NamedTuple                                  
+      14  
+      15  from reco.sources import (
+      16      Anomalie,
+      17      Lecture,
+      18 +    Parametrage,                                               
+      19      Position,
+      20      isin_valide,
+      21      lire_depositaire_a,
+     ...
+      36  
+      37  @dataclass
+      38  class Suspens:
+      33 -    fonds: str                                                 
+      39 +    entite: str  # clé fonds : nom d'entité du paramétrage (la 
+         +référence)                                                     
+      40      isin: str
+      41      conservateur: str  # A, B, C, ou « A→B » pour un DEP
+      42      type: str  # QTE, ABS_DEP, ABS_INT, DEP
+      43      qte_pms: Decimal | None
+      44      qte_dep: Decimal | None
+      45      libelle_titre: str
+      40 -    libelle_type: str                                          
+      41 -    action: str                                                
+      42 -    piste: str                                                 
+      46      sources: list[str]
+      47 +    fonds: str = ""  # code court (PAT, OBL, ACT) lu dans orsay
+         +.db, vide si la base manque                                    
+      48 +    libelle_type: str = ""                                     
+      49 +    action: str = ""                                           
+      50 +    piste: str = ""                                            
+      51 +    signalements: list[str] = field(default_factory=list)      
+      52  
+      53 +    @property                                                  
+      54 +    def ecart(self) -> Decimal:                                
+      55 +        """PMS − conservateur : positif si le PMS en a plus (ac
+         +hat non dénoué, par exemple)."""                               
+      56 +        return (self.qte_pms or Decimal(0)) - (self.qte_dep or 
+         +Decimal(0))                                                    
+      57  
+      58 +                                                               
+      59  @dataclass
+      60  class Resultat:
+      61      statut: str = "OK"  # OK, ou BLOQUE si une anomalie BLOQUAN
+          T empêche le rapprochement
+     ...
+       63      journal: list[Anomalie] = field(default_factory=list)
+       64  
+       65  
+       53 -def _agreger(positions: list[Position]) -> dict[tuple[str, str
+          -, str], list[Position]]:                                      
+       54 -    groupes: dict[tuple[str, str, str], list[Position]] = defa
+          -ultdict(list)                                                 
+       55 -    for p in positions:                                       
+       56 -        groupes[(p.entite, p.isin, p.conservateur)].append(p) 
+       57 -    return groupes                                            
+       66 +class Mouvement(NamedTuple):                                  
+       67 +    id: int                                                   
+       68 +    date_denouement: date                                     
+       69 +    portefeuille: str                                         
+       70 +    isin: str                                                 
+       71 +    sens: str                                                 
+       72 +    quantite: Decimal                                         
+       73  
+       74 +    @property                                                 
+       75 +    def signe(self) -> Decimal:                               
+       76 +        """Effet sur PMS − conservateur tant que l'opération n
+          +'est pas dénouée."""                                          
+       77 +        return self.quantite if self.sens == "ACHAT" else -sel
+          +f.quantite                                                    
+       78  
+       60 -def _somme(positions: list[Position]) -> Decimal:             
+       61 -    return sum((p.quantite for p in positions), Decimal(0))   
+       79  
+       80 +@dataclass                                                    
+       81 +class Base:                                                   
+       82 +    """Ce qu'on lit dans orsay.db, à titre d'information uniqu
+          +ement."""                                                     
+       83  
+       64 -def _libelle(*groupes: list[Position]) -> str:                
+       65 -    return next((p.libelle for g in groupes for p in g if p.li
+          -belle), "")                                                   
+       84 +    codes_fonds: dict[str, str] = field(default_factory=dict) 
+       85 +    referentiel: dict[str, str] | None = None  # None : référe
+          +ntiel indisponible                                            
+       86 +    en_attente: list[Mouvement] = field(default_factory=list) 
+       87  
+       88  
+       68 -def _piste(db: sqlite3.Connection, fonds: str, isin: str) -> s
+          -tr:                                                           
+       69 -    lignes = db.execute(                                      
+       70 -        "SELECT sens, quantite, date_denouement FROM mouvement
+          -s"                                                            
+       71 -        " WHERE portefeuille = ? AND isin = ? AND statut = 'EN
+          -_ATTENTE' ORDER BY id",                                       
+       72 -        (fonds, isin),                                        
+       73 -    ).fetchall()                                              
+       74 -    pistes = [f"{sens} {qte} EN_ATTENTE (dén. {d[8:10]}/{d[5:7
+          -]})" for sens, qte, d in lignes]                              
+       75 -    if not isin_valide(isin):                                 
+       76 -        pistes.append("ISIN à clé invalide, probable erreur de
+          - saisie")                                                     
+       77 -    return " ; ".join(pistes)                                 
+       89 +def formater_quantite(q: Decimal) -> str:                     
+       90 +    texte = f"{q:,.0f}" if q == q.to_integral_value() else f"{
+          +q:,}"                                                         
+       91 +    return texte.replace(",", " ")                            
+       92  
+       93  
+       80 -def _signaler(positions: list[Position], referentiel: dict[str
+          -, str]) -> list[Anomalie]:                                    
+       94 +def _date_fr(d: date) -> str:                                 
+       95 +    return f"{d:%d/%m/%Y}"                                    
+       96 +                                                              
+       97 +                                                              
+       98 +def _lire_base(db_path: Path | None, journal: list[Anomalie]) 
+          +-> Base:                                                      
+       99 +    try:                                                      
+      100 +        if db_path is None:                                   
+      101 +            raise sqlite3.OperationalError("aucune base fourni
+          +e")                                                           
+      102 +        db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=Tr
+          +ue)                                                           
+      103 +        try:                                                  
+      104 +            return Base(                                      
+      105 +                codes_fonds=dict(db.execute("SELECT nom, code 
+          +FROM portefeuilles")),                                        
+      106 +                referentiel=dict(db.execute("SELECT isin, libe
+          +lle FROM titres")),                                           
+      107 +                en_attente=[                                  
+      108 +                    Mouvement(i, date.fromisoformat(d), pf, is
+          +in, sens, Decimal(q))                                         
+      109 +                    for i, d, pf, isin, sens, q in db.execute(
+      110 +                        "SELECT id, date_denouement, portefeui
+          +lle, isin, sens, quantite"                                    
+      111 +                        " FROM mouvements WHERE statut = 'EN_A
+          +TTENTE' ORDER BY id"                                          
+      112 +                    )                                         
+      113 +                ],                                            
+      114 +            )                                                 
+      115 +        finally:                                              
+      116 +            db.close()                                        
+      117 +    except sqlite3.Error as erreur:                           
+      118 +        journal.append(                                       
+      119 +            Anomalie("orsay.db", 0, "SIGNALE", "BASE_INDISPONI
+          +BLE", str(db_path), "",                                       
+      120 +                     f"orsay.db illisible ({erreur}) : suspens
+          + sans code fonds ni piste")  # fmt: skip                      
+      121 +        )                                                     
+      122 +        return Base()                                         
+      123 +                                                              
+      124 +                                                              
+      125 +def _signaler(positions: list[Position], base: Base) -> list[A
+          +nomalie]:                                                     
+      126      """ISIN douteux et libellés divergents : conservés, mais r
+           emontés à un humain."""
+      127      anomalies = []
+      128      vus: set[str] = set()
+     ...
+      133          if not isin_valide(p.isin):
+      134              anomalies.append(Anomalie(p.fichier, p.ligne, "SIG
+           NALE", "ISIN_CLE_INVALIDE", p.isin, p.isin,
+      135                                        "clé de contrôle ISIN in
+           valide : probable erreur de saisie"))  # fmt: skip
+       91 -        if p.isin not in referentiel:                         
+      136 +        if base.referentiel is not None and p.isin not in base
+          +.referentiel:                                                 
+      137              anomalies.append(Anomalie(p.fichier, p.ligne, "SIG
+           NALE", "ISIN_HORS_REFERENTIEL", p.isin, p.isin,
+      138                                        "ISIN absent du référent
+           iel titres"))  # fmt: skip
+      139      libelles: dict[str, dict[str, Position]] = defaultdict(dic
+           t)
+     ...
+      141          if p.libelle:
+      142              libelles[p.isin].setdefault("PMS" if p.source == "
+           PMS" else "DEP", p)
+      143      for isin, par_cote in libelles.items():
+       99 -        if (                                                  
+      100 -            len(par_cote) == 2                                
+      101 -            and par_cote["PMS"].libelle.upper() != par_cote["D
+          -EP"].libelle.upper()                                          
+      102 -        ):                                                    
+      144 +        if len(par_cote) == 2 and par_cote["PMS"].libelle.uppe
+          +r() != par_cote["DEP"].libelle.upper():                       
+      145              p, d = par_cote["PMS"], par_cote["DEP"]
+      146              anomalies.append(Anomalie(d.fichier, d.ligne, "SIG
+           NALE", "LIBELLE_DIFFERENT", d.libelle, p.libelle,
+      147                                        f"{isin} : libellé PMS «
+            {p.libelle} » ≠ conservateur « {d.libelle} »"))  # fmt: skip
+      148      return anomalies
+      149  
+      150  
+      109 -def rapprocher(                                               
+      110 -    fichiers: dict[str, bytes], parametrage: Path, db_path: Pa
+          -th, date_arrete: date = DATE_ARRETE                           
+      111 -) -> Resultat:                                                
+      112 -    """`fichiers` : nom de fichier -> contenu brut, une entrée
+          - par source (PMS, A, B, C).                                   
+      151 +def _agreger(positions: list[Position]) -> dict[tuple[str, str
+          +, str], list[Position]]:                                      
+      152 +    groupes: dict[tuple[str, str, str], list[Position]] = defa
+          +ultdict(list)                                                 
+      153 +    for p in positions:                                       
+      154 +        groupes[(p.entite, p.isin, p.conservateur)].append(p) 
+      155 +    return groupes                                            
+      156  
+      157 +                                                              
+      158 +def _comparer(pms: list[Position], dep: list[Position]) -> lis
+          +t[Suspens]:                                                   
+      159 +    """Jointure complète : une clé présente d'un seul côté est
+          + un suspens (sinon LVMH serait raté)."""                      
+      160 +    cote_pms, cote_dep = _agreger(pms), _agreger(dep)         
+      161 +    suspens = []                                              
+      162 +    for cle in sorted(cote_pms.keys() | cote_dep.keys()):     
+      163 +        g_pms, g_dep = cote_pms.get(cle, []), cote_dep.get(cle
+          +, [])                                                         
+      164 +        # Une position nulle est une absence : pas de suspens 
+          +« ABS_DEP » pour 0 titre.                                     
+      165 +        q_pms = sum((p.quantite for p in g_pms), Decimal(0)) o
+          +r None                                                        
+      166 +        q_dep = sum((p.quantite for p in g_dep), Decimal(0)) o
+          +r None                                                        
+      167 +        if q_pms == q_dep:  # tolérance nulle : une seule unit
+          +é d'écart est un suspens                                      
+      168 +            continue                                          
+      169 +        type_ = "ABS_DEP" if q_dep is None else "ABS_INT" if q
+          +_pms is None else "QTE"                                       
+      170 +        entite, isin, conservateur = cle                      
+      171 +        libelle = next((p.libelle for p in g_pms + g_dep if p.
+          +libelle), "")                                                 
+      172 +        sources = [p.ref for p in g_pms + g_dep]              
+      173 +        suspens.append(Suspens(entite, isin, conservateur, typ
+          +e_, q_pms, q_dep, libelle, sources))                          
+      174 +    return suspens                                            
+      175 +                                                              
+      176 +                                                              
+      177 +def _fusionner_dep(suspens: list[Suspens]) -> list[Suspens]:  
+      178 +    """Attendu chez X, livré chez Y : un seul suspens DEP (éno
+          +ncé), même si les quantités diffèrent.                        
+      179 +                                                              
+      180 +    Plusieurs candidats (2 conservateurs possibles) : on ne de
+          +vine pas, on signale sur chaque suspens.                      
+      181 +    """                                                       
+      182 +    par_titre: dict[tuple[str, str], list[Suspens]] = defaultd
+          +ict(list)                                                     
+      183 +    for s in suspens:                                         
+      184 +        if s.type in ("ABS_DEP", "ABS_INT"):                  
+      185 +            par_titre[(s.entite, s.isin)].append(s)           
+      186 +    for groupe in par_titre.values():                         
+      187 +        absents = [s for s in groupe if s.type == "ABS_DEP"]  
+      188 +        trouves = [s for s in groupe if s.type == "ABS_INT"]  
+      189 +        if not absents or not trouves:                        
+      190 +            continue                                          
+      191 +        if len(absents) == 1 and len(trouves) == 1:           
+      192 +            x, y = absents[0], trouves[0]                     
+      193 +            suspens = [s for s in suspens if s is not x and s 
+          +is not y]                                                     
+      194 +            suspens.append(                                   
+      195 +                Suspens(x.entite, x.isin, f"{x.conservateur}→{
+          +y.conservateur}", "DEP", x.qte_pms,                           
+      196 +                        y.qte_dep, x.libelle_titre or y.libell
+          +e_titre, x.sources + y.sources)  # fmt: skip                  
+      197 +            )                                                 
+      198 +        else:                                                 
+      199 +            message = (                                       
+      200 +                f"DEP ambigu : absent chez {', '.join(s.conser
+          +vateur for s in absents)}, "                                  
+      201 +                f"trouvé chez {', '.join(s.conservateur for s 
+          +in trouves)} : à trancher par l'opérateur"                    
+      202 +            )                                                 
+      203 +            for s in groupe:                                  
+      204 +                s.signalements.append(message)                
+      205 +    return suspens                                            
+      206 +                                                              
+      207 +                                                              
+      208 +def _piste(mouvements: list[Mouvement], ecart: Decimal, plusie
+          +urs_conservateurs: bool) -> str:                              
+      209 +    """Cite les opérations en attente et dit, calcul signé à l
+          +'appui, si elles expliquent l'écart."""                       
+      210 +    if not mouvements:                                        
+      211 +        return ""                                             
+      212 +    operations = ", ".join(                                   
+      213 +        f"op. n°{m.id} {m.sens} {formater_quantite(m.quantite)
+          +} dén. {_date_fr(m.date_denouement)}"                         
+      214 +        for m in mouvements                                   
+      215 +    )                                                         
+      216 +    net = sum((m.signe for m in mouvements), Decimal(0))      
+      217 +    if net == ecart:                                          
+      218 +        verdict = "écart entièrement expliqué"                
+      219 +    elif net * ecart > 0 and abs(net) < abs(ecart):           
+      220 +        verdict = f"écart partiellement expliqué, reste {forma
+          +ter_quantite(ecart - net)}"                                   
+      221 +    else:                                                     
+      222 +        verdict = "n'explique pas l'écart"                    
+      223 +    if plusieurs_conservateurs:  # mouvements n'indique pas le
+          + conservateur                                                 
+      224 +        verdict += " (explication possible seulement : titre d
+          +étenu chez plusieurs conservateurs)"                          
+      225 +    return f"{operations} → {verdict}"                        
+      226 +                                                              
+      227 +                                                              
+      228 +def _completer(suspens: list[Suspens], param: Parametrage, bas
+          +e: Base, date_arrete: date,                                   
+      229 +               conservateurs: dict[tuple[str, str], set[str]])
+          + -> None:  # fmt: skip                                        
+      230 +    for s in suspens:                                         
+      231 +        s.fonds = base.codes_fonds.get(s.entite, "")          
+      232 +        s.libelle_type, s.action = param.types_ecarts[s.type] 
+      233 +        if s.type == "DEP" and s.ecart:                       
+      234 +            s.action += f" ; puis {param.types_ecarts['QTE'][1
+          +]} (écart {formater_quantite(s.ecart)})"                      
+      235 +        if not s.libelle_titre and base.referentiel:          
+      236 +            s.libelle_titre = base.referentiel.get(s.isin, "")
+      237 +        mouvements = [m for m in base.en_attente if m.portefeu
+          +ille == s.fonds and m.isin == s.isin]                         
+      238 +        s.piste = _piste(mouvements, s.ecart, len(conservateur
+          +s[(s.entite, s.isin)]) > 1)                                   
+      239 +        for m in mouvements:                                  
+      240 +            if m.date_denouement <= date_arrete:              
+      241 +                s.signalements.append(                        
+      242 +                    f"op. n°{m.id} non dénouée au {_date_fr(m.
+          +date_denouement)} : "                                         
+      243 +                    "défaut de règlement-livraison, risque CSD
+          +R"                                                            
+      244 +                )                                             
+      245 +        if not isin_valide(s.isin):                           
+      246 +            s.signalements.append("ISIN à clé invalide, probab
+          +le erreur de saisie")                                         
+      247 +                                                              
+      248 +                                                              
+      249 +def rapprocher(fichiers: dict[str, bytes], parametrage: Path, 
+          +db_path: Path | None,                                         
+      250 +               date_arrete: date = DATE_ARRETE) -> Resultat:  
+          +# fmt: skip                                                   
+      251 +    """`fichiers` : nom de fichier -> contenu brut, un fichier
+          + par source (PMS, A, B, C).                                   
+      252 +                                                              
+      253      Une seule anomalie BLOQUANT suffit à refuser le rapprochem
+           ent : un rapprochement partiel
+      115 -    rendrait des faux négatifs invisibles.                    
+      254 +    rendrait des faux négatifs invisibles. orsay.db est facult
+          +ative : elle informe, elle ne décide pas.                     
+      255      """
+      256      param = lire_parametrage(parametrage)
+      257      resultat = Resultat()
+      258      pms: list[Position] = []
+      259      dep: list[Position] = []
+      260      for source, (prefixe, lecteur) in LECTEURS.items():
+      122 -        nom = next((n for n in fichiers if Path(n).name.starts
+          -with(prefixe)), None)                                         
+      123 -        if nom is None:                                       
+      124 -            resultat.journal.append(                          
+      125 -                Anomalie(                                     
+      126 -                    prefixe, 0, "BLOQUANT", "FICHIER_MANQUANT"
+          -, "", "", f"fichier {source} absent"                          
+      127 -                )                                             
+      261 +        noms = [n for n in fichiers if Path(n).name.startswith
+          +(prefixe)]                                                    
+      262 +        if len(noms) != 1:                                    
+      263 +            regle, motif = (                                  
+      264 +                ("FICHIER_MANQUANT", f"fichier {source} absent
+          +")                                                            
+      265 +                if not noms                                   
+      266 +                else ("FICHIERS_MULTIPLES", f"{len(noms)} fich
+          +iers {source} : lequel est le bon ?")                         
+      267              )
+      268 +            resultat.journal.append(Anomalie(prefixe, 0, "BLOQ
+          +UANT", regle, ", ".join(noms), "", motif))                    
+      269              continue
+      270 +        nom = noms[0]                                         
+      271          try:
+      272              lecture: Lecture = lecteur(nom, fichiers[nom], par
+           am, date_arrete)
+      273          except Exception as erreur:  # fichier corrompu ou for
+           mat inattendu : refusé, pas deviné
+      133 -            resultat.journal.append(                          
+      134 -                Anomalie(                                     
+      135 -                    nom,                                      
+      136 -                    0,                                        
+      137 -                    "BLOQUANT",                               
+      138 -                    "FORMAT_ILLISIBLE",                       
+      139 -                    "",                                       
+      140 -                    "",                                       
+      141 -                    f"{type(erreur).__name__} : {erreur}",    
+      142 -                )                                             
+      143 -            )                                                 
+      274 +            resultat.journal.append(Anomalie(nom, 0, "BLOQUANT
+          +", "FORMAT_ILLISIBLE", "", "",                                
+      275 +                                             f"{type(erreur)._
+          +_name__} : {erreur}"))  # fmt: skip                           
+      276              continue
+      277          if not lecture.positions:
+      278              lecture.noter("BLOQUANT", "AUCUNE_LIGNE", 0, "", "
+           ", "0 position lue")
+     ...
+      283          resultat.statut = "BLOQUE"
+      284          return resultat
+      285  
+      154 -    db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) 
+      155 -    fonds_par_entite = dict(db.execute("SELECT nom, code FROM 
+          -portefeuilles").fetchall())                                   
+      156 -    referentiel = dict(db.execute("SELECT isin, libelle FROM t
+          -itres").fetchall())                                           
+      157 -    resultat.journal.extend(_signaler(pms + dep, referentiel))
+      158 -                                                              
+      159 -    cote_pms, cote_dep = _agreger(pms), _agreger(dep)         
+      160 -    bruts: list[tuple[str, tuple[str, str, str], list[Position
+          -], list[Position]]] = []                                      
+      161 -    for cle in sorted(cote_pms.keys() | cote_dep.keys()):     
+      162 -        g_pms, g_dep = cote_pms.get(cle, []), cote_dep.get(cle
+          -, [])                                                         
+      163 -        if not g_dep:                                         
+      164 -            bruts.append(("ABS_DEP", cle, g_pms, g_dep))      
+      165 -        elif not g_pms:                                       
+      166 -            bruts.append(("ABS_INT", cle, g_pms, g_dep))      
+      167 -        elif _somme(g_pms) != _somme(g_dep):                  
+      168 -            bruts.append(("QTE", cle, g_pms, g_dep))          
+      169 -                                                              
+      170 -    # Un ABS_DEP chez X et un ABS_INT chez Y pour le même (fon
+          -ds, ISIN) forment un seul DEP.                                
+      171 -    absents: dict[tuple[str, str], dict[str, list]] = defaultd
+          -ict(lambda: defaultdict(list))                                
+      172 -    for brut in bruts:                                        
+      173 -        if brut[0] in ("ABS_DEP", "ABS_INT"):                 
+      174 -            absents[brut[1][:2]][brut[0]].append(brut)        
+      175 -    for (entite, isin), par_type in absents.items():          
+      176 -        if len(par_type["ABS_DEP"]) == 1 and len(par_type["ABS
+          -_INT"]) == 1:                                                 
+      177 -            (_, cle_x, g_pms, _), (_, cle_y, _, g_dep) = (    
+      178 -                par_type["ABS_DEP"][0],                       
+      179 -                par_type["ABS_INT"][0],                       
+      286 +    base = _lire_base(db_path, resultat.journal)              
+      287 +    resultat.journal.extend(_signaler(pms + dep, base))       
+      288 +    for m in base.en_attente:                                 
+      289 +        if m.date_denouement <= date_arrete:                  
+      290 +            resultat.journal.append(                          
+      291 +                Anomalie("orsay.db", m.id, "SIGNALE", "DENOUEM
+          +ENT_DEPASSE", f"mouvement {m.id}", "",                        
+      292 +                         f"{m.portefeuille} {m.isin} {m.sens} 
+          +{formater_quantite(m.quantite)} non dénoué "                  
+      293 +                         f"au {_date_fr(m.date_denouement)} : 
+          +risque CSDR")  # fmt: skip                                    
+      294              )
+      181 -            bruts = [b for b in bruts if b[1] not in (cle_x, c
+          -le_y)]                                                        
+      182 -            bruts.append(("DEP", (entite, isin, f"{cle_x[2]}→{
+          -cle_y[2]}"), g_pms, g_dep))                                   
+      295  
+      184 -    for type_, (entite, isin, conservateur), g_pms, g_dep in b
+          -ruts:                                                         
+      185 -        fonds = fonds_par_entite[entite]                      
+      186 -        libelle_type, action = param.types_ecarts[type_]      
+      187 -        resultat.suspens.append(                              
+      188 -            Suspens(                                          
+      189 -                fonds=fonds,                                  
+      190 -                isin=isin,                                    
+      191 -                conservateur=conservateur,                    
+      192 -                type=type_,                                   
+      193 -                qte_pms=_somme(g_pms) if g_pms else None,     
+      194 -                qte_dep=_somme(g_dep) if g_dep else None,     
+      195 -                libelle_titre=_libelle(g_pms, g_dep) or refere
+          -ntiel.get(isin, ""),                                          
+      196 -                libelle_type=libelle_type,                    
+      197 -                action=action,                                
+      198 -                piste=_piste(db, fonds, isin),                
+      199 -                sources=[p.ref for p in g_pms + g_dep],       
+      200 -            )                                                 
+      201 -        )                                                     
+      202 -    db.close()                                                
+      203 -    resultat.suspens.sort(key=lambda s: (s.fonds, s.type, s.is
+          -in))                                                          
+      296 +    conservateurs: dict[tuple[str, str], set[str]] = defaultdi
+          +ct(set)                                                       
+      297 +    for p in pms + dep:                                       
+      298 +        if p.quantite:                                        
+      299 +            conservateurs[(p.entite, p.isin)].add(p.conservate
+          +ur)                                                           
+      300 +                                                              
+      301 +    resultat.suspens = _fusionner_dep(_comparer(pms, dep))    
+      302 +    _completer(resultat.suspens, param, base, date_arrete, con
+          +servateurs)                                                   
+      303 +    resultat.suspens.sort(key=lambda s: (s.entite, s.type, s.i
+          +sin))                                                         
+      304      return resultat
+      305  
+      306  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Il reste un échec : l'ancien test attend l'ancien format de piste, alors que
+  la nouvelle règle est vérifiée en détail dans test_regles.py. J'ajuste
+  l'ancien test au nouveau format.
+● Bash(python3 - <<'EOF'
+      p='tests/test_oracle.py'; s=open(p).read()…)
+  ⎿  Updated tests/test_oracle.py (+2 -2)
+      35  def test_piste_mouvement_en_attente():
+      36      resultat = rapprocher_dossier(DONNEES)
+      37      pistes = {s.isin: s.piste for s in resultat.suspens}
+      38 -    assert "ACHAT 25000" in pistes["FR0000012965"] and "26/09" 
+         -in pistes["FR0000012965"]                                      
+      39 -    assert "VENTE 1000" in pistes["FR0000016297"]              
+      38 +    assert pistes["FR0000012965"].startswith("op. n°19 ACHAT 25
+         + 000 dén. 26/09/2026")                                         
+      39 +    assert pistes["FR0000016297"].startswith("op. n°20 VENTE 1 
+         +000 dén. 29/09/2026")                                          
+      40      assert pistes["FR0000051641"] == ""
+      41  
+      42  
+
+● Je mets la ligne de commande à jour : un suspens par bloc, avec piste et
+  signalements, la statut, et un journal sans les NORMALISE (seulement comptés)
+  pour rester lisible.
+
+● Write(reco/__main__.py)
+  ⎿  Added 14 lines, removed 10 lines
+       5  from pathlib import Path
+       6  
+       7  from reco import rapprocher_dossier
+       8 +from reco.rapprochement import formater_quantite               
+       9  
+      10  
+      11  def _qte(q: Decimal | None) -> str:
+      11 -    return "-" if q is None else f"{q:,.0f}".replace(",", " ") 
+      12 +    return "-" if q is None else formater_quantite(q)          
+      13  
+      14  
+      15  def main() -> None:
+      16      dossier = Path(sys.argv[1] if len(sys.argv) > 1 else "data/
+          donnees")
+      17      resultat = rapprocher_dossier(dossier)
+      17 -    print(f"{len(resultat.suspens)} suspens\n")                
+      18 -    print(                                                     
+      19 -        f"{'Fonds':<5} {'ISIN':<12} {'Cons.':<5} {'Type':<7} {'
+         -PMS':>9} {'Dép.':>9}  Titre / action / piste"                  
+      20 -    )                                                          
+      18 +    print(f"Statut : {resultat.statut} · {len(resultat.suspens)
+         +} suspens\n")                                                  
+      19      for s in resultat.suspens:
+      20          print(
+      23 -            f"{s.fonds:<5} {s.isin:<12} {s.conservateur:<5} {s.
+         -type:<7} "                                                     
+      24 -            f"{_qte(s.qte_pms):>9} {_qte(s.qte_dep):>9}  {s.lib
+         -elle_titre} · {s.action}"                                      
+      25 -            + (f" · {s.piste}" if s.piste else "")             
+      21 +            f"{s.fonds or s.entite:<5} {s.isin:<12} {s.conserva
+         +teur:<5} {s.type:<7} "                                         
+      22 +            f"PMS {_qte(s.qte_pms):>9}  Dép. {_qte(s.qte_dep):>
+         +9}  {s.libelle_titre}"                                         
+      23          )
+      27 -    print("\nJournal :")                                       
+      24 +        print(f"      → {s.action}")                           
+      25 +        if s.piste:                                            
+      26 +            print(f"      piste : {s.piste}")                  
+      27 +        for message in s.signalements:                         
+      28 +            print(f"      ⚠ {message}")                        
+      29 +    normalises = sum(a.niveau == "NORMALISE" for a in resultat.
+         +journal)                                                       
+      30 +    print(f"\nJournal ({normalises} normalisations non détaillé
+         +es) :")                                                        
+      31      for a in resultat.journal:
+      29 -        print(f"  {a.niveau:<9} {a.regle:<17} {a.fichier}:{a.li
+         -gne}  {a.motif}")                                              
+      32 +        if a.niveau != "NORMALISE":                            
+      33 +            print(f"  {a.niveau:<9} {a.regle:<21} {a.fichier}:{
+         +a.ligne}  {a.motif}")                                          
+      34  
+      35  
+      36  if __name__ == "__main__":
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(uv run ruff check --fix -q . ; uv run ruff check . && uv run pytest -q
+      2>&1 | tail -2 && uv run python -m reco data/donnees)
+  ⎿  Updated tests/test_nettoyage.py (+1 -1)
+      3  import pytest
+      4  
+      5  from reco.sources import isin_valide
+      6 -from tests.fabrique import B, C, PMS, fichiers, lancer, regles, 
+        -remplacer, xlsx_a                                               
+      6 +from tests.fabrique import PMS, B, C, fichiers, lancer, regles, 
+        +remplacer, xlsx_a                                               
+      7  
+      8  
+      9  def test_fichiers_du_jour_non_bloques():
+  ⎿  Updated tests/test_regles.py (+2 -2)
+       3  from decimal import Decimal
+       4  
+       5  from tests.fabrique import (
+       6 +    DONNEES,                                                   
+       7 +    PMS,                                                       
+       8      A,
+       9      B,
+      10      C,
+       9 -    DONNEES,                                                   
+      10 -    PMS,                                                       
+      11      db_modifiee,
+      12      fichiers,
+      13      lancer,
+
+● Tout est au vert : 37 tests, ruff propre, et la sortie réelle est conforme à
+  l'oracle. Je consigne les décisions de la revue dans NOTES.md et je commite.
+
+● Bash(cat >> NOTES.md <<'EOF'…)
+  ⎿  Updated NOTES.md (+8 -0)
+       98  - Une anomalie BLOQUANT sur n'importe quel fichier donne le st
+           atut `BLOQUE` et 0 suspens (pas de rapprochement des seules so
+           urces saines) : sinon, de faux ABS_DEP apparaissent, ou de vra
+           is suspens disparaissent.
+       99  - Une exception imprévue dans un parseur devient BLOQUANT `FOR
+           MAT_ILLISIBLE` : on refuse le fichier, on ne devine pas.
+      100  - Contrôles ISIN (clé de Luhn, présence dans `titres`) et libe
+           llés divergents faits après la lecture, dans le rapprochement,
+            parce qu'ils ont besoin de `orsay.db`. Libellé de repli lu da
+           ns `titres` (B n'a pas de libellé).
+      101 +                                                              
+      102 +## Revue étape 1 (10/10, avec challenge)                      
+      103 +- **DEP avec écart de quantité** : un seul suspens DEP (énoncé
+          + : « un seul suspens, pas deux »), avec un champ `écart` (PMS 
+          +− conservateur) et l'action QTE ajoutée en complément. Alterna
+          +tive écartée : DEP + QTE, qui compte deux suspens pour un prob
+          +lème et pose un QTE sans clé commune (A côté PMS, B côté conse
+          +rvateur).                                                     
+      104 +- **DEP ambigu** (1 absent, plusieurs trouvés, ou l'inverse) :
+          + on garde les suspens séparés et on signale « DEP ambigu » sur
+          + chacun. On ne devine pas, l'opérateur tranche.               
+      105 +- **orsay.db facultative** : la clé fonds est le nom d'entité 
+          +de `parametrage.xlsx` (la référence) ; la base ne fournit que 
+          +le code court, le référentiel et la piste. Sans base : suspens
+          + produits + SIGNALE `BASE_INDISPONIBLE`. Raison : l'énoncé dit
+          + « à ne pas utiliser comme source du rapprochement », et une b
+          +ase absente ne doit pas arrêter le contrôle.                  
+      106 +- **Piste** : cite le n° d'opération et calcule si le net sign
+          +é (achats − ventes en attente) explique l'écart : entièrement,
+          + partiellement (« reste X ») ou pas du tout. « Explication pos
+          +sible seulement » si le fonds détient le titre chez plusieurs 
+          +conservateurs, puisque `mouvements` n'a pas de colonne conserv
+          +ateur.                                                        
+      107 +- **Oublis ajoutés** : opération EN_ATTENTE dont la date de dé
+          +nouement est passée → SIGNALE `DENOUEMENT_DEPASSE` (risque CSD
+          +R) ; position nulle = absence (pas d'ABS_DEP pour 0 titre) ; l
+          +igne en double chez PMS, A ou B → additionnée mais SIGNALE `DO
+          +UBLON` ; deux fichiers pour une même source → BLOQUANT `FICHIE
+          +RS_MULTIPLES`.                                                
+      108 +- **Limites non traitées** : unités (nominal vs nombre de titr
+          +es selon le conservateur), titre trouvé dans un *autre fonds* 
+          +(probable erreur de transco, 2 suspens non fusionnés), ancienn
+          +eté des suspens d'un jour sur l'autre.                        
+
+● L'étape 1 est refaite et commitée (04efe0c). Les 37 tests passent, ruff ne
+  signale rien, et la sortie en ligne de commande donne toujours les 7 suspens
+  de l'oracle. Je n'ai pas commité test.py, qui n'a rien à voir avec le cas.
+
+  Ce qui a changé, et où le relire
+
+  Décision: Un seul DEP même avec un écart de quantité ; l'écart et l'action QTE
+
+  sont ajoutés en complément
+  Où regarder: _fusionner_dep et Suspens.ecart dans rapprochement.py
+  (reco/rapprochement.py)
+  Pourquoi: L'énoncé demande « un seul suspens, pas deux »
+  ────────────────────────────────────────
+  Décision: DEP ambigu : les suspens restent séparés, chacun signalé
+  Où regarder: _fusionner_dep, branche else
+  Pourquoi: On ne devine pas, l'opérateur tranche
+  ────────────────────────────────────────
+  Décision: Clé fonds = entité du paramétrage ; orsay.db devient facultative
+  Où regarder: _lire_base et Base
+  Pourquoi: La base « informe, ne décide pas » ; si elle manque, on a les
+  suspens
+  sans piste
+  ────────────────────────────────────────
+  Décision: La piste cite l'opération n°X et dit si elle explique l'écart
+  (entièrement, partiellement, pas du tout)
+  Où regarder: _piste et Mouvement.signe
+  Pourquoi: « Op. n°19 » à côté d'un écart qu'elle n'explique pas pousserait à
+  classer le suspens à tort
+  ────────────────────────────────────────
+  Décision: Dénouement passé → risque CSDR
+  Où regarder: _completer et le journal DENOUEMENT_DEPASSE
+  Pourquoi: C'est la douleur principale du client
+  ────────────────────────────────────────
+  Décision: Position à 0 traitée comme absente ; doublons signalés ; deux
+  fichiers pour une même source → BLOQUANT
+  Où regarder: _comparer, Lecture.ajouter dans sources.py (reco/sources.py)
+  Pourquoi: Évite un faux positif, une position doublée sans rien dire, et un
+  choix arbitraire entre deux fichiers
+
+  Chaque règle a son test, qui a échoué avant le code, dans
+  tests/test_regles.py. Les décisions et les alternatives écartées sont
+  consignées dans NOTES.md, section « Revue étape 1 ».
+
+  Deux points que je te demande de vérifier en relisant
+
+  1. « Explication possible seulement » : pour l'instant, c'est juste une
+     mention dans la piste. L'opérateur risque de la lire comme « expliqué » et
+     de passer à autre chose. Faudrait-il en faire un vrai signalement (⚠) ?
+  2. Doublons additionnés : si une ligne est réellement dupliquée chez B, on
+     produit un QTE et un signalement. L'autre choix serait de ne pas
+     additionner, mais on masquerait alors un vrai deuxième lot. Je pense
+     qu'additionner est plus sûr, puisque le faux négatif est le pire cas. Es-tu
+     d'accord ?
+
+  L'étape 2 (journal 4 niveaux, contrôles bloquants) est déjà codée et commitée,
+  et l'étape 1 refaite l'a déjà intégrée (fichiers multiples, doublons). La
+  suite logique est d'en faire la revue ensemble, comme pour l'étape 1, avant de
+  passer à l'étape 3 (API et page). On y va ?
+
+❯ <ide_opened_file>The user opened the file
+  /home/gearleur/projects/saify/tests/fabrique.py in the IDE. This may or may
+  not be related to the current task.</ide_opened_file>
+
+❯ 1 il faut un vrai signalement pour ne pas oublier la verificaiton
+  2 le faux negatif est le pire
+
+  on fait le revue de l'etape 2
+
+● Je commence par le point 1 : un test qui exige un vrai signalement.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='tests/test_regles.py'; s=open(p).read()…)
+  ⎿  Updated tests/test_regles.py (+7 -0)
+      109      c = _c_avec(_item_c("ORS-ACT", SCHNEIDER, "SCHNEIDER", "10
+           00,00"))
+      110      (schneider,) = _suspens(lancer(fichiers(pms=pms, c=c)), SC
+           HNEIDER)
+      111      assert "explication possible" in schneider.piste
+      112 +    # Un vrai signalement, pour que l'opérateur n'oublie pas d
+          +e vérifier le conservateur concerné.                          
+      113 +    assert any("à vérifier" in m and "plusieurs conservateurs"
+          + in m for m in schneider.signalements)                        
+      114 +                                                              
+      115 +                                                              
+      116 +def test_pas_de_signalement_si_un_seul_conservateur():        
+      117 +    (schneider,) = _suspens(lancer(fichiers()), SCHNEIDER)    
+      118 +    assert schneider.signalements == []                       
+      119  
+      120  
+      121  # A. Opération non dénouée à sa date prévue : défaut de règlem
+           ent-livraison, risque CSDR.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='reco/rapprochement.py'; s=open(p).read()…)
+  ⎿  Updated reco/rapprochement.py (+7 -1)
+      255          if not s.libelle_titre and base.referentiel:
+      256              s.libelle_titre = base.referentiel.get(s.isin, "")
+      257          mouvements = [m for m in base.en_attente if m.portefeu
+           ille == s.fonds and m.isin == s.isin]
+      258 -        s.piste = _piste(mouvements, s.ecart, len(conservateur
+          -s[(s.entite, s.isin)]) > 1)                                   
+      258 +        plusieurs = sorted(conservateurs[(s.entite, s.isin)]) 
+      259 +        s.piste = _piste(mouvements, s.ecart, len(plusieurs) >
+          + 1)                                                           
+      260 +        if mouvements and len(plusieurs) > 1:                 
+      261 +            s.signalements.append(                            
+      262 +                f"piste à vérifier : titre détenu chez plusieu
+          +rs conservateurs ({', '.join(plusieurs)}),"                   
+      263 +                " l'opération peut concerner l'autre"         
+      264 +            )                                                 
+      265          for m in mouvements:
+      266              if m.date_denouement <= date_arrete:
+      267                  s.signalements.append(
+
+● Point 1 est validé (98682db, 38 tests au vert), et on conserve l'addition pour
+  le point 2, déjà en place. Je passe maintenant à la relecture critique du
+  code de nettoyage pour l'étape 2.
+
+  Read 1 file (ctrl+o to expand)
+
+● Revue de l'étape 2 : nettoyage et contrôles
+
+  Ce que fait l'étape. Chaque transformation des données sources est tracée dans
+  le journal à l'un des 4 niveaux :
+
+  ┌───────────┬────────────────────────┬─────────────────────────────────────┐
+  │  Niveau   │          Sens          │              Exemples               │
+  ├───────────┼────────────────────────┼─────────────────────────────────────┤
+  │           │ On corrige la forme,   │ fr0000014078 → FR0000014078, "10    │
+  │ NORMALISE │ le sens ne change pas  │ 000" → 10000, 000000000500000 →     │
+  │           │                        │ 5000.00                             │
+  ├───────────┼────────────────────────┼─────────────────────────────────────┤
+  │           │ Ligne retirée en vertu │ P3G, ligne sans sous-compte, item   │
+  │ EXCLU     │  d'une règle client    │ ACTION=S                            │
+  │           │ citée                  │                                     │
+  ├───────────┼────────────────────────┼─────────────────────────────────────┤
+  │           │ Ligne conservée mais   │ clé ISIN invalide, ISIN hors        │
+  │ SIGNALE   │ douteuse, un humain    │ référentiel, libellés différents    │
+  │           │ regarde                │                                     │
+  ├───────────┼────────────────────────┼─────────────────────────────────────┤
+  │           │ Fichier refusé, donc   │ mauvaise date, total de contrôle    │
+  │ BLOQUANT  │ aucun suspens produit  │ faux, transco inconnue, quantité    │
+  │           │                        │ illisible                           │
+  └───────────┴────────────────────────┴─────────────────────────────────────┘
+
+  Pourquoi. Le client doit pouvoir répondre à « pourquoi cette ligne n'est-elle
+  pas dans le rapprochement ? » sans lire le code. C'est la traçabilité
+  demandée.
+
+  Ce que je trouve en relisant, du plus grave au moins grave
+
+  1. Des lignes jetées sans trace : c'est le pire défaut, car il crée des faux
+  négatifs invisibles.
+  - Fichier A : if compte is None: continue. Une ligne qui a un ISIN et une
+    quantité mais une cellule de compte vide (cellule fusionnée, oubli)
+    disparaît sans aucune trace.
+  - Fichier B : une ligne qui ne commence ni par H, ni par D, ni par T (un d
+    minuscule, un type inconnu) est ignorée. Le total de contrôle la rattrape
+    peut-être, mais seulement si T compte toutes les lignes.
+    → Je propose : une ligne vraiment vide est ignorée ; une ligne partiellement
+    remplie ou d'un type inconnu → BLOQUANT.
+
+  2. Un ACTION inconnu chez C est traité comme une position valide.
+  Seul S est exclu. Un M (modification) ou un X serait additionné tel quel. On
+  ne connaît pas le sens de ces codes, donc on ne doit pas deviner → BLOQUANT
+  ACTION_INCONNUE.
+
+  3. "10.000" est lu comme 10 sans aucun signal.
+  Si un conservateur envoie un jour un point comme séparateur de milliers,
+  Decimal("10.000") vaut 10 : un QTE faux et silencieux. Même chose pour une
+  quantité négative.
+  → Une quantité non entière ou négative → SIGNALE. Ça ne bloque pas, parce
+  qu'un nominal peut légitimement avoir des décimales.
+
+  4. Le paramétrage n'est pas contrôlé du tout.
+  - S'il manque un code dans TYPES_ECARTS (par exemple pas de DEP), le programme
+    plante au lieu de bloquer proprement.
+  - Si un même sous-compte apparaît deux fois dans la transco avec deux fonds
+    différents, le dernier gagne sans rien dire.
+    → Paramétrage invalide → BLOQUANT, avec une ligne dans le journal.
+
+  5. Une question de fond : un seul BLOQUANT bloque tout.
+  Imagine qu'un matin, un nouveau sous-compte n'a pas encore été ajouté à la
+  transco. On obtient zéro suspens sur les 3 fonds, et l'opérateur repart sur 1
+  h 30 de travail manuel.
+  Je défends quand même ce choix : un sous-compte inconnu, c'est un fonds
+  inconnu, donc on ne peut garantir aucun fonds. Et un fichier conservateur
+  rejeté produirait de faux ABS_DEP en masse. Par contre, le message doit dire
+  quoi faire (« ajouter SC-XXX à TRANSCO_SOUS_COMPTES puis relancer »), pas
+  seulement « bloqué ».
+
+  6. Défauts mineurs
+  - Si le fichier n'est pas en UTF-8, on retombe sur latin-1 sans le noter. Il
+    faudrait au moins une ligne NORMALISE ENCODAGE.
+  - Une colonne renommée dans le CSV fait apparaître KeyError : 'quantite', un
+    message incompréhensible pour un opérateur. Il faudrait un vrai contrôle
+    d'en-tête.
+  - Le journal contient 69 NORMALISE : c'est utile pour l'audit mais c'est du
+    bruit pour l'opérateur. La page devra filtrer par niveau (étape 3).
+
+  Tes décisions
+
+  1. Lignes partiellement remplies ou de type inconnu → BLOQUANT : d'accord ?
+  2. ACTION inconnu chez C → BLOQUANT ou SIGNALE ?
+  3. Quantité non entière ou négative → SIGNALE, plutôt que BLOQUANT ?
+  4. Point 5 : on garde le blocage total avec un message actionnable, ou tu
+     préfères une autre granularité ?
+
+  Dès que tu as tranché, je fais les corrections par TDD (un test par point,
+  rouge puis vert), je commite, puis on passe à l'étape 3.
+
+❯ Je propose : une ligne vraiment vide est ignorée ; une ligne partiellement
+  remplie ou d'un type inconnu → BLOQUANT. parfait cette data ne sort pas de
+  nul aprt ion garde els trace
+  2 SIGNALE ?
+  3 SIGNALE
+  4 blocage total actionnable
+
+● Pour le point 2, je tranche plutôt que de te renvoyer la question : SIGNALE,
+  et l'item est additionné. Si on l'additionne à tort, l'erreur ressort sous
+  forme d'un QTE visible plus un signalement : on obtient au pire un faux
+  positif. Si on l'écartait à tort, on pourrait cacher un vrai suspens. Le faux
+  négatif étant le pire cas, on additionne.
+
+  J'ajoute aussi les points 4 (paramétrage contrôlé) et 6 (encodage, en-tête
+  CSV), qui vont dans le même sens : « on garde la trace ». Je commence par les
+  tests.
+
+● Bash(python3 - <<'EOF'
+      p='tests/fabrique.py'; s=open(p).read()…)
+  ⎿  Updated tests/fabrique.py (+21 -3)
+      26      return tous
+      27  
+      28  
+      29 -def lancer(depot: dict[str, bytes], db: Path | None = DONNEES /
+         - "orsay.db"):                                                  
+      30 -    return rapprocher(depot, DONNEES / "parametrage.xlsx", db) 
+      29 +def lancer(                                                    
+      30 +    depot: dict[str, bytes],                                   
+      31 +    db: Path | None = DONNEES / "orsay.db",                    
+      32 +    param: Path = DONNEES / "parametrage.xlsx",                
+      33 +):                                                             
+      34 +    return rapprocher(depot, param, db)                        
+      35  
+      36  
+      37  def regles(resultat, niveau: str) -> set[str]:
+     ...
+      47  
+      48  
+      49  def xlsx_a(
+      46 -    titre: str | None = None, quantite: str | None = None, dupl
+         -iquer: int | None = None                                       
+      50 +    titre: str | None = None,                                  
+      51 +    quantite: str | None = None,                               
+      52 +    dupliquer: int | None = None,                              
+      53 +    ajouter: list | None = None,                               
+      54  ) -> bytes:
+      55      wb = openpyxl.load_workbook(DONNEES / A)
+      56      ws = wb.worksheets[0]
+     ...
+      60          ws["D4"] = quantite
+      61      if dupliquer is not None:
+      62          ws.append([cellule.value for cellule in ws[dupliquer]])
+      63 +    if ajouter is not None:                                    
+      64 +        ws.append(ajouter)                                     
+      65      sortie = io.BytesIO()
+      66      wb.save(sortie)
+      67      return sortie.getvalue()
+     ...
+      75          for requete in requetes:
+      76              db.execute(requete)
+      77      return copie
+      78 +                                                               
+      79 +                                                               
+      80 +def parametrage_modifie(dossier: Path, feuille: str, modifier) 
+         +-> Path:                                                       
+      81 +    """Copie de parametrage.xlsx dont la feuille est passée à `
+         +modifier(ws)`."""                                              
+     … 5 more lines (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='tests/test_nettoyage.py'; s=open(p).read()…)
+  ⎿  Updated tests/test_nettoyage.py (+99 -1)
+       3  import pytest
+       4  
+       5  from reco.sources import isin_valide
+       6 -from tests.fabrique import PMS, B, C, fichiers, lancer, regles,
+         - remplacer, xlsx_a                                             
+       6 +from tests.fabrique import (                                   
+       7 +    PMS,                                                       
+       8 +    B,                                                         
+       9 +    C,                                                         
+      10 +    fichiers,                                                  
+      11 +    lancer,                                                    
+      12 +    parametrage_modifie,                                       
+      13 +    regles,                                                    
+      14 +    remplacer,                                                 
+      15 +    xlsx_a,                                                    
+      16 +)                                                              
+      17  
+      18  
+      19  def test_fichiers_du_jour_non_bloques():
+     ...
+      84      assert resultat.statut == "BLOQUE"
+      85      assert regle in regles(resultat, "BLOQUANT")
+      86      assert resultat.suspens == []
+      87 +    assert all(a.remede for a in resultat.journal if a.niveau =
+         += "BLOQUANT")                                                  
+      88  
+      89  
+      90  def test_a_date_arrete_bloquante():
+     ...
+      109      resultat = lancer(fichiers(c=contenu))
+      110      assert resultat.statut == "OK"
+      111      assert "LIBELLE_DIFFERENT" in regles(resultat, "SIGNALE")
+      112 +                                                              
+      113 +                                                              
+      114 +# Revue étape 2 : une donnée ne sort pas de nulle part, et ne 
+          +disparaît pas sans trace.                                     
+      115 +def test_ligne_a_vide_ignoree():                              
+      116 +    resultat = lancer(fichiers(a=xlsx_a(ajouter=[None, None, "
+          + ", None])))                                                  
+      117 +    assert resultat.statut == "OK"                            
+      118 +                                                              
+      119 +                                                              
+      120 +def test_ligne_a_incomplete_bloquante():                      
+      121 +    resultat = lancer(fichiers(a=xlsx_a(ajouter=[None, "FR0000
+          +010001", "OAT 2.5% 2030", "1 000"])))                         
+      122 +    assert "LIGNE_INCOMPLETE" in regles(resultat, "BLOQUANT") 
+      123 +                                                              
+     … 75 more lines (ctrl+o to expand)
+
+● Les 24 échecs sont attendus : les tests BLOQUANT exigent désormais un remede,
+  tandis que les deux tests « ligne vide ignorée » passent déjà et serviront de
+  garde-fous. Je passe à l'implémentation.
+
+  Read 1 file (ctrl+o to expand)
+
+● Write(reco/sources.py)
+  ⎿  Added 102 lines, removed 95 lines
+      2  
+      3  Chaque parseur rend des `Position` en `Decimal` et trace dans so
+         n journal toute transformation :
+      4  NORMALISE (sens inchangé), EXCLU (règle client), SIGNALE (douteu
+         x, conservé), BLOQUANT (fichier refusé).
+      5 +Une donnée n'apparaît ni ne disparaît sans trace : une ligne vid
+        +e est ignorée, une ligne partielle bloque.                      
+      6  """
+      7  
+      8  import csv
+     ...
+      19  SOUS_COMPTES_EXCLUS = {"P3G"}
+      20  NS_C = {"c": "urn:orsay:depositaire-c:positions:2026"}
+      21  PROPS_C = ("ACTION", "COMPTE", "CODE_ISIN", "LIBELLE_TITRE", "Q
+          UANTITE")
+      22 +ACTIONS_C = {"C", "S"}  # C : position, S : annulation         
+      23 +COLONNES_PMS = ("date_arrete", "sous_compte", "isin", "libelle"
+         +, "quantite", "depositaire")                                   
+      24 +TYPES_REQUIS = ("QTE", "ABS_DEP", "ABS_INT", "DEP")            
+      25  
+      26 +# Ce que l'opérateur doit faire quand un fichier est refusé : u
+         +n blocage doit être actionnable.                               
+      27 +REMEDES = {                                                    
+      28 +    "DATE_ARRETE": "Redemander le fichier arrêté à la bonne dat
+         +e à son émetteur, puis relancer",                              
+      29 +    "TOTAL_CONTROLE": "Fichier tronqué ou altéré : le redemande
+         +r au conservateur, puis relancer",                             
+      30 +    "QUANTITE_ILLISIBLE": "Corriger la quantité de la ligne cit
+         +ée à la source, puis relancer",                                
+      31 +    "CONSERVATEUR_INCONNU": "Corriger le libellé de dépositaire
+         + « {brut} » dans le PMS, puis relancer",                       
+      32 +    "LIGNE_INCOMPLETE": "Compléter ou supprimer la ligne citée 
+         +à la source, puis relancer",                                   
+      33 +    "TYPE_LIGNE_INCONNU": "Type d'enregistrement inconnu : véri
+         +fier le format avec le conservateur",                          
+      34 +    "CHAMP_MANQUANT": "Item incomplet : redemander le fichier a
+         +u conservateur, puis relancer",                                
+      35 +    "FORMAT": "Le format du fichier a changé : le vérifier avec
+         + son émetteur avant de relancer",                              
+      36 +    "FORMAT_ILLISIBLE": "Redéposer le fichier d'origine, sans l
+         +'ouvrir ni le réenregistrer",                                  
+      37 +    "AUCUNE_LIGNE": "Aucune position lue : vérifier qu'il s'agi
+         +t du bon fichier et du bon format",                            
+      38 +    "FICHIER_MANQUANT": "Déposer le fichier manquant, puis rela
+         +ncer",                                                         
+      39 +    "FICHIERS_MULTIPLES": "Ne déposer qu'un fichier par source,
+         + puis relancer",                                               
+      40 +    "PARAMETRAGE": "Corriger parametrage.xlsx comme indiqué, pu
+         +is relancer",                                                  
+      41 +}                                                              
+      42  
+      43 +                                                               
+      44  @dataclass(frozen=True)
+      45  class Position:
+      46      source: str  # PMS, A, B, C
+     ...
+      66      brut: str
+      67      retenu: str
+      68      motif: str
+      69 +    remede: str = ""  # renseigné pour tout BLOQUANT : quoi fai
+         +re pour débloquer                                              
+      70  
+      71  
+      72 +def anomalie(fichier: str, ligne: int, niveau: str, regle: str,
+         + brut, retenu, motif: str,                                     
+      73 +             remede: str | None = None) -> Anomalie:  # fmt: sk
+         +ip                                                             
+      74 +    if remede is None and niveau == "BLOQUANT":                
+      75 +        remede = REMEDES[regle].format(brut=brut)              
+      76 +    return Anomalie(fichier, ligne, niveau, regle, str(brut), s
+         +tr(retenu), motif, remede or "")                               
+      77 +                                                               
+      78 +                                                               
+      79  @dataclass
+      80  class Parametrage:
+      81      sous_comptes: dict[str, str]
+     ...
+       92      journal: list[Anomalie] = field(default_factory=list)
+       93      _vues: set[tuple] = field(default_factory=set)
+       94  
+       66 -    def noter(self, niveau: str, regle: str, ligne: int, brut,
+          - retenu, motif: str) -> None:                                 
+       67 -        self.journal.append(                                  
+       68 -            Anomalie(self.fichier, ligne, niveau, regle, str(b
+          -rut), str(retenu), motif)                                     
+       69 -        )                                                     
+       95 +    def noter(self, niveau: str, regle: str, ligne: int, brut,
+          + retenu, motif: str,                                          
+       96 +              remede: str | None = None) -> None:  # fmt: skip
+       97 +        self.journal.append(anomalie(self.fichier, ligne, nive
+          +au, regle, brut, retenu, motif, remede))                      
+       98  
+       99 +    def transco_absente(self, ligne: int, valeur: str, table: 
+          +str) -> None:                                                 
+      100 +        self.noter("BLOQUANT", "TRANSCO", ligne, valeur, "", f
+          +"« {valeur} » absent de {table}",                             
+      101 +                   f"Ajouter « {valeur} » à la table {table} d
+          +e parametrage.xlsx, puis relancer")  # fmt: skip              
+      102 +                                                              
+      103      def ajouter(self, source: str, entite: str, isin: str, con
+           servateur: str,
+      104                  quantite: Decimal, libelle: str, ligne: int, c
+           ompte: str | None = None) -> None:  # fmt: skip
+      105          """`compte` : identifiant de ligne côté source ; deux 
+           lignes au même (compte, ISIN) sont
+     ...
+      111                  self.noter("SIGNALE", "DOUBLON", ligne, f"{com
+           pte} {isin}", quantite,
+      112                             "ligne en double (même compte et IS
+           IN) : additionnée, à vérifier")  # fmt: skip
+      113              self._vues.add(cle)
+      114 +        if quantite < 0 or quantite != quantite.to_integral_va
+          +lue():                                                        
+      115 +            # « 10.000 » lu comme 10 : on garde la valeur, mai
+          +s un humain doit la confirmer.                                
+      116 +            self.noter("SIGNALE", "QUANTITE_SUSPECTE", ligne, 
+          +quantite, quantite,                                           
+      117 +                       "quantité négative ou non entière : sép
+          +arateur de milliers mal lu ?")  # fmt: skip                   
+      118          self.positions.append(
+      119              Position(source, entite, isin, conservateur, quant
+           ite, libelle, self.fichier, ligne)
+      120          )
+      121  
+      122  
+      123  def lire_parametrage(chemin: Path) -> Parametrage:
+      124 +    """Lève ValueError, avec un message actionnable, si le par
+          +amétrage est incomplet ou contradictoire."""                  
+      125      wb = openpyxl.load_workbook(chemin, read_only=True, data_o
+           nly=True)
+      126  
+      127      def table(nom: str) -> list[tuple]:
+      128 +        if nom not in wb.sheetnames:                          
+      129 +            raise ValueError(f"feuille {nom} absente")        
+      130          lignes = list(wb[nom].iter_rows(values_only=True))
+       92 -        return [ligne for ligne in lignes[1:] if ligne[0] is n
+          -ot None]                                                      
+      131 +        return [ligne for ligne in lignes[1:] if ligne and lig
+          +ne[0] is not None]                                            
+      132  
+      133      def transco(nom: str) -> dict[str, str]:
+       95 -        return {str(cle).strip(): str(entite).strip() for cle,
+          - entite, *_ in table(nom)}                                    
+      134 +        resultat: dict[str, str] = {}                         
+      135 +        for cle, entite, *_ in table(nom):                    
+      136 +            cle, entite = str(cle).strip(), str(entite).strip(
+          +)                                                             
+      137 +            if resultat.setdefault(cle, entite) != entite:    
+      138 +                raise ValueError(f"{nom} : « {cle} » associé à
+          + « {resultat[cle]} » et à « {entite} »")                      
+      139 +        return resultat                                       
+      140  
+      141 +    types_ecarts = {str(code).strip(): (libelle, action) for c
+          +ode, libelle, action, *_ in table("TYPES_ECARTS")}            
+      142 +    manquants = [code for code in TYPES_REQUIS if code not in 
+          +types_ecarts]                                                 
+      143 +    if manquants:                                             
+      144 +        raise ValueError(f"TYPES_ECARTS : code(s) {', '.join(m
+          +anquants)} absent(s)")                                        
+      145      return Parametrage(
+      146          sous_comptes=transco("TRANSCO_SOUS_COMPTES"),
+      147          comptes_a=transco("TRANSCO_DEPOSITAIRE_A"),
+      148          desks_b=transco("TRANSCO_DEPOSITAIRE_B"),
+      149          comptes_c=transco("TRANSCO_DEPOSITAIRE_C"),
+      102 -        types_ecarts={                                        
+      103 -            code: (libelle, action) for code, libelle, action,
+          - *_ in table("TYPES_ECARTS")                                  
+      104 -        },                                                    
+      150 +        types_ecarts=types_ecarts,                            
+      151      )
+      152  
+      153  
+     ...
+      183      return valeur if valeur.is_finite() else None
+      184  
+      185  
+      186 +def _vide(valeur) -> bool:                                    
+      187 +    return valeur is None or str(valeur).strip() == ""        
+      188 +                                                              
+      189 +                                                              
+      190  def _isin(lecture: Lecture, ligne: int, brut: str) -> str:
+      191      isin = re.sub(r"\s", "", brut).upper()
+      192      if isin != brut:
+     ...
+      202          )  # fmt: skip
+      203  
+      204  
+      155 -def _texte(contenu: bytes) -> str:                            
+      205 +def _texte(lecture: Lecture, contenu: bytes) -> str:          
+      206      try:
+      207          return contenu.decode("utf-8-sig")
+      208      except UnicodeDecodeError:
+      209 +        lecture.noter("NORMALISE", "ENCODAGE", 0, "non UTF-8",
+          + "latin-1", "fichier décodé en latin-1")                      
+      210          return contenu.decode("latin-1")
+      211  
+      212  
+      213  def lire_pms(nom: str, contenu: bytes, param: Parametrage, dat
+           e_arrete: date) -> Lecture:
+      214      lecture = Lecture(nom)
+      164 -    lignes = csv.DictReader(io.StringIO(_texte(contenu), newli
+          -ne=""), delimiter=";")                                        
+      215 +    lignes = csv.DictReader(io.StringIO(_texte(lecture, conten
+          +u), newline=""), delimiter=";")                               
+      216 +    absentes = [c for c in COLONNES_PMS if c not in (lignes.fi
+          +eldnames or [])]                                              
+      217 +    if absentes:                                              
+      218 +        lecture.noter("BLOQUANT", "FORMAT", 1, ";".join(lignes
+          +.fieldnames or []), "",                                       
+      219 +                      f"colonne(s) absente(s) : {', '.join(abs
+          +entes)}")  # fmt: skip                                        
+      220 +        return lecture                                        
+      221 +                                                              
+      222      for num, ligne in enumerate(lignes, start=2):
+      166 -        brut = ";".join(v or "" for v in ligne.values())      
+      223 +        brut = ";".join(str(v or "") for v in ligne.values()) 
+      224          try:
+      225              lue = date.fromisoformat((ligne["date_arrete"] or 
+           "").strip())
+      226          except ValueError:
+     ...
+      229  
+      230          sous_compte = (ligne["sous_compte"] or "").strip()
+      231          if not sous_compte:
+      175 -            lecture.noter(                                    
+      176 -                "EXCLU",                                      
+      177 -                "SANS_SOUS_COMPTE",                           
+      178 -                num,                                          
+      179 -                brut,                                         
+      180 -                "",                                           
+      181 -                "ligne sans sous-compte : anomalie de saisie",
+      182 -            )                                                 
+      232 +            lecture.noter("EXCLU", "SANS_SOUS_COMPTE", num, br
+          +ut, "", "ligne sans sous-compte : anomalie de saisie")        
+      233              continue
+      234          if sous_compte in SOUS_COMPTES_EXCLUS:
+      235              lecture.noter("EXCLU", "P3G", num, brut, "", "comp
+           te technique de passage exclu")
+      236              continue
+      237          if sous_compte not in param.sous_comptes:
+      188 -            lecture.noter(                                    
+      189 -                "BLOQUANT",                                   
+      190 -                "TRANSCO",                                    
+      191 -                num,                                          
+      192 -                sous_compte,                                  
+      193 -                "",                                           
+      194 -                "sous-compte absent de TRANSCO_SOUS_COMPTES", 
+      195 -            )                                                 
+      238 +            lecture.transco_absente(num, sous_compte, "TRANSCO
+          +_SOUS_COMPTES")                                               
+      239              continue
+      240 +        if _vide(ligne["isin"]):                              
+      241 +            lecture.noter("BLOQUANT", "LIGNE_INCOMPLETE", num,
+          + brut, "", "ISIN vide")                                       
+      242 +            continue                                          
+      243  
+      244          libelle_cons = (ligne["depositaire"] or "").strip()
+      245          conservateur = code_conservateur(libelle_cons)
+      246          if conservateur is None:
+      201 -            lecture.noter(                                    
+      202 -                "BLOQUANT",                                   
+      203 -                "CONSERVATEUR_INCONNU",                       
+      204 -                num,                                          
+      205 -                libelle_cons,                                 
+      206 -                "",                                           
+      207 -                "libellé de conservateur inconnu",            
+      208 -            )                                                 
+      247 +            lecture.noter("BLOQUANT", "CONSERVATEUR_INCONNU", 
+          +num, libelle_cons, "", "libellé de conservateur inconnu")     
+      248              continue
+      210 -        lecture.noter(                                        
+      211 -            "NORMALISE",                                      
+      212 -            "LIBELLE_CONSERVATEUR",                           
+      213 -            num,                                              
+      214 -            libelle_cons,                                     
+      215 -            conservateur,                                     
+      216 -            "libellé → code conservateur",                    
+      217 -        )                                                     
+      249 +        lecture.noter("NORMALISE", "LIBELLE_CONSERVATEUR", num
+          +, libelle_cons, conservateur, "libellé → code conservateur")  
+      250  
+      251          quantite = _decimal((ligne["quantite"] or "").strip())
+      252          if quantite is None:
+      221 -            lecture.noter(                                    
+      222 -                "BLOQUANT",                                   
+      223 -                "QUANTITE_ILLISIBLE",                         
+      224 -                num,                                          
+      225 -                ligne["quantite"],                            
+      226 -                "",                                           
+      227 -                "quantité non numérique",                     
+      228 -            )                                                 
+      253 +            lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+          +m, ligne["quantite"], "", "quantité non numérique")           
+      254              continue
+      255  
+      231 -        isin = _isin(lecture, num, ligne["isin"] or "")       
+      256 +        isin = _isin(lecture, num, ligne["isin"])             
+      257          lecture.ajouter("PMS", param.sous_comptes[sous_compte]
+           , isin, conservateur, quantite,
+      258                          (ligne["libelle"] or "").strip(), num,
+            compte=sous_compte)  # fmt: skip
+      259      return lecture
+     ...
+      274          lecture.noter("BLOQUANT", "FORMAT", 0, "", "", "en-têt
+           e « Compte » introuvable")
+      275          return lecture
+      276  
+      252 -    for num, (compte, isin, designation, quantite, *_) in enum
+          -erate(                                                        
+      253 -        lignes[entete + 1 :], start=entete + 2                
+      254 -    ):                                                        
+      255 -        if compte is None:                                    
+      277 +    for num, cellules in enumerate(lignes[entete + 1 :], start
+          +=entete + 2):                                                 
+      278 +        compte, isin, designation, quantite = (list(cellules) 
+          ++ [None] * 4)[:4]                                             
+      279 +        if all(_vide(v) for v in cellules):                   
+      280              continue
+      281 +        if _vide(compte) or _vide(isin) or _vide(quantite):   
+      282 +            lecture.noter("BLOQUANT", "LIGNE_INCOMPLETE", num,
+          + cellules, "", "compte, ISIN ou quantité vide")               
+      283 +            continue                                          
+      284          compte = str(compte).strip()
+      285          if compte not in param.comptes_a:
+      259 -            lecture.noter(                                    
+      260 -                "BLOQUANT", "TRANSCO", num, compte, "", "compt
+          -e absent de TRANSCO_DEPOSITAIRE_A"                            
+      261 -            )                                                 
+      286 +            lecture.transco_absente(num, compte, "TRANSCO_DEPO
+          +SITAIRE_A")                                                   
+      287              continue
+      288          brut = str(quantite)
+      289          qte = _decimal(re.sub(r"\s", "", brut))
+     ...
+      291              lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+           m, brut, "", "quantité non numérique")
+      292              continue
+      293          if brut != str(qte):
+      269 -            lecture.noter(                                    
+      270 -                "NORMALISE", "SEPARATEUR_MILLIERS", num, brut,
+          - qte, "quantité texte → nombre"                               
+      271 -            )                                                 
+      294 +            lecture.noter("NORMALISE", "SEPARATEUR_MILLIERS", 
+          +num, brut, qte, "quantité texte → nombre")                    
+      295          lecture.ajouter("A", param.comptes_a[compte], _isin(le
+           cture, num, str(isin)), "A", qte,
+      296                          str(designation or "").strip(), num, c
+           ompte=compte)  # fmt: skip
+      297      return lecture
+     ...
+      300  def lire_depositaire_b(nom: str, contenu: bytes, param: Parame
+           trage, date_arrete: date) -> Lecture:
+      301      """Largeur fixe : H+date, D + desk(3) + ISIN(12) + quantit
+           é(15, 2 décimales implicites), T+nb."""
+      302      lecture = Lecture(nom)
+      280 -    lignes = _texte(contenu).splitlines()                     
+      303 +    lignes = _texte(lecture, contenu).splitlines()            
+      304      entete = next((ligne for ligne in lignes if ligne.startswi
+           th("H")), "")
+      305      try:
+      306          lue = date(int(entete[1:5]), int(entete[5:7]), int(ent
+           ete[7:9]))
+     ...
+      311      details = 0
+      312      controle = None
+      313      for num, ligne in enumerate(lignes, start=1):
+      314 +        if not ligne.strip():                                 
+      315 +            continue                                          
+      316 +        if ligne[0] not in "HDT":                             
+      317 +            lecture.noter("BLOQUANT", "TYPE_LIGNE_INCONNU", nu
+          +m, ligne, "", f"enregistrement de type « {ligne[0]} »")       
+      318 +            continue                                          
+      319          if ligne.startswith("T"):
+      320              controle = ligne
+      321          if not ligne.startswith("D"):
+     ...
+      326              lecture.noter("BLOQUANT", "FORMAT", num, ligne, ""
+           , "ligne de détail de longueur ≠ 31")
+      327              continue
+      328          if desk not in param.desks_b:
+      301 -            lecture.noter(                                    
+      302 -                "BLOQUANT", "TRANSCO", num, desk, "", "desk ab
+          -sent de TRANSCO_DEPOSITAIRE_B"                                
+      303 -            )                                                 
+      329 +            lecture.transco_absente(num, desk, "TRANSCO_DEPOSI
+          +TAIRE_B")                                                     
+      330              continue
+      331          if not brut.isdigit():
+      332              lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+           m, brut, "", "quantité non numérique")
+      333              continue
+      334          qte = Decimal(brut).scaleb(-2)
+      335          lecture.noter("NORMALISE", "DECIMALES_IMPLICITES", num
+           , brut, qte, "2 décimales implicites")
+      310 -        lecture.ajouter(                                      
+      311 -            "B", param.desks_b[desk], _isin(lecture, num, isin
+          -), "B", qte, "", num, compte=desk                             
+      312 -        )                                                     
+      336 +        lecture.ajouter("B", param.desks_b[desk], _isin(lectur
+          +e, num, isin), "B", qte, "", num, compte=desk)                
+      337  
+      338      if controle is None or not controle[1:].isdigit() or int(c
+           ontrole[1:]) != details:
+      339          lecture.noter("BLOQUANT", "TOTAL_CONTROLE", len(lignes
+           ), controle, details,
+     ...
+      360  
+      361      for num, item in enumerate(items, start=1):
+      362          dims = {dim.get("prop"): (dim.text or "").strip() for 
+           dim in item.iterfind("c:Dim", NS_C)}
+      339 -        manquants = [p for p in PROPS_C if p not in dims]     
+      363 +        manquants = [p for p in PROPS_C if p not in dims or (p
+          + != "LIBELLE_TITRE" and not dims[p])]                         
+      364          if manquants:
+      341 -            lecture.noter(                                    
+      342 -                "BLOQUANT",                                   
+      343 -                "CHAMP_MANQUANT",                             
+      344 -                num,                                          
+      345 -                dims,                                         
+      346 -                "",                                           
+      347 -                f"Dim manquant : {', '.join(manquants)}",     
+      348 -            )                                                 
+      365 +            lecture.noter("BLOQUANT", "CHAMP_MANQUANT", num, d
+          +ims, "", f"Dim manquant ou vide : {', '.join(manquants)}")    
+      366              continue
+      367          if dims["ACTION"] == "S":
+      351 -            lecture.noter(                                    
+      352 -                "EXCLU",                                      
+      353 -                "ANNULATION_S",                               
+      354 -                num,                                          
+      355 -                dims,                                         
+      356 -                "",                                           
+      357 -                "item annulé (ACTION=S), ni ajouté ni soustrai
+          -t",                                                           
+      358 -            )                                                 
+      368 +            lecture.noter("EXCLU", "ANNULATION_S", num, dims, 
+          +"", "item annulé (ACTION=S), ni ajouté ni soustrait")         
+      369              continue
+      370 +        if dims["ACTION"] not in ACTIONS_C:                   
+      371 +            # Additionné plutôt qu'écarté : une erreur ressort
+          + en QTE visible, jamais en suspens caché.                     
+      372 +            lecture.noter("SIGNALE", "ACTION_INCONNUE", num, d
+          +ims["ACTION"], "C",                                           
+      373 +                          f"ACTION « {dims['ACTION']} » inconn
+          +ue : item additionné, à vérifier")  # fmt: skip               
+      374          if dims["COMPTE"] not in param.comptes_c:
+      361 -            lecture.noter(                                    
+      362 -                "BLOQUANT",                                   
+      363 -                "TRANSCO",                                    
+      364 -                num,                                          
+      365 -                dims["COMPTE"],                               
+      366 -                "",                                           
+      367 -                "compte absent de TRANSCO_DEPOSITAIRE_C",     
+      368 -            )                                                 
+      375 +            lecture.transco_absente(num, dims["COMPTE"], "TRAN
+          +SCO_DEPOSITAIRE_C")                                           
+      376              continue
+      377          brut = dims["QUANTITE"]
+      378          qte = _decimal(brut.replace(",", "."))
+
+● Ensuite rapprochement.py : contrôle du paramétrage et remèdes pour les
+  blocages au niveau du dépôt.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      p='reco/rapprochement.py'; s=open(p).read()…)
+  ⎿  Updated reco/rapprochement.py (+10 -3)
+      17      Lecture,
+      18      Parametrage,
+      19      Position,
+      20 +    anomalie,                                                  
+      21      isin_valide,
+      22      lire_depositaire_a,
+      23      lire_depositaire_b,
+     ...
+      280      Une seule anomalie BLOQUANT suffit à refuser le rapprochem
+           ent : un rapprochement partiel
+      281      rendrait des faux négatifs invisibles. orsay.db est facult
+           ative : elle informe, elle ne décide pas.
+      282      """
+      282 -    param = lire_parametrage(parametrage)                     
+      283      resultat = Resultat()
+      284 +    try:                                                      
+      285 +        param = lire_parametrage(parametrage)                 
+      286 +    except Exception as erreur:  # sans paramétrage fiable, au
+          +cun fonds n'est identifiable                                  
+      287 +        resultat.journal.append(anomalie(Path(parametrage).nam
+          +e, 0, "BLOQUANT", "PARAMETRAGE", "", "",                      
+      288 +                                         f"{type(erreur).__nam
+          +e__} : {erreur}"))  # fmt: skip                               
+      289 +        resultat.statut = "BLOQUE"                            
+      290 +        return resultat                                       
+      291      pms: list[Position] = []
+      292      dep: list[Position] = []
+      293      for source, (prefixe, lecteur) in LECTEURS.items():
+     ...
+      299                  else ("FICHIERS_MULTIPLES", f"{len(noms)} fich
+           iers {source} : lequel est le bon ?")
+      300              )
+      301              resultat.journal.append(
+      295 -                Anomalie(prefixe, 0, "BLOQUANT", regle, ", ".j
+          -oin(noms), "", motif)                                         
+      302 +                anomalie(prefixe, 0, "BLOQUANT", regle, ", ".j
+          +oin(noms), "", motif)                                         
+      303              )
+      304              continue
+      305          nom = noms[0]
+      306          try:
+      307              lecture: Lecture = lecteur(nom, fichiers[nom], par
+           am, date_arrete)
+      308          except Exception as erreur:  # fichier corrompu ou for
+           mat inattendu : refusé, pas deviné
+      302 -            resultat.journal.append(Anomalie(nom, 0, "BLOQUANT
+          -", "FORMAT_ILLISIBLE", "", "",                                
+      309 +            resultat.journal.append(anomalie(nom, 0, "BLOQUANT
+          +", "FORMAT_ILLISIBLE", "", "",                                
+      310                                               f"{type(erreur)._
+           _name__} : {erreur}"))  # fmt: skip
+      311              continue
+      312          if not lecture.positions:
+  ⎿  Updated reco/sources.py (+77 -14)
+       94  
+       95      def noter(self, niveau: str, regle: str, ligne: int, brut,
+            retenu, motif: str,
+       96                remede: str | None = None) -> None:  # fmt: skip
+       97 -        self.journal.append(anomalie(self.fichier, ligne, nive
+          -au, regle, brut, retenu, motif, remede))                      
+       97 +        self.journal.append(                                  
+       98 +            anomalie(self.fichier, ligne, niveau, regle, brut,
+          + retenu, motif, remede)                                       
+       99 +        )                                                     
+      100  
+      101      def transco_absente(self, ligne: int, valeur: str, table: 
+           str) -> None:
+      102          self.noter("BLOQUANT", "TRANSCO", ligne, valeur, "", f
+           "« {valeur} » absent de {table}",
+     ...
+      137          for cle, entite, *_ in table(nom):
+      138              cle, entite = str(cle).strip(), str(entite).strip(
+           )
+      139              if resultat.setdefault(cle, entite) != entite:
+      138 -                raise ValueError(f"{nom} : « {cle} » associé à
+          - « {resultat[cle]} » et à « {entite} »")                      
+      140 +                raise ValueError(                             
+      141 +                    f"{nom} : « {cle} » associé à « {resultat[
+          +cle]} » et à « {entite} »"                                    
+      142 +                )                                             
+      143          return resultat
+      144  
+      141 -    types_ecarts = {str(code).strip(): (libelle, action) for c
+          -ode, libelle, action, *_ in table("TYPES_ECARTS")}            
+      145 +    types_ecarts = {                                          
+      146 +        str(code).strip(): (libelle, action) for code, libelle
+          +, action, *_ in table("TYPES_ECARTS")                         
+      147 +    }                                                         
+      148      manquants = [code for code in TYPES_REQUIS if code not in 
+           types_ecarts]
+      149      if manquants:
+      150          raise ValueError(f"TYPES_ECARTS : code(s) {', '.join(m
+           anquants)} absent(s)")
+     ...
+      212      try:
+      213          return contenu.decode("utf-8-sig")
+      214      except UnicodeDecodeError:
+      209 -        lecture.noter("NORMALISE", "ENCODAGE", 0, "non UTF-8",
+          - "latin-1", "fichier décodé en latin-1")                      
+      215 +        lecture.noter(                                        
+      216 +            "NORMALISE", "ENCODAGE", 0, "non UTF-8", "latin-1"
+          +, "fichier décodé en latin-1"                                 
+      217 +        )                                                     
+      218          return contenu.decode("latin-1")
+      219  
+      220  
+     ...
+      237  
+      238          sous_compte = (ligne["sous_compte"] or "").strip()
+      239          if not sous_compte:
+      232 -            lecture.noter("EXCLU", "SANS_SOUS_COMPTE", num, br
+          -ut, "", "ligne sans sous-compte : anomalie de saisie")        
+     … 119 more lines (ctrl+o to expand)
+
+● Un test échoue encore : "10.000" devient Decimal("10.000") = 10, un entier,
+  donc mon contrôle "non entier" ne détecte pas le piège. Je vais plutôt
+  vérifier le texte brut : un séparateur suivi d'exactement 3 chiffres (comme
+  "10.000" ou "1,500") signale un séparateur de milliers, contrairement à
+  "50000,00" où la virgule est suivie de 2 chiffres.
+
+● Bash(python3 - <<'EOF'
+      p='reco/sources.py'; s=open(p).read()…)  ⎿  Updated reco/sources.py (+11 -2)
+      114                             "ligne en double (même compte et IS
+           IN) : additionnée, à vérifier")  # fmt: skip
+      115              self._vues.add(cle)
+      116          if quantite < 0 or quantite != quantite.to_integral_va
+           lue():
+      117 -            # « 10.000 » lu comme 10 : on garde la valeur, mai
+          -s un humain doit la confirmer.                                
+      117              self.noter("SIGNALE", "QUANTITE_SUSPECTE", ligne, 
+           quantite, quantite,
+      119 -                       "quantité négative ou non entière : sép
+          -arateur de milliers mal lu ?")  # fmt: skip                   
+      118 +                       "quantité négative ou non entière : à c
+          +onfirmer")  # fmt: skip                                       
+      119          self.positions.append(
+      120              Position(source, entite, isin, conservateur, quant
+           ite, libelle, self.fichier, ligne)
+      121          )
+     ...
+      188      return valeur if valeur.is_finite() else None
+      189  
+      190  
+      191 +def _separateur_ambigu(lecture: Lecture, ligne: int, brut: str
+          +) -> None:                                                    
+      192 +    """« 10.000 » se lit 10 mais veut sans doute dire 10 000 :
+          + la valeur est gardée, un humain confirme."""                 
+      193 +    if re.search(r"\d[.,]\d{3}$", brut.strip()):              
+      194 +        lecture.noter("SIGNALE", "QUANTITE_SUSPECTE", ligne, b
+          +rut, brut,                                                    
+      195 +                      "séparateur suivi de 3 chiffres : sépara
+          +teur de milliers probable")  # fmt: skip                      
+      196 +                                                              
+      197 +                                                              
+      198  def _vide(valeur) -> bool:
+      199      return valeur is None or str(valeur).strip() == ""
+      200  
+     ...
+      284          )
+      285  
+      286          quantite = _decimal((ligne["quantite"] or "").strip())
+      287 +        _separateur_ambigu(lecture, num, ligne["quantite"] or 
+          +"")                                                           
+      288          if quantite is None:
+      289              lecture.noter(
+      290                  "BLOQUANT",
+     ...
+      332              continue
+      333          brut = str(quantite)
+      334          qte = _decimal(re.sub(r"\s", "", brut))
+      335 +        _separateur_ambigu(lecture, num, brut)                
+      336          if qte is None:
+      337              lecture.noter("BLOQUANT", "QUANTITE_ILLISIBLE", nu
+           m, brut, "", "quantité non numérique")
+      338              continue
+     ...
+      447              continue
+      448          brut = dims["QUANTITE"]
+      449          qte = _decimal(brut.replace(",", "."))
+     … 4 more lines (ctrl+o to expand)
+
+● Les 52 tests passent sans faux positif sur les vraies données. J'ajoute
+  l'affichage du remède en CLI, mets à jour NOTES.md, puis je commite.
+
+● Bash(python3 - <<'EOF'
+      p='reco/__main__.py'; s=open(p).read()…)
+  ⎿  Updated NOTES.md (+8 -0)
+      106  - **Piste** : cite le n° d'opération et calcule si le net sign
+           é (achats − ventes en attente) explique l'écart : entièrement,
+            partiellement (« reste X ») ou pas du tout. « Explication pos
+           sible seulement » si le fonds détient le titre chez plusieurs 
+           conservateurs, puisque `mouvements` n'a pas de colonne conserv
+           ateur.
+      107  - **Oublis ajoutés** : opération EN_ATTENTE dont la date de dé
+           nouement est passée → SIGNALE `DENOUEMENT_DEPASSE` (risque CSD
+           R) ; position nulle = absence (pas d'ABS_DEP pour 0 titre) ; l
+           igne en double chez PMS, A ou B → additionnée mais SIGNALE `DO
+           UBLON` ; deux fichiers pour une même source → BLOQUANT `FICHIE
+           RS_MULTIPLES`.
+      108  - **Limites non traitées** : unités (nominal vs nombre de titr
+           es selon le conservateur), titre trouvé dans un *autre fonds* 
+           (probable erreur de transco, 2 suspens non fusionnés), ancienn
+           eté des suspens d'un jour sur l'autre.
+      109 +                                                              
+      110 +## Revue étape 2 (10/10)                                      
+      111 +- **Une donnée ne sort pas de nulle part et ne disparaît pas s
+          +ans trace** : une ligne vraiment vide est ignorée ; une ligne 
+          +partiellement remplie (A : compte, ISIN ou quantité vide ; PMS
+          + : ISIN vide ; C : Dim vide) ou d'un type inconnu (B : ni H, n
+          +i D, ni T) → BLOQUANT. Avant, A et B jetaient ces lignes sans 
+          +rien dire, d'où des faux négatifs invisibles.                 
+      112 +- **ACTION inconnue chez C** → SIGNALE, et l'item est **additi
+          +onné** : une erreur ressort alors en QTE visible (faux positif
+          +), au lieu d'un suspens caché (faux négatif, le pire cas).    
+      113 +- **Quantité suspecte** → SIGNALE : négative, non entière, ou 
+          +texte brut avec un séparateur suivi de 3 chiffres (« 10.000 » 
+          +se lit 10). Piège trouvé par le test : `Decimal("10.000")` est
+          + entier, donc le contrôle doit porter sur le texte brut, pas s
+          +ur la valeur.                                                 
+      114 +- **Paramétrage contrôlé** : feuille absente, code absent de T
+          +YPES_ECARTS ou transco contradictoire (même clé, deux fonds) →
+          + BLOQUANT `PARAMETRAGE`. Avant, le programme plantait, ou le d
+          +ernier fonds lu gagnait en silence.                           
+      115 +- **Blocage total mais actionnable** : tout BLOQUANT porte un 
+          +`remede` (« Ajouter « SC-XXX-01 » à la table TRANSCO_SOUS_COMP
+          +TES… »). Alternative écartée : blocage par fonds. Un sous-comp
+          +te inconnu, c'est un fonds inconnu, donc aucun fonds n'est gar
+          +anti.                                                         
+      116 +- Traces ajoutées : décodage latin-1 (NORMALISE `ENCODAGE`), c
+          +olonnes CSV absentes (BLOQUANT `FORMAT` lisible, au lieu d'un 
+          +`KeyError`).                                                  
+  ⎿  Updated reco/__main__.py (+2 -0)
+      31      for a in resultat.journal:
+      32          if a.niveau != "NORMALISE":
+      33              print(f"  {a.niveau:<9} {a.regle:<21} {a.fichier}:{
+          a.ligne}  {a.motif}")
+      34 +            if a.remede:                                       
+      35 +                print(f"            → {a.remede}")             
+      36  
+      37  
+      38  if __name__ == "__main__":
+
+● J'ai appliqué les corrections de la revue de l'étape 2 et je les ai commitées
+  (5cbb482). Les 52 tests passent et ruff ne signale rien. Sur les vraies
+  données, on a toujours 7 suspens et aucun nouveau signalement parasite.
+
+  Ce qui a changé
+
+  Ta décision: Ligne vide ignorée, ligne partielle ou de type inconnu bloquée
+  Implémentation: BLOQUANT LIGNE_INCOMPLETE (A, PMS), TYPE_LIGNE_INCONNU (B) ;
+  un
+  Dim vide chez C → CHAMP_MANQUANT
+  Test: 6 tests, dont 2 qui vérifient qu'une ligne vraiment vide passe
+  ────────────────────────────────────────
+  Ta décision: ACTION inconnue chez C → SIGNALE
+  Implémentation: L'item est additionné, pour que l'erreur reste visible
+  Test: ESSILOR avec M → toujours 7 suspens, et un signalement
+  ────────────────────────────────────────
+  Ta décision: Quantité suspecte → SIGNALE
+  Implémentation: Négative, non entière, ou séparateur suivi de 3 chiffres
+  Test: 10.000 et -10000
+  ────────────────────────────────────────
+  Ta décision: Blocage total mais actionnable
+  Implémentation: Chaque BLOQUANT porte un champ remede, du type « Ajouter «
+  SC-XXX-01 » à la table TRANSCO_SOUS_COMPTES de parametrage.xlsx, puis
+  relancer »
+  Test: Tous les cas bloquants vérifient la présence d'un remède
+  ────────────────────────────────────────
+  Ta décision: Paramétrage contrôlé (inclus, même logique)
+  Implémentation: BLOQUANT PARAMETRAGE si un code manque ou si la transco est
+  contradictoire
+  Test: 2 tests sur des copies modifiées
+
+  Un point à retenir pour la restitution
+
+  Le test a attrapé une erreur dans mon raisonnement. J'avais écrit « quantité
+  non entière → signalée » pour attraper 10.000. Or Decimal("10.000") vaut 10,
+  un entier, donc le contrôle ne voyait rien. Il faut regarder le texte brut,
+  pas la valeur. C'est exactement pourquoi on écrit le test avant le code : sans
+  lui, j'aurais annoncé une protection qui ne protégeait rien.
+
+  Questions pour challenger cette version
+
+  1. Le motif \d[.,]\d{3}$ a un angle mort : 1.000.000 est bloqué (illisible),
+     ce qui est bien, mais un nominal légitime de 2.500 en notation US serait
+     signalé à tort. C'est un faux positif acceptable à tes yeux ?
+  2. Les remèdes sont rédigés par moi. Dans la vraie vie, le responsable middle
+     office devrait les valider : « redemander le fichier » n'est peut-être pas
+     la procédure d'Orsay. Faut-il les citer comme « à valider avec le client »
+     dans la restitution ?
+
+  Prochaine étape, la 3 : l'API FastAPI et la page HTML (dépôt des fichiers,
+  tableau des suspens filtrable, onglet journal filtrable par niveau, pour noyer
+  les 69 NORMALISE). Je l'implémente puis on fait la revue ensemble, comme pour
+  les étapes 1 et 2 ?

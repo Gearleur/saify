@@ -1,0 +1,588 @@
+
+❯ /grill consigne a partir de lenoncer du client qui se toruve dans docs
+Enonce.html on va esmeble construire une solution en 1H pour repondre au besoin
+client? on va cherhcer les tenant et aboutissant de cette demande, on va
+essayer de se challenger sur ce qui doit etre irreprochable, sans faute,
+comprendre en profondeur ensmeble le besoin cleitns et livrer un front
+fonctionnelle en html.
+
+  Listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+
+● Reading done; I'm checking two details in the data (ISIN check digits,
+  separators in file A) before writing up the framing.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Write(NOTES.md)
+  ⎿  Wrote 46 lines to NOTES.md
+      1 # Notes de cadrage : Orsay Gestion (arrêté du 25/09/2026)
+      3 ## Le besoin en 5 lignes
+      4 1. **Client** : Orsay Gestion, une SGP agréée AMF, 3 FCP (PAT, OB
+        ).
+      5 2. **Problème** : chaque matin, 1 h 30 de rapprochement manuel PM
+        ités CSDR et une remontée au RCCI.
+      6 3. **Utilisateurs** : l'opérateur middle office (rapprochement),
+        rants et le RCCI (questions sur la base).
+      7 4. **Coût d'erreur** : un **faux négatif** (suspens raté) coûte d
+        e cas.
+     … +78 lines (ctrl+o to expand)
+
+● Write(docs/adr/0001-moteur-deterministe-front-html.md)
+  ⎿  Wrote 19 lines to docs/adr/0001-moteur-deterministe-front-html.md
+       1 # ADR 0001 : moteur de rapprochement déterministe, front HTML se
+       2
+       4 - Date : 2026-10-10
+       6 ## Contexte
+         monte au RCCI, et un chiffre inventé est un incident. Les règles
+          de rapprochement sont explicites et sans tolérance. Les gérants
+         it jamais être modifiée.
+       9 ## Décision
+         teur, `Decimal`, contrôles d'en-tête et de fin de fichier, typol
+         S.md. Une page HTML unique, servie par FastAPI,
+     … +32 lines (ctrl+o to expand)
+
+● J'ai lu l'énoncé, les 6 fichiers et la base. J'ai aussi calculé à la main le
+  résultat attendu, qui servira d'oracle pour les tests. Tout est consigné dans
+  NOTES.md et dans l'ADR 0001 (docs/adr/0001-moteur-deterministe-front-html.md),
+  au statut « proposé ». À noter : docs/CONSIGNE.md est vide, la vraie consigne
+  est dans ENONCE.html.
+
+  Le besoin en 5 lignes
+
+  1. Client : Orsay Gestion, une société de gestion agréée AMF, avec 3 FCP
+     (Patrimoine, Obligations, Actions Europe) et 3 conservateurs (A = CACEIS, B
+     = Euroclear, C = BNP/BP2S).
+  2. Problème : 1 h 30 de rapprochement manuel chaque matin entre l'inventaire
+     PMS et les relevés à J−1. Les suspens sont vus tard, d'où des pénalités
+     CSDR et une remontée au RCCI.
+  3. Utilisateurs : l'opérateur middle office (rapprochement), son responsable
+     (point de situation). Pour le besoin 2 : les gérants et le RCCI (questions
+     sur la base).
+  4. Coût d'erreur : le pire cas est le faux négatif, un suspens raté
+     (pénalités, conformité). Un faux positif fait perdre du temps et la
+     confiance dans l'outil. Pour le besoin 2, un chiffre inventé = un incident
+     chez le RCCI.
+  5. Bonne réponse : la liste exhaustive et exacte des suspens par fonds, ISIN
+     et conservateur, avec type et action attendue selon le paramétrage. Elle
+     doit être traçable jusqu'aux lignes sources et exportable telle quelle pour
+     le responsable.
+
+  Ce que les données cachent
+
+  - Les 7 suspens attendus :
+    - 3 écarts de quantité : Schneider, Safran, SFIL. Les deux premiers
+      s'expliquent par des opérations non dénouées dans la base ; SFIL n'a
+      aucune explication.
+    - 2 positions absentes chez le conservateur : EDF, et une ligne à ISIN
+      invalide.
+    - 1 titre chez le mauvais conservateur : AFD, attendu chez A et livré chez
+      B. Il compte pour un seul suspens.
+    - 1 position absente du PMS : LVMH, chez B.
+  - Pièges de format :
+    - CSV : ISIN en minuscules avec espaces, libellés de conservateur variés.
+    - Fichier A : quantités en texte ("10 000").
+    - Fichier B : 2 décimales implicites.
+    - Fichier C : plusieurs lots à additionner, une annulation (S), un namespace
+      XML.
+  - Lignes à exclure : le sous-compte P3G (999 999), la ligne Sanofi sans
+    sous-compte, et des sous-comptes à agréger par fonds.
+  - Piège du besoin 2 : une obligation se valorise en nominal × cours / 100. Il
+    ne faut pas multiplier par valeur_nominale, et il n'y a pas de coupon couru
+    (cours pied de coupon).
+
+  5 questions (chacune avec ma réponse par défaut)
+
+  1. Priorité : le besoin 1 bouclé et irréprochable d'abord, puis le besoin 2 en
+     version minimale (3 ou 4 questions types). Défaut : oui.
+  2. Livrable : une page HTML unique servie par FastAPI (uv run uvicorn
+     app.main:app). On y dépose les 4 fichiers, la page affiche les suspens
+     filtrables par fonds et conservateur, plus un bouton « point de situation »
+     à copier ou télécharger en Markdown/CSV. Défaut : oui, sans framework JS.
+  3. Lignes exclues (sans sous-compte, ISIN invalide, P3G) : la ligne sans
+     sous-compte sort du rapprochement mais apparaît dans un encart « anomalies
+     de saisie ». L'ISIN invalide reste un suspens ABS_DEP avec un drapeau «
+     ISIN invalide ». Défaut : oui.
+  4. Besoin 2 : LLM et garde-fous : Claude choisit parmi environ 5 requêtes SQL
+     en liste blanche (encours valorisé, tombées d'échéances, concentration par
+     émetteur, opérations non dénouées, origine d'un suspens), sur une base
+     ouverte en lecture seule. On affiche la requête et les lignes sources ;
+     hors liste, il répond « je ne sais pas ». Pour le modèle, je propose Claude
+     Sonnet 5.5, plus rapide et moins cher (clé plafonnée), plutôt qu'Opus.
+     Défaut : oui.
+  5. Langue et démo : interface et point de situation en français, démo sur
+     l'arrêté du 25/09 uniquement. Un fichier dont la date d'arrêté ou le total
+     de contrôle est incohérent est bloqué, avec un message explicite. Défaut :
+     oui.
+
+  Réponds « ok » ou corrige point par point. J'écrirai ensuite le plan en 5 à 8
+  étapes, avec durées et tests, et j'attendrai ton accord avant de coder.
+
+❯ <ide_opened_file>The user opened the file
+  /home/gearleur/projects/saify/data/donnees/positions_internes.csv in the IDE.
+  This may or may not be related to the current task.</ide_opened_file>
+
+❯ on va faire desq fichiers de pour clean la data automatiquement je pense que
+  c'est un besoin clair du client, de la data fausse opu ,o, relevant est a
+  signaler quand on clean de la data et pourquoi,
+
+  on s'occupera du bvesoin 2 plus tard on priosirse le besoin 12 et on
+  attaquera le besoin 2 si on a du temps
+
+  detaillon le cas 1C
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(cat >> NOTES.md <<'EOF'…)
+  ⎿  Updated NOTES.md (+10 -0)
+      44  - Le rapprochement se fait à la date d'arrêté du 25/09. Un fich
+          ier daté autrement est bloqué, pas rapproché.
+      45  - L'explication « opération non dénouée » vient de `mouvements`
+           (statut EN_ATTENTE), à titre informatif, sans changer le type 
+          de suspens.
+      46  - Je traite d'abord le besoin 1, à fiabilité maximale et sans L
+          LM. Le besoin 2 vient ensuite, en version minimale.
+      47 +                                                               
+      48 +## Décisions du 10/10 (après cadrage)                          
+      49 +- Le besoin 1 passe en priorité. Le besoin 2 ne sera traité que
+         + s'il reste du temps.                                          
+      50 +- Le **nettoyage automatique** est un livrable à part entière :
+         + chaque transformation est tracée dans un **journal de nettoyag
+         +e** (fichier, ligne, valeur brute, valeur retenue, règle, motif
+         +).                                                             
+      51 +- Le nettoyage classe chaque anomalie en 4 niveaux :           
+      52 +  - `NORMALISE` : valeur corrigée sans changer son sens (casse 
+         +et espaces d'un ISIN, `"10 000"` → 10000, décimales implicites,
+         + virgule décimale, libellé de conservateur → A/B/C).           
+      53 +  - `EXCLU` : ligne non pertinente, retirée en citant la règle 
+         +client (P3G, sans sous-compte, annulation `S`).                
+      54 +  - `SIGNALE` : ligne conservée mais douteuse (clé ISIN invalid
+         +e, ISIN absent du référentiel, libellés PMS et conservateur dif
+         +férents).                                                      
+      55 +  - `BLOQUANT` : le fichier ne peut pas être rapproché (date d'
+         +arrêté ≠ 25/09, total de contrôle faux, compte ou sous-compte a
+         +bsent de la transco, quantité illisible, libellé de conservateu
+         +r inconnu).                                                    
+      56 +- Les fichiers sont transmis par le navigateur en base64 dans d
+         +u JSON. Cela évite la dépendance `python-multipart`.           
+
+● J'ai lu « détaillons le cas 1C » comme « détaillons le besoin 1 », et j'ai
+  détaillé à part le conservateur C, le plus piégeux. Si tu voulais dire autre
+  chose, corrige-moi. Le besoin 2 est reporté, et j'ai ajouté la décision «
+  nettoyage tracé » dans NOTES.md.
+
+  Besoin 1 en détail
+
+  Chaîne de traitement
+
+  On dépose les 4 fichiers. Chaque source passe dans son module de nettoyage,
+  qui produit des lignes propres et un journal. Le rapprochement se fait ensuite
+  par (fonds, ISIN, conservateur). La page affiche les suspens, le journal et
+  le point de situation.
+
+  Le nettoyage : un module par source, quatre niveaux d'anomalie
+
+  ┌───────────┬─────────────────────┬───────────────────────────────────────┐
+  │  Niveau   │        Effet        │  Exemples dans les données du 25/09   │
+  ├───────────┼─────────────────────┼───────────────────────────────────────┤
+  │           │ Valeur corrigée,    │ ISIN fr0000014078 → FR0000014078 ;    │
+  │ NORMALISÉ │ sens inchangé,      │ "10 000" → 10000 ; B …00000000500000  │
+  │           │ tracé               │ → 5000,00 ; « Caceis Bank France » →  │
+  │           │                     │ A                                     │
+  ├───────────┼─────────────────────┼───────────────────────────────────────┤
+  │           │ Ligne retirée,      │ P3G BTF 999 999 (compte de passage) ; │
+  │ EXCLU     │ motif = règle       │  SANOFI 12 345 sans sous-compte       │
+  │           │ client              │ (saisie incomplète) ; C RTE lot 2 S   │
+  │           │                     │ (annulé)                              │
+  ├───────────┼─────────────────────┼───────────────────────────────────────┤
+  │ SIGNALÉ   │ Ligne gardée, mais  │ FR0000012966 : clé ISIN invalide,     │
+  │           │ douteuse            │ absent du référentiel                 │
+  ├───────────┼─────────────────────┼───────────────────────────────────────┤
+  │           │ Fichier refusé, pas │ Date d'arrêté ≠ 25/09, T000013 ≠      │
+  │ BLOQUANT  │  de rapprochement   │ nombre de lignes D, NbItems ≠ nombre  │
+  │           │ partiel             │ d'Item, compte absent de la transco,  │
+  │           │                     │ quantité illisible                    │
+  └───────────┴─────────────────────┴───────────────────────────────────────┘
+
+  Pourquoi un niveau BLOQUANT ? Un fichier tronqué rapproché quand même
+  produirait de faux suspens, et en masquerait d'autres. Mieux vaut un refus
+  explicite qu'un rapprochement faux.
+
+  Le conservateur C, règle par règle
+
+  - Le namespace urn:orsay:depositaire-c:positions:2026 est obligatoire. Sans
+    lui, aucun Item n'est trouvé et on obtiendrait 0 position sans erreur, le
+    pire faux négatif. On ajoute donc un contrôle : 0 Item lu = BLOQUANT.
+  - Les champs sont lus par Dim[@prop=…] et non par position. Un prop
+    obligatoire manquant = BLOQUANT.
+  - DateArrete est au format JJMMAAAA (25092026), à ne pas lire comme AAAAMMJJ.
+  - Le contrôle NbItems compte annulations comprises : on compare 9 à tous les
+    Item, avant le filtre S.
+  - S signifie annulation, donc EXCLU. Je ne le soustrais pas : RTE lot 1 vaut
+    25 000 et lot 2 S vaut 10 000 ; soustraire donnerait 15 000, un faux
+    suspens.
+  - Les lots sont additionnés par (compte, ISIN) : HERMES 10 000 + 15 000 = 25
+    000, ce qui rapproche le PMS (12 500 + 12 500 sur deux sous-comptes).
+  - La quantité a une virgule décimale (50000,00) et se lit en Decimal.
+  - Le compte passe par la transco (ORS-PAT → ORSAY PATRIMOINE). Un compte
+    inconnu = BLOQUANT.
+
+  Le rapprochement
+
+  1. On agrège le PMS (sous-comptes → fonds) et les conservateurs (comptes →
+     fonds, lots additionnés).
+  2. On fait une jointure complète sur (fonds, ISIN, conservateur). Si les deux
+     quantités existent et diffèrent, même d'une unité, c'est un QTE.
+  3. DEP : un ABS_DEP chez X et un ABS_INT chez Y, pour le même fonds et le même
+     ISIN, fusionnent en un seul DEP. Le cas AFD donne donc 1 suspens et non 2.
+     Si la quantité diffère aussi, l'écart est mentionné dans le DEP.
+  4. Pour chaque suspens, on cherche dans orsay.db (lecture seule, information
+     uniquement) un mouvement EN_ATTENTE du même fonds et ISIN. On l'affiche
+     comme piste sans changer le type du suspens. Exemple : Schneider −25 000
+     correspond à l'achat du 24/09, dénouement prévu le 26/09.
+  5. L'action attendue est lue dans TYPES_ECARTS, jamais codée en dur.
+
+  Plan
+
+  #: 1
+  Résultat vérifiable: Version de bout en bout en ligne de commande : 4 parseurs
+
+  + rapprochement, uv run python -m reco data/donnees affiche les 7 suspens
+  Test: Test oracle : exactement les 7 suspens de NOTES.md (type, fonds, ISIN,
+  conservateur, quantités)
+  Durée: 15 min
+  ────────────────────────────────────────
+  #: 2
+  Résultat vérifiable: Journal de nettoyage à 4 niveaux et contrôles bloquants
+  (date, contrôles de fin de fichier, transco, 0 ligne lue)
+  Test: Un test par piège, avec des fichiers altérés en mémoire : B tronqué →
+  BLOQUANT ; C sans namespace → BLOQUANT ; P3G → EXCLU, etc.
+  Durée: 12 min
+  ────────────────────────────────────────
+  #: 3
+  Résultat vérifiable: Page HTML + FastAPI : glisser-déposer des fichiers (ou
+  bouton « fichiers du 25/09 »), tableau des suspens filtrable, onglet journal
+  Test: TestClient : POST des 6 fichiers en base64 → 7 suspens en JSON ; GET /
+  renvoie la page
+  Durée: 12 min
+  ────────────────────────────────────────
+  #: 4
+  Résultat vérifiable: Point de situation : synthèse par fonds et conservateur,
+  suspens, actions et anomalies ; bouton « copier » et export CSV
+  Test: Test : le texte contient les 7 suspens et les 3 exclusions
+  Durée: 5 min
+  ────────────────────────────────────────
+  #: 5
+  Résultat vérifiable: Mesure sur jeu étiqueté : 6 à 8 mutations des données
+  (écart d'1 unité, lot supprimé, titre déplacé de conservateur, annulation
+  retirée…) avec le suspens attendu pour chacune
+  Test: Rappel = 100 % et 0 faux positif, affichés dans le README
+  Durée: 6 min
+  ────────────────────────────────────────
+  #: 6
+  Résultat vérifiable: README (lancement, choix, ce qui est vérifié et ce que
+  l'assistant affirme, manques) et relecture par le sous-agent reviewer
+  Test: pytest et ruff au vert, lancement à froid selon le README
+  Durée: 5 min
+  ────────────────────────────────────────
+  #: 7
+  Résultat vérifiable: Répétition de la démo (10 dernières minutes) : je dépose
+  les fichiers, j'explique les suspens et le journal, j'envoie le point de
+  situation
+  Test: Parcours joué une fois de bout en bout
+  Durée: 10 min
+
+  Je fais un commit à chaque étape verte, ce qui donne au moins un commit toutes
+  les 15 minutes.
+
+  Choix structurants et alternatives écartées
+
+  - Python déterministe plutôt qu'un LLM pour le rapprochement : la règle est
+    exacte et sans tolérance, un LLM ajouterait un risque de faux négatif sans
+    aucun gain.
+  - Bibliothèque standard (csv, xml.etree, openpyxl) plutôt que pandas : pandas
+    inférerait des types (zéros en tête de 0041872, flottants) que je devrais
+    ensuite corriger ; Decimal de bout en bout est plus simple.
+  - Upload en base64 dans du JSON plutôt que python-multipart : pas de nouvelle
+    dépendance, pour quelques kilo-octets de fichiers.
+  - HTML et JS natifs servis par FastAPI plutôt que React ou Streamlit : rien à
+    compiler ni à installer, et ça se lance sur le poste du jury avec une seule
+    commande.
+  - Fichier refusé plutôt que rapprochement partiel en cas de BLOQUANT : un
+    rapprochement partiel rend des faux négatifs invisibles.
+  - Pas de LLM dans le besoin 1 : il ne trancherait que l'ambigu, et ici rien
+    n'est ambigu. Le seul cas douteux, l'ISIN invalide, est signalé à l'humain
+    plutôt que corrigé par une supposition.
+
+  Plan OK ?
+
+❯ ok parfait le plan est valider on peut noter le plan complet avant de
+  commencer, noter ce qu'on a dit dans note pour suivbre le projet et que je
+  commence l'implementation etpae par etape
+
+● Bash(cat >> NOTES.md <<'EOF'…)
+  ⎿  Updated CONTEXT.md (+12 -0)
+      18  
+      19  ## Pièges des données
+      20  Formats FR (`1 234,56`, `dd/mm/yyyy`), séparateur `;`, encodage
+          s latin-1, colonnes débit/crédit séparées, noms de fournisseur 
+          abrégés, PDF texte vs scan.
+      21 +                                                               
+      22 +## Glossaire titres / middle office (cas Orsay Gestion)        
+      23 +- **PMS** : outil de gestion de portefeuille. Il tient l'invent
+         +aire interne, en date de négociation.                          
+      24 +- **Conservateur / teneur de compte-conservateur (dépositaire)*
+         +* : il détient les titres. Il voit les opérations au dénouement
+         + (J+2).                                                        
+      25 +- **Rapprochement de positions** : comparaison des quantités PM
+         +S et conservateur, par fonds, ISIN et conservateur.            
+      26 +- **Suspens** : ligne qui ne rapproche pas. Types : `QTE` (quan
+         +tité différente), `ABS_DEP` (absent chez le conservateur), `ABS
+         +_INT` (absent du PMS), `DEP` (chez un autre conservateur que pr
+         +évu).                                                          
+      27 +- **Dénouement / règlement-livraison** : échange effectif des t
+         +itres contre les espèces (J+2). Une opération non dénouée expli
+         +que un écart temporaire.                                       
+      28 +- **CSDR** : règlement européen qui pénalise les défauts de règ
+         +lement-livraison.                                              
+      29 +- **RCCI** : responsable de la conformité et du contrôle intern
+         +e.                                                             
+      30 +- **Sous-compte** : subdivision de gestion dans le PMS. Plusieu
+         +rs sous-comptes agrégés forment un fonds. `P3G` est un compte t
+         +echnique de passage, exclu.                                    
+      31 +- **Nominal** : la quantité d'une obligation s'exprime en monta
+         +nt nominal. Les cours sont en % du nominal, pied de coupon (hor
+         +s coupon couru).                                               
+      32 +- **Journal de nettoyage** : trace de chaque transformation des
+         + données sources, au niveau NORMALISE, EXCLU, SIGNALE ou BLOQUA
+         +NT.                                                            
+  ⎿  Updated NOTES.md (+38 -0)
+      54    - `SIGNALE` : ligne conservée mais douteuse (clé ISIN invalid
+          e, ISIN absent du référentiel, libellés PMS et conservateur dif
+          férents).
+      55    - `BLOQUANT` : le fichier ne peut pas être rapproché (date d'
+          arrêté ≠ 25/09, total de contrôle faux, compte ou sous-compte a
+          bsent de la transco, quantité illisible, libellé de conservateu
+          r inconnu).
+      56  - Les fichiers sont transmis par le navigateur en base64 dans d
+          u JSON. Cela évite la dépendance `python-multipart`.
+      57 +                                                               
+      58 +## Plan validé (10/10) : besoin 1 uniquement, le besoin 2 seule
+         +ment s'il reste du temps                                       
+      59 +Chaîne : dépôt des fichiers → nettoyage par source (journal 4 n
+         +iveaux) → agrégation (fonds, ISIN, conservateur) → rapprochemen
+         +t → suspens + piste `orsay.db` → page HTML + point de situation
+         +.                                                              
+      60 +                                                               
+      61 +| # | Résultat vérifiable | Test | Durée | État |              
+      62 +|---|---|---|---|---|                                          
+      63 +| 1 | Bout en bout en ligne de commande : 4 parseurs + rapproch
+         +ement, `uv run python -m reco data/donnees` affiche les 7 suspe
+         +ns | Test oracle = tableau « Résultat attendu » ci-dessus | 15 
+         +min | à faire |                                                
+      64 +| 2 | Journal de nettoyage (NORMALISE / EXCLU / SIGNALE / BLOQU
+         +ANT) et contrôles bloquants (date, T/NbItems, transco, 0 ligne 
+         +lue) | Un test par piège, avec des fichiers altérés en mémoire 
+         +| 12 min | à faire |                                           
+      65 +| 3 | Page HTML + FastAPI : dépôt de fichiers en base64 ou bout
+         +on « fichiers du 25/09 », tableau des suspens filtrable, onglet
+         + journal | TestClient : POST → 7 suspens ; GET `/` → page | 12 
+         +min | à faire |                                                
+      66 +| 4 | Point de situation : synthèse par fonds et conservateur, 
+         +suspens, actions, anomalies ; copier et export CSV | Le texte c
+         +ontient les 7 suspens et les 3 exclusions | 5 min | à faire |  
+      67 +| 5 | Mesure sur jeu étiqueté : 6 à 8 mutations, chacune avec s
+         +on suspens attendu | Rappel 100 %, 0 faux positif, chiffres rep
+         +ortés dans le README | 6 min | à faire |                       
+      68 +| 6 | README (lancement, choix, vérifié vs affirmé, manques) et
+         + relecture `reviewer` | pytest + ruff au vert, lancement à froi
+         +d | 5 min | à faire |                                          
+      69 +| 7 | Répétition de la démo (10 dernières minutes) | Parcours j
+         +oué de bout en bout | 10 min | à faire |                       
+      70 +                                                               
+      71 +Un commit à chaque étape verte, au moins toutes les 15 minutes.
+      72 +                                                               
+      73 +### Règles de rapprochement retenues                           
+      74 +- On agrège le PMS (sous-compte → fonds via TRANSCO_SOUS_COMPTE
+         +S) et les conservateurs (compte ou desk → fonds, lots C additio
+         +nnés).                                                         
+      75 +- Jointure complète sur (fonds, ISIN, conservateur). Si les deu
+         +x quantités existent et diffèrent, c'est un `QTE`, même pour un
+         +e seule unité.                                                 
+      76 +- Un `ABS_DEP` chez X et un `ABS_INT` chez Y, pour le même fond
+         +s et le même ISIN, fusionnent en **un seul** `DEP`. Un écart de
+         + quantité éventuel est mentionné dans le libellé.              
+      77 +- La piste explicative vient d'un mouvement `EN_ATTENTE` de mêm
+         +e fonds et ISIN dans `orsay.db` (lecture seule). Elle est infor
+         +mative et ne change pas le type du suspens.                    
+      78 +- L'action attendue est lue dans TYPES_ECARTS, jamais codée en 
+         +dur.                                                           
+      79 +                                                               
+      80 +### Conservateur C : points de vigilance                       
+      81 +- Namespace obligatoire : 0 Item lu donne BLOQUANT (sinon on au
+         +rait « 0 position » silencieusement).                          
+      82 +- Lecture par `Dim[@prop]`. Un prop manquant donne BLOQUANT.   
+      83 +- `DateArrete` est au format JJMMAAAA.                         
+      84 +- Le contrôle `NbItems` se fait sur **tous** les Item, annulati
+         +ons comprises, avant filtrage.                                 
+      85 +- `S` donne EXCLU. On ne le soustrait **pas** (RTE : 25 000 et 
+         +non 15 000).                                                   
+      86 +- Les lots sont additionnés par (compte, ISIN) : HERMES 10 000 
+         ++ 15 000 = 25 000.                                             
+      87 +                                                               
+      88 +### Choix structurants et alternatives écartées                
+      89 +- Rapprochement en Python déterministe plutôt qu'avec un LLM : 
+         +la règle est exacte, un LLM n'apporte qu'un risque de faux néga
+         +tif.                                                           
+      90 +- Bibliothèque standard + openpyxl plutôt que pandas : pandas i
+         +nférerait des types (zéros en tête, float), alors qu'on veut du
+         + `Decimal` de bout en bout.                                    
+      91 +- Upload en base64 dans du JSON plutôt que python-multipart : p
+         +as de dépendance ajoutée.                                      
+      92 +- HTML et JS natifs servis par FastAPI plutôt que React ou Stre
+         +amlit : rien à compiler, lancement en une commande.            
+      93 +- BLOQUANT signifie que le fichier est refusé, pas rapproché pa
+         +rtiellement : un rapprochement partiel rend des faux négatifs i
+         +nvisibles.                                                     
+     … 1 more lines (ctrl+o to expand)
+  ⎿  Updated docs/CONSIGNE.md (+180 -0)
+        1 +# Consigne (extraite de docs/ENONCE.html)                     
+        2  
+        3 +Cas pratique Orsay Gestion                                    
+        4 +                                                              
+        5 + Saify · Cas pratique · Énoncé candidat                       
+        6 +                                                              
+        7 + Le middle office d'Orsay Gestion                             
+        8 +                                                              
+        9 + Vous êtes consultant chez Saify. Un client vous expose son be
+          +soin. Comment y répondre, avec quels outils et sous quelle for
+          +me : c'est à vous de le décider et de le défendre. Vous avez u
+          +ne heure pour construire, puis une heure pour nous présenter v
+          +otre réponse.                                                 
+       10 +                                                              
+       11 + 1 h de construction, seul, sur le poste fourni               
+       12 +                                                              
+       13 + 1 h de restitution avec l'équipe Saify                       
+       14 +                                                              
+       15 + Libre solution, technologies, forme du livrable              
+       16 +                                                              
+       17 + Le client                                                    
+       18 +                                                              
+       19 + Orsay Gestion                                                
+       20 +                                                              
+       21 + Orsay Gestion est une société de gestion de portefeuille agré
+          +ée par l'AMF. Elle gère trois FCP : Orsay Patrimoine (diversif
+          +ié), Orsay Obligations (taux euro, investment grade ) et Orsay
+          + Actions Europe (grandes capitalisations). La conservation des
+          + actifs est répartie entre trois teneurs de compte-conservateu
+          +rs, désignés ici A , B et C .                                 
+       22 +                                                              
+       23 + Le middle office tient l'inventaire des positions dans l'outi
+          +l de gestion (PMS). Les opérations y sont enregistrées en date
+          + de négociation. Chez les conservateurs, elles n'apparaissent 
+          +qu'au dénouement, dans le cycle de règlement-livraison à J+2. 
+       24 +                                                              
+       25 + Premier besoin                                               
+       26 +                                                              
+       27 + Le rapprochement quotidien des positions titres              
+       28 +                                                              
+       29 + Chaque matin, un opérateur rapproche à la main l'inventaire d
+          +u PMS avec les relevés de positions des trois conservateurs, a
+          +rrêtés à J−1. Cela lui prend environ 1 h 30. Les suspens sont 
+          +parfois identifiés plusieurs jours après leur apparition, alor
+          +s que chaque suspens de règlement non traité peut coûter des p
+          +énalités CSDR et remonte au RCCI.                             
+       30 +                                                              
+       31 + « Je veux déposer mes fichiers du matin et savoir tout de sui
+          +te quelles lignes ne tombent pas juste, pour quel fonds, chez 
+          +quel conservateur, et ce que je dois faire pour chacune. Je ve
+          +ux aussi pouvoir envoyer un point de situation à mon responsab
+          +le sans rien retaper. »                                       
+       32 +                                                              
+       33 + Responsable middle office, Orsay Gestion                     
+       34 +                                                              
+       35 + Ce que le middle office nous a expliqué de ses règles de gest
+          +ion :                                                         
+       36 +                                                              
+       37 + La source du rapprochement Le rapprochement part de l'extract
+          +ion du matin, positions_internes.csv , comparée aux trois rele
+          +vés des conservateurs. La base de gestion orsay.db sert unique
+          +ment à s'informer : elle n'est pas la référence du rapprocheme
+          +nt.                                                           
+       38 +                                                              
+       39 + La maille de rapprochement Une ligne se rapproche par fonds, 
+          +code ISIN et conservateur. Les quantités s'entendent en nombre
+          + de titres pour les actions et en nominal pour les obligations
+          +.                                                             
+       40 +                                                              
+     … 141 more lines (ctrl+o to expand)
+  ⎿  Updated docs/adr/0001-moteur-deterministe-front-html.md (+1 -1)
+      1  # ADR 0001 : moteur de rapprochement déterministe, front HTML se
+         rvi par FastAPI, LLM limité au besoin 2
+      2  
+      3 -- Statut : proposé                                              
+      3 +- Statut : accepté                                              
+      4  - Date : 2026-10-10
+      5  
+      6  ## Contexte
+
+● Le plan complet et tout ce qu'on a décidé sont maintenant dans NOTES.md, et
+  c'est commité (188f199).
+
+  - NOTES.md contient :
+    - le besoin en 5 lignes ;
+    - les pièges repérés dans les données ;
+    - le tableau des 7 suspens attendus, qui servira de référence aux tests ;
+    - les 4 niveaux du journal de nettoyage ;
+    - le plan en 7 étapes, avec une colonne État à mettre à jour au fil de l'eau
+      ;
+    - les règles de rapprochement, les points de vigilance du conservateur C et
+      les choix avec leurs alternatives écartées.
+  - ADR 0001 passe au statut « accepté ».
+  - docs/CONSIGNE.md était vide. J'y ai mis le texte de l'énoncé, pour que le
+    sous-agent reviewer vérifie la conformité contre la vraie consigne.
+  - CONTEXT.md : j'ai ajouté le vocabulaire titres et middle office (PMS,
+    suspens, dénouement, CSDR, RCCI, nominal, journal de nettoyage…).
+
+  Je n'ai pas commité data/donnees/, ENONCE.html, test.py, visualisation/ ni les
+  fichiers :Zone.Identifier. Les données du client pourront être ajoutées à
+  l'étape 1 si tu veux que le dépôt soit autonome.
+
+  Tu peux lancer /implement pour commencer l'étape 1 : la version de bout en
+  bout en ligne de commande, et le test qui doit retrouver exactement les 7
+  suspens.
+
+❯ <ide_opened_file>The user opened the file
+  /home/gearleur/projects/saify/.gitignore in the IDE. This may or may not be
+  related to the current task.</ide_opened_file>
+
+❯ commit
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Je commite tout sauf les fichiers Zone.Identifier de Windows, que j'ajoute au
+  .gitignore ; les seules occurrences d'ANTHROPIC_API_KEY trouvées sont des
+  mentions du nom de variable, pas une vraie clé.
+
+● Bash(echo '*:Zone.Identifier' >> .gitignore && git add .gitignore data
+      docs/ENONCE.html visualisation && git commit -q -m "Données client, énoncé
+      et préparation/visu…)
+  ⎿  Updated .gitignore (+1 -0)
+      6  .ruff_cache/
+      7  logs/
+      8  *.jsonl
+      9 +*:Zone.Identifier                                               
+
+● C'est commité (00acb7d).
+
+  Le commit contient :
+  - les données du client dans data/donnees/ ;
+  - l'énoncé docs/ENONCE.html ;
+  - ton dossier visualisation/ (prepare_data.py, Visual.ipynb et les CSV de
+    clean/) ;
+  - la suppression de data/.gitkeep.
+
+  J'ai aussi ajouté *:Zone.Identifier au .gitignore : ce sont des fichiers que
+  Windows crée au téléchargement.
+
+  Je n'ai pas commité test.py : il ne contient qu'un print('Hello, World!').
+  Dis-moi si tu veux le garder ou le supprimer.
