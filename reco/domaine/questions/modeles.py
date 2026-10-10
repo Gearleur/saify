@@ -38,6 +38,10 @@ class Reponse:
     avertissements: list[str] = field(default_factory=list)
     vigilances: list[Vigilance] = field(default_factory=list)
     question: str = ""
+    reformulations: list[str] = field(default_factory=list)  # proposées quand on ne répond pas
+    comprehension: dict = field(
+        default_factory=dict
+    )  # intention retenue, paramètres, source (llm ou mots_cles)
 
 
 def montant(valeur: Decimal) -> str:
