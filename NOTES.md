@@ -60,7 +60,7 @@ Chaîne : dépôt des fichiers → nettoyage par source (journal 4 niveaux) → 
 
 | # | Résultat vérifiable | Test | Durée | État |
 |---|---|---|---|---|
-| 1 | Bout en bout en ligne de commande : 4 parseurs + rapprochement, `uv run python -m reco data/donnees` affiche les 7 suspens | Test oracle = tableau « Résultat attendu » ci-dessus | 15 min | à faire |
+| 1 | Bout en bout en ligne de commande : 4 parseurs + rapprochement, `uv run python -m reco data/donnees` affiche les 7 suspens | Test oracle = tableau « Résultat attendu » ci-dessus | 15 min | fait |
 | 2 | Journal de nettoyage (NORMALISE / EXCLU / SIGNALE / BLOQUANT) et contrôles bloquants (date, T/NbItems, transco, 0 ligne lue) | Un test par piège, avec des fichiers altérés en mémoire | 12 min | à faire |
 | 3 | Page HTML + FastAPI : dépôt de fichiers en base64 ou bouton « fichiers du 25/09 », tableau des suspens filtrable, onglet journal | TestClient : POST → 7 suspens ; GET `/` → page | 12 min | à faire |
 | 4 | Point de situation : synthèse par fonds et conservateur, suspens, actions, anomalies ; copier et export CSV | Le texte contient les 7 suspens et les 3 exclusions | 5 min | à faire |
@@ -92,3 +92,6 @@ Un commit à chaque étape verte, au moins toutes les 15 minutes.
 - HTML et JS natifs servis par FastAPI plutôt que React ou Streamlit : rien à compiler, lancement en une commande.
 - BLOQUANT signifie que le fichier est refusé, pas rapproché partiellement : un rapprochement partiel rend des faux négatifs invisibles.
 - Pas de LLM dans le besoin 1 : l'ambigu (ISIN invalide) est signalé à un humain, pas deviné.
+- Paquet `reco/` à la racine plutôt que `src/reco/` : `python -m reco` fonctionne sans packaging (`pythonpath = ["."]` pour pytest).
+- Code fonds (PAT/OBL/ACT) lu dans `orsay.db.portefeuilles` (nom d'entité → code) plutôt que codé en dur : la transco ne donne que le nom d'entité.
+- Le rapprochement prend `{nom de fichier: octets}` : la même fonction sert la ligne de commande et, plus tard, l'API (base64 → octets).
