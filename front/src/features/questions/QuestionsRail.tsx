@@ -10,7 +10,7 @@ import { runTone } from "./runTone";
 export function QuestionsRail({ onAsk, busy }: { onAsk: (q: string) => void; busy: boolean }) {
   const { runs, selected } = useQuestionSession();
   return (
-    <aside className="space-y-8 xl:sticky xl:top-20 xl:self-start">
+    <aside className="space-y-7 xl:sticky xl:top-20 xl:self-start">
       <LlmIndicator />
       <Section title="Exemples">
         <ul className="-mx-1">

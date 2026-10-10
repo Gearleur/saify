@@ -42,7 +42,7 @@ def test_isin_cle_invalide_signale():
     signales = [a for a in resultat.journal if a.regle == "ISIN_CLE_INVALIDE"]
     assert [a.retenu for a in signales] == ["FR0000012966"]
     suspens = next(s for s in resultat.suspens if s.isin == "FR0000012966")
-    assert any("clé invalide" in m for m in suspens.signalements)
+    assert any("clé invalide" in g.message for g in suspens.signalements)
 
 
 def test_isin_hors_referentiel_signale():

@@ -60,7 +60,7 @@ export function SettingsView() {
           <TabsContent value="exclusions">
             <ul className="max-w-2xl">
               {p.exclusions.map((e) => (
-                <li key={e} className="flex h-[38px] items-center border-b border-border pl-1">
+                <li key={e} className="flex h-row items-center border-b border-border pl-1">
                   <StatusLabel tone="gray">{e}</StatusLabel>
                 </li>
               ))}

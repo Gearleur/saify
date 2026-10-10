@@ -11,7 +11,7 @@ import { TraceLine } from "./TraceLine";
 
 function Bloc({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <div className="border-t border-border px-5 py-4">
+    <div className="border-t border-border px-4 py-3.5">
       {title && <h3 className="pb-2 text-xs font-medium text-muted-foreground">{title}</h3>}
       {children}
     </div>
@@ -29,13 +29,13 @@ export function AnswerCard({
   const attention = isAttention(reponse);
   return (
     <article className="rounded-lg border border-border bg-background animate-fade-in">
-      <div className="space-y-5 px-5 py-5">
+      <div className="space-y-4 px-4 py-4">
         {attention ? (
           <AttentionState reponse={reponse} onAsk={onAsk} />
         ) : (
           <>
             <div className="flex items-start justify-between gap-6">
-              <p className="max-w-[68ch] text-[15px] leading-6">{reponse.reponse}</p>
+              <p className="max-w-[68ch] text-base">{reponse.reponse}</p>
               <StatusLabel
                 tone={reponse.confiance === "haute" ? "green" : "amber"}
                 className="shrink-0 text-xs text-muted-foreground"
@@ -63,7 +63,7 @@ export function AnswerCard({
           <SqlDisclosure sql={reponse.requete_sql} parametres={reponse.parametres_sql} />
         </Bloc>
       )}
-      <div className="rounded-b-lg border-t border-border bg-surface px-5 py-2.5">
+      <div className="rounded-b-lg border-t border-border bg-surface px-4 py-2">
         <TraceLine c={reponse.comprehension} />
       </div>
     </article>

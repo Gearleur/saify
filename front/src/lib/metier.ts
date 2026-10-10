@@ -85,8 +85,3 @@ export const CONSERVATEURS_REPLI: Record<string, string> = {
   B: "Euroclear",
   C: "BNP Paribas (BP2S)",
 };
-
-/** Un signalement de risque CSDR (seul cas, avec BLOQUANT, qui a droit au rouge). */
-export function isCsdr(texte: string): boolean {
-  return /csdr|d[ée]nouement d[ée]pass|denouement_depasse/i.test(texte);
-}

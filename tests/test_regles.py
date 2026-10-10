@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 from middle_office.domaine.rapprochement import moteur as rapprochement
-from middle_office.domaine.rapprochement.moteur import Suspens
+from middle_office.domaine.rapprochement.moteur import Signalement, Suspens
 from tests.fabrique import (
     DONNEES,
     PMS,
@@ -69,7 +69,7 @@ def test_dep_ambigu_signale_sur_chaque_suspens():
         ("ABS_INT", "B"),
         ("ABS_INT", "C"),
     ]
-    assert all(any("ambigu" in m for m in s.signalements) for s in afd)
+    assert all(any("ambigu" in g.message for g in s.signalements) for s in afd)
     assert all("DEP_AMBIGU" in s.alertes for s in afd)
 
 
@@ -118,7 +118,7 @@ def test_piste_seulement_possible_si_plusieurs_conservateurs():
     (schneider,) = _suspens(lancer(fichiers(pms=pms, c=c)), SCHNEIDER)
     assert "explication possible" in schneider.piste
     # Un vrai signalement, pour que l'opérateur n'oublie pas de vérifier le conservateur concerné.
-    assert any("à vérifier" in m and "plusieurs conservateurs" in m for m in schneider.signalements)
+    assert any("plusieurs conservateurs" in g.message for g in schneider.signalements)
     assert schneider.alertes == {"PISTE_MULTI_CONSERVATEURS"}
     assert schneider.priorite == "a_relever"
 
@@ -134,7 +134,7 @@ def test_denouement_depasse_signale(tmp_path):
     resultat = lancer(fichiers(), db=db)
     assert "DENOUEMENT_DEPASSE" in regles(resultat, "SIGNALE")
     (schneider,) = _suspens(resultat, SCHNEIDER)
-    assert any("CSDR" in m for m in schneider.signalements)
+    assert any("CSDR" in g.message for g in schneider.signalements)
     assert "CSDR" in schneider.alertes and schneider.priorite == "critique"
 
 
@@ -213,11 +213,14 @@ def _qte(**champs) -> Suspens:
 
 def test_priorite_independante_des_libelles():
     assert _qte(piste="tout est couvert", explication="totale").priorite == "en_attente"
-    assert _qte(signalements=["livraison en retard"], alertes={"CSDR"}).priorite == "critique"
+    assert _qte(signalements=[Signalement("CSDR", "livraison en retard")]).priorite == "critique"
     # Les anciens mots-clés dans le texte, sans le champ structuré, ne décident plus rien.
     assert _qte(piste="écart entièrement expliqué").priorite == "a_relever"
-    assert _qte(signalements=["risque CSDR"]).priorite == "a_relever"
-    assert _qte(explication="totale", alertes={"ISIN_INVALIDE"}).priorite == "a_relever"
+    assert _qte(signalements=[Signalement("ISIN_INVALIDE", "risque CSDR")]).priorite == "a_relever"
+    assert (
+        _qte(explication="totale", signalements=[Signalement("ISIN_INVALIDE", "")]).priorite
+        == "a_relever"
+    )
     dep = _qte(explication="totale")
     dep.type = "DEP"
     assert dep.priorite == "a_relever"

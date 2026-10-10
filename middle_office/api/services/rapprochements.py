@@ -12,6 +12,7 @@ from middle_office.api.schemas import (
     FondsSynthese,
     Rapprochement,
     RapprochementResume,
+    SignalementSortie,
     SuspensSortie,
     Synthese,
 )
@@ -72,7 +73,11 @@ def vers_modele(id_: str, cree_le: str, depot: dict[str, bytes], r: Resultat) ->
             ecart=quantite_texte(s.ecart),
             action=s.action,
             piste=s.piste,
-            signalements=list(s.signalements),
+            explication=s.explication,
+            alertes=sorted(s.alertes),
+            signalements=[
+                SignalementSortie(code=g.code, message=g.message) for g in s.signalements
+            ],
             sources=list(s.sources),
         )
         for i, s in enumerate(r.suspens, start=1)

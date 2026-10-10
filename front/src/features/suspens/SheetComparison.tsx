@@ -13,9 +13,9 @@ export function SheetComparison({ s }: { s: Suspens }) {
   return (
     <div className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border">
       {cellules.map((c) => (
-        <div key={c.label} className="min-w-0 px-3 py-2.5">
+        <div key={c.label} className="min-w-0 px-3 py-2">
           <p className="truncate text-xs text-muted-foreground">{c.label}</p>
-          <p className="mt-0.5 text-[17px] font-semibold tracking-[-0.01em]">{c.value}</p>
+          <p className="mt-0.5 text-heading">{c.value}</p>
         </div>
       ))}
     </div>

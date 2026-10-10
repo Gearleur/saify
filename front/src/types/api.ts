@@ -102,8 +102,20 @@ export interface Suspens {
   ecart: Decimal;
   action: string;
   piste: string;
-  signalements: string[];
+  /** Ce que les opérations en attente expliquent de l'écart (calcul signé, côté back). */
+  explication: Explication;
+  /** Codes des signalements : c'est eux qu'on lit, jamais le texte des messages. */
+  alertes: Alerte[];
+  signalements: Signalement[];
   sources: string[];
+}
+
+export type Explication = "aucune" | "totale" | "partielle" | "contraire";
+export type Alerte = "CSDR" | "DEP_AMBIGU" | "ISIN_INVALIDE" | "PISTE_MULTI_CONSERVATEURS";
+
+export interface Signalement {
+  code: Alerte;
+  message: string;
 }
 
 export interface Anomalie {

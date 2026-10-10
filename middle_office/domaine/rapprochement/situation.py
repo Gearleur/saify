@@ -39,7 +39,7 @@ def _suspens(s: Suspens) -> list[str]:
     ]
     if s.piste:
         lignes.append(f"  Piste : {s.piste}")
-    lignes += [f"  ⚠ {message}" for message in s.signalements]
+    lignes += [f"  ⚠ {sig.message}" for sig in s.signalements]
     return lignes
 
 
@@ -95,7 +95,7 @@ def suspens_csv(suspens: list[Suspens]) -> bytes:
         ecrivain.writerow([
             s.priorite, s.fonds, s.entite, s.isin, s.libelle_titre, s.conservateur, s.type,
             s.libelle_type, quantite_texte(s.qte_pms) or "", quantite_texte(s.qte_dep) or "",
-            quantite_texte(s.ecart), s.action, s.piste, " | ".join(s.signalements),
+            quantite_texte(s.ecart), s.action, s.piste, " | ".join(sig.message for sig in s.signalements),
             " | ".join(s.sources),
         ])  # fmt: skip
     return sortie.getvalue().encode("utf-8-sig")

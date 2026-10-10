@@ -18,6 +18,7 @@ import { useReconciliation } from "@/hooks/useReconciliation";
 import { rapprochementsApi } from "@/lib/api";
 import { PRIORITES } from "@/lib/metier";
 import { ROUTE_DEFS } from "./routes";
+import { ThemeCommands } from "./ThemeCommands";
 
 /** « Poser la question » passe toujours après les vues, actions et suspens qui correspondent. */
 function filtrer(valeur: string, recherche: string): number {
@@ -103,6 +104,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
                 </CommandItem>
               )}
             </CommandGroup>
+            <ThemeCommands onDone={onClose} />
             {courant && courant.suspens.length > 0 && (
               <CommandGroup heading="Suspens">
                 {courant.suspens.map((s) => (

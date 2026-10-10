@@ -20,7 +20,7 @@ export function MorningView() {
   const ok = courant?.statut === "OK";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       <PageHeader
         title="Aujourd'hui"
         description={<MorningSubtitle />}

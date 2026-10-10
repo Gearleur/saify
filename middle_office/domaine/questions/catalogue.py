@@ -361,6 +361,6 @@ def origine_suspens(base: Path, isin: str, contexte: ContexteRapprochement | Non
         for id_, pf, d_op, d_den, sens, q, statut in mouvements
     ]
     chiffres = [Chiffre(f"Écart {s['type']} ({s['conservateur']})", Decimal(s["ecart"]), "titres ou nominal") for s in trouves]  # fmt: skip
-    avertissements += [m for s in trouves for m in s["signalements"]]
+    avertissements += [g["message"] for s in trouves for g in s["signalements"]]
     return Reponse(" ".join(phrases), chiffres, SQL_MOUVEMENTS_TITRE, parametres, sources,
                    confiance=confiance, avertissements=avertissements)  # fmt: skip

@@ -67,6 +67,11 @@ class Synthese(BaseModel):
     journal: dict[str, int]
 
 
+class SignalementSortie(BaseModel):
+    code: str  # CSDR, DEP_AMBIGU, ISIN_INVALIDE, PISTE_MULTI_CONSERVATEURS
+    message: str
+
+
 class SuspensSortie(BaseModel):
     id: str
     priorite: str
@@ -82,7 +87,9 @@ class SuspensSortie(BaseModel):
     ecart: str
     action: str
     piste: str
-    signalements: list[str]
+    explication: str  # aucune, totale, partielle, contraire (par les opérations en attente)
+    alertes: list[str]  # codes des signalements, triés : ce que lit l'interface, jamais le texte
+    signalements: list[SignalementSortie]
     sources: list[str]
 
 

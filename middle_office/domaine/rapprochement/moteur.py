@@ -39,6 +39,11 @@ EXPLICATIONS = ("aucune", "totale", "partielle", "contraire")  # par les opérat
 ALERTES = ("CSDR", "DEP_AMBIGU", "ISIN_INVALIDE", "PISTE_MULTI_CONSERVATEURS")
 
 
+class Signalement(NamedTuple):
+    code: str  # ALERTES : c'est lui que lisent la priorité et l'interface
+    message: str  # pour l'opérateur
+
+
 @dataclass
 class Suspens:
     entite: str  # clé fonds : nom d'entité du paramétrage (la référence)
@@ -53,10 +58,17 @@ class Suspens:
     libelle_type: str = ""
     action: str = ""
     piste: str = ""
-    signalements: list[str] = field(default_factory=list)
-    # Ce qui décide de la priorité : des codes stables, pas les libellés ci-dessus (faits pour les humains).
+    signalements: list[Signalement] = field(default_factory=list)
+    # Ce qui décide de la priorité : des codes stables, jamais les libellés (faits pour les humains).
     explication: str = "aucune"  # EXPLICATIONS
-    alertes: set[str] = field(default_factory=set)  # ALERTES
+
+    @property
+    def alertes(self) -> set[str]:
+        return {s.code for s in self.signalements}
+
+    def signaler(self, code: str, message: str) -> None:
+        assert code in ALERTES, code
+        self.signalements.append(Signalement(code, message))
 
     @property
     def ecart(self) -> Decimal:
@@ -241,8 +253,7 @@ def _fusionner_dep(suspens: list[Suspens]) -> list[Suspens]:
                 f"trouvé chez {', '.join(s.conservateur for s in trouves)} : à trancher par l'opérateur"
             )
             for s in groupe:
-                s.signalements.append(message)
-                s.alertes.add("DEP_AMBIGU")
+                s.signaler("DEP_AMBIGU", message)
     return suspens
 
 
@@ -286,21 +297,20 @@ def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arre
         plusieurs = sorted(conservateurs[(s.entite, s.isin)])
         s.piste, s.explication = _piste(mouvements, s.ecart, len(plusieurs) > 1)
         if mouvements and len(plusieurs) > 1:
-            s.alertes.add("PISTE_MULTI_CONSERVATEURS")
-            s.signalements.append(
+            s.signaler(
+                "PISTE_MULTI_CONSERVATEURS",
                 f"piste à vérifier : titre détenu chez plusieurs conservateurs ({', '.join(plusieurs)}),"
-                " l'opération peut concerner l'autre"
+                " l'opération peut concerner l'autre",
             )
         for m in mouvements:
             if m.date_denouement <= date_arrete:
-                s.alertes.add("CSDR")
-                s.signalements.append(
+                s.signaler(
+                    "CSDR",
                     f"op. n°{m.id} non dénouée au {_date_fr(m.date_denouement)} : "
-                    "défaut de règlement-livraison, risque CSDR"
+                    "défaut de règlement-livraison, risque CSDR",
                 )
         if not isin_valide(s.isin):
-            s.alertes.add("ISIN_INVALIDE")
-            s.signalements.append("ISIN à clé invalide, probable erreur de saisie")
+            s.signaler("ISIN_INVALIDE", "ISIN à clé invalide, probable erreur de saisie")
 
 
 def _date_du_depot(fichiers: dict[str, bytes], date_attendue: date | None) -> tuple[date | None, Anomalie | None]:  # fmt: skip

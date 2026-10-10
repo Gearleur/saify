@@ -4,7 +4,8 @@ import { useTheme } from "@/hooks/useTheme";
 import type { ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-const OPTIONS: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
+/** Les trois choix, partagés avec la palette ⌘K. */
+export const THEME_OPTIONS: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
   { value: "light", label: "Clair", icon: Sun },
   { value: "dark", label: "Sombre", icon: Moon },
   { value: "system", label: "Système", icon: Monitor },
@@ -21,9 +22,11 @@ export function ThemeToggle({ className }: { className?: string }) {
     const pas = PAS[e.key];
     if (!pas) return;
     e.preventDefault();
-    const i = OPTIONS.findIndex((o) => o.value === preference);
-    const suivant = (i + pas + OPTIONS.length) % OPTIONS.length;
-    setPreference(OPTIONS[suivant].value);
+    const i = THEME_OPTIONS.findIndex((o) => o.value === preference);
+    const suivant = (i + pas + THEME_OPTIONS.length) % THEME_OPTIONS.length;
+    const option = THEME_OPTIONS[suivant];
+    if (!option) return;
+    setPreference(option.value);
     boutons.current[suivant]?.focus();
   };
 
@@ -37,7 +40,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         className,
       )}
     >
-      {OPTIONS.map(({ value, label, icon: Icon }, i) => {
+      {THEME_OPTIONS.map(({ value, label, icon: Icon }, i) => {
         const actif = preference === value;
         return (
           <button

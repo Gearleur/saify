@@ -14,8 +14,8 @@ import { useSuspensSheet } from "./useSuspensSheet";
 
 function Bloc({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-border px-5 py-4">
-      <h3 className="pb-2.5 text-xs font-medium text-muted-foreground">{title}</h3>
+    <section className="border-t border-border px-5 py-3.5">
+      <h3 className="pb-2 text-xs font-medium text-muted-foreground">{title}</h3>
       {children}
     </section>
   );
@@ -36,9 +36,9 @@ export function SuspensSheet() {
   return (
     <aside
       aria-label={`Suspens ${s.id}`}
-      className="fixed inset-y-0 right-0 z-40 flex w-[min(440px,100vw)] flex-col border-l border-border bg-background shadow-pop animate-slide-in min-[1280px]:sticky min-[1280px]:top-0 min-[1280px]:z-auto min-[1280px]:h-screen min-[1280px]:shadow-none"
+      className="fixed inset-y-0 right-0 z-40 flex w-[min(420px,100vw)] flex-col border-l border-border bg-background shadow-pop animate-slide-in min-[1280px]:sticky min-[1280px]:top-0 min-[1280px]:z-auto min-[1280px]:h-screen min-[1280px]:shadow-none"
     >
-      <header className="flex h-12 shrink-0 items-center gap-1 px-3">
+      <header className="flex h-bar shrink-0 items-center gap-1 px-3">
         <Mono className="px-2 text-subtle">{s.id}</Mono>
         <span className="flex-1" />
         <Button
@@ -65,9 +65,7 @@ export function SuspensSheet() {
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="px-5 pb-4">
-          <h2 className="text-[17px] font-semibold leading-6 tracking-[-0.01em]">
-            {s.libelle_titre}
-          </h2>
+          <h2 className="text-heading">{s.libelle_titre}</h2>
           <p className="text-sm text-muted-foreground">
             <Mono>{s.isin}</Mono> <span className="px-1 text-subtle">/</span> {s.entite}
           </p>
@@ -87,7 +85,7 @@ export function SuspensSheet() {
           <SheetSources sources={s.sources} />
         </Bloc>
       </div>
-      <footer className="flex h-10 shrink-0 items-center gap-3 border-t border-border px-5 text-xs text-subtle">
+      <footer className="flex h-9 shrink-0 items-center gap-3 border-t border-border px-5 text-xs text-subtle">
         <span className="flex items-center gap-1">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd> suspens voisin

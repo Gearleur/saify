@@ -29,7 +29,7 @@ export function FundCustodianMatrix({ matrix }: { matrix: Matrix }) {
       </thead>
       <tbody>
         {matrix.fonds.map((f) => (
-          <tr key={f.code} className="h-[38px] border-b border-border">
+          <tr key={f.code} className="h-row border-b border-border">
             <td className="pl-1" title={f.entite}>
               <Tag>{f.code}</Tag>
             </td>

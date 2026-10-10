@@ -170,15 +170,18 @@ Si `statut = "BLOQUE"` : `suspens = []`, les compteurs de suspens valent 0, et l
   "ecart": "0",
   "action": "Corriger le référentiel dépositaire",
   "piste": "",
+  "explication": "aucune",
+  "alertes": [],
   "signalements": [],
   "sources": ["positions_internes.csv:36", "depositaire_B_20260925.txt:10"]
 }
 ```
+`explication` ∈ `aucune`, `totale`, `partielle`, `contraire` : ce que les opérations en attente de `orsay.db` expliquent de l'écart, par un calcul signé. `signalements` : liste de `{"code", "message"}`, où `code` ∈ `CSDR`, `DEP_AMBIGU`, `ISIN_INVALIDE`, `PISTE_MULTI_CONSERVATEURS` ; `alertes` reprend ces codes, triés. **Un client lit les codes, jamais le texte des messages** (rédigé pour l'opérateur, il peut changer).
 `id` : `S1…Sn` dans l'ordre de la liste (tri : priorité, puis entité, type, ISIN).
 
 **Priorité** (règle métier, calculée côté back) :
-- `critique` : au moins un signalement de risque CSDR (opération non dénouée à sa date prévue).
-- `en_attente` : `QTE` dont la piste dit « écart entièrement expliqué », sans aucun signalement : il suffit d'attendre le dénouement.
+- `critique` : alerte `CSDR` (opération non dénouée à sa date prévue).
+- `en_attente` : `QTE` d'`explication` `totale`, sans aucune alerte : il suffit d'attendre le dénouement.
 - `a_relever` : tout le reste (absences, DEP, écarts non ou partiellement expliqués, signalements).
 
 ### Anomalie (ligne du journal de nettoyage)

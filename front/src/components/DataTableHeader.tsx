@@ -7,17 +7,20 @@ interface DataTableHeaderProps<T> {
   columns: Column<T>[];
   sort?: SortState | null;
   onSort?: (columnId: string) => void;
+  /** Table groupée : même retrait que les lignes. */
+  inset?: boolean;
 }
 
 /** En-têtes gris de 12 px ; un clic trie la colonne (aria-sort pour les lecteurs d'écran). */
-export function DataTableHeader<T>({ columns, sort, onSort }: DataTableHeaderProps<T>) {
+export function DataTableHeader<T>({ columns, sort, onSort, inset }: DataTableHeaderProps<T>) {
   return (
     <thead>
       <tr className="border-b border-border">
         {columns.map((c) => {
           const actif = sort?.columnId === c.id;
           const classes = cn(
-            "h-8 whitespace-nowrap px-3 text-xs font-medium text-muted-foreground first:pl-1 last:pr-1",
+            "h-8 whitespace-nowrap px-3 text-xs font-medium text-muted-foreground",
+            inset ? "first:pl-3 last:pr-3" : "first:pl-1 last:pr-1",
             c.align === "right" ? "text-right" : "text-left",
             c.className,
           );

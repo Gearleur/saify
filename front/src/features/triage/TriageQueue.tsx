@@ -33,11 +33,14 @@ export function TriageQueue({ groups, ids, columns }: TriageQueueProps) {
           rows,
           empty: info.empty,
           header: (
-            <span id={`groupe-${priorite}`} className="flex scroll-mt-20 items-center gap-2">
+            <span
+              id={`groupe-${priorite}`}
+              className="flex min-w-0 scroll-mt-24 items-center gap-2 whitespace-nowrap"
+            >
               <StatusDot tone={info.tone} />
-              <span className="font-semibold">{info.group}</span>
-              <span className="text-subtle">{rows.length}</span>
-              <span className="hidden truncate text-xs text-muted-foreground @3xl:inline">
+              <span className="font-medium">{info.group}</span>
+              <span className="text-xs tabular-nums text-subtle">{rows.length}</span>
+              <span className="hidden truncate pl-2 text-xs text-subtle @3xl:inline">
                 {info.description}
               </span>
             </span>

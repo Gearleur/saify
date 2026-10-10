@@ -1,20 +1,33 @@
 import { Mono } from "@/components/Mono";
 import { StatusLabel } from "@/components/StatusDot";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { isCsdr, TYPES_COURTS } from "@/lib/metier";
+import { TYPES_COURTS } from "@/lib/metier";
 import type { Suspens } from "@/types/api";
 import { LOCAL_STATUS, type LocalStatus } from "./localStatus";
 
-/** Titre et ISIN sur une ligne ; le type d'écart en infobulle. */
-export function TitleCell({ s }: { s: Suspens }) {
-  const csdr = s.signalements.some(isCsdr);
+/** Largeur de table (requête de conteneur) à partir de laquelle l'action a sa propre colonne. */
+export const ACTION_EN_COLONNE = "@5xl:table-cell";
+
+/**
+ * Titre (texte principal) et ISIN (secondaire) ; le type d'écart en infobulle.
+ * `withAction` : sous `@5xl`, l'action attendue passe sous le titre plutôt que d'être tronquée.
+ */
+export function TitleCell({ s, withAction = false }: { s: Suspens; withAction?: boolean }) {
+  const csdr = s.alertes.includes("CSDR");
   return (
     <Tooltip delayDuration={500}>
       <TooltipTrigger asChild>
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate font-medium">{s.libelle_titre}</span>
-          <Mono className="shrink-0 text-subtle">{s.isin}</Mono>
-          {csdr && <span className="shrink-0 text-xs text-dot-red">CSDR</span>}
+        <span className="block min-w-0">
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate font-medium">{s.libelle_titre}</span>
+            <Mono className="shrink-0 text-subtle">{s.isin}</Mono>
+            {csdr && <span className="shrink-0 text-2xs font-medium text-dot-red">CSDR</span>}
+          </span>
+          {withAction && (
+            <span className="block truncate text-xs text-muted-foreground @5xl:hidden">
+              {s.action}
+            </span>
+          )}
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" align="start">

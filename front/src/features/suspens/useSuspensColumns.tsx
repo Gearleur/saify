@@ -7,9 +7,10 @@ import { useReconciliation } from "@/hooks/useReconciliation";
 import { useReferentiel } from "@/hooks/useReferentiel";
 import { compareDecimal } from "@/lib/decimal";
 import { ORDRE_PRIORITES, PRIORITES } from "@/lib/metier";
+import { cn } from "@/lib/utils";
 import type { Suspens } from "@/types/api";
 import { ORDRE_STATUTS, useLocalStatus } from "./localStatus";
-import { StatusCell, TitleCell, TypeCell } from "./SuspensCells";
+import { ACTION_EN_COLONNE, StatusCell, TitleCell, TypeCell } from "./SuspensCells";
 
 /**
  * `triage` : la file du matin (l'action attendue compte plus que le type).
@@ -34,7 +35,7 @@ export function useSuspensColumns(variant: "triage" | "analyse"): Column<Suspens
       id: "titre",
       header: "Titre",
       className: "w-full min-w-[200px] max-w-0",
-      cell: (s) => <TitleCell s={s} />,
+      cell: (s) => <TitleCell s={s} withAction={variant === "triage"} />,
       compare: (a, b) => a.libelle_titre.localeCompare(b.libelle_titre, "fr"),
     };
     const type: Column<Suspens> = {
@@ -54,7 +55,10 @@ export function useSuspensColumns(variant: "triage" | "analyse"): Column<Suspens
     const conservateur: Column<Suspens> = {
       id: "conservateur",
       header: "Conservateur",
-      className: "hidden w-[150px] whitespace-nowrap @5xl:table-cell",
+      className: cn(
+        "hidden w-[136px] whitespace-nowrap",
+        variant === "triage" ? "@6xl:table-cell" : "@5xl:table-cell",
+      ),
       cell: (s) => <span className="text-muted-foreground">{nomConservateur(s.conservateur)}</span>,
       compare: (a, b) => a.conservateur.localeCompare(b.conservateur),
     };
@@ -62,7 +66,7 @@ export function useSuspensColumns(variant: "triage" | "analyse"): Column<Suspens
       id,
       header,
       align: "right",
-      className: "hidden w-[104px] whitespace-nowrap @2xl:table-cell",
+      className: "hidden w-[96px] whitespace-nowrap @2xl:table-cell",
       cell: (s) => <Quantity value={s[id]} />,
       compare: (a, b) => compareDecimal(a[id], b[id]),
     });
@@ -70,31 +74,27 @@ export function useSuspensColumns(variant: "triage" | "analyse"): Column<Suspens
       id: "ecart",
       header: "Écart",
       align: "right",
-      className: "w-[96px] whitespace-nowrap",
+      className: "w-[88px] whitespace-nowrap",
       cell: (s) => <Quantity value={s.ecart} signed />,
       compare: (a, b) => compareDecimal(a.ecart, b.ecart),
     };
     const action = (visibilite: string): Column<Suspens> => ({
       id: "action",
       header: "Action attendue",
-      className: visibilite,
-      cell: (s) => (
-        <span className="block w-[220px] truncate" title={s.action}>
-          {s.action}
-        </span>
-      ),
+      className: cn("hidden whitespace-nowrap", visibilite),
+      cell: (s) => s.action,
       compare: (a, b) => a.action.localeCompare(b.action, "fr"),
     });
     const statut: Column<Suspens> = {
       id: "statut",
       header: "Statut",
-      className: "w-[108px] whitespace-nowrap",
+      className: "w-[100px] whitespace-nowrap",
       cell: (s) => <StatusCell status={get(s)} />,
       compare: (a, b) => ORDRE_STATUTS.indexOf(get(a)) - ORDRE_STATUTS.indexOf(get(b)),
     };
     const qtes = [qte("qte_pms", "Qté PMS"), qte("qte_dep", "Qté conservateur")];
     return variant === "triage"
-      ? [titre, fonds, conservateur, ...qtes, ecart, action("hidden @4xl:table-cell"), statut]
+      ? [titre, fonds, conservateur, ...qtes, ecart, action(ACTION_EN_COLONNE), statut]
       : [
           priorite,
           titre,
@@ -103,7 +103,7 @@ export function useSuspensColumns(variant: "triage" | "analyse"): Column<Suspens
           conservateur,
           ...qtes,
           ecart,
-          action("hidden @7xl:table-cell"),
+          action("@7xl:table-cell"),
           statut,
         ];
   }, [variant, get, nomConservateur]);

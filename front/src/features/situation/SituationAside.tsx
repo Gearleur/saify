@@ -9,7 +9,7 @@ import { buildMatrix } from "./situationMatrix";
 
 function Ligne({ label, value }: { label: ReactNode; value: number }) {
   return (
-    <li className="flex h-8 items-center justify-between border-b border-border pl-1 text-sm">
+    <li className="flex h-9 items-center justify-between border-b border-border pl-1 text-sm">
       {label}
       <span className="tabular-nums text-muted-foreground">{value}</span>
     </li>
@@ -21,7 +21,7 @@ export function SituationAside({ r }: { r: Rapprochement }) {
   const { parametrage } = useReconciliation();
   const matrix = buildMatrix(r.suspens, parametrage?.fonds ?? r.synthese.par_fonds);
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       <Section title="Fonds × conservateur">
         <FundCustodianMatrix matrix={matrix} />
       </Section>

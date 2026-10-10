@@ -3,9 +3,7 @@ import type { Chiffre } from "@/types/api";
 
 function Valeur({ c, grand }: { c: Chiffre; grand?: boolean }) {
   return (
-    <span
-      className={grand ? "text-[26px] font-semibold leading-8 tracking-[-0.02em]" : "font-medium"}
-    >
+    <span className={grand ? "text-figure" : "font-medium"}>
       {formatDecimal(c.valeur)}
       <span
         className={

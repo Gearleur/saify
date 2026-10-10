@@ -31,8 +31,8 @@ export function QuestionsView() {
         title="Questions"
         description="Interrogez la base de gestion en français. Chaque chiffre vient d'une requête SQL en lecture seule, affichée avec ses lignes sources."
       />
-      <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 max-w-[880px] space-y-8">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="min-w-0 max-w-[860px] space-y-6">
           <QuestionComposer onAsk={ask} busy={busy} inputRef={champ} />
           {selected ? (
             <RunView key={selected.id} run={selected} onAsk={ask} />

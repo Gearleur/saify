@@ -83,6 +83,8 @@
       "ecart": "40000",
       "action": "Contacter le dépositaire",
       "piste": "",
+      "explication": "aucune",
+      "alertes": [],
       "signalements": [],
       "sources": [
         "positions_internes.csv:20"
@@ -103,8 +105,15 @@
       "ecart": "7000",
       "action": "Contacter le dépositaire",
       "piste": "",
+      "explication": "aucune",
+      "alertes": [
+        "ISIN_INVALIDE"
+      ],
       "signalements": [
-        "ISIN à clé invalide, probable erreur de saisie"
+        {
+          "code": "ISIN_INVALIDE",
+          "message": "ISIN à clé invalide, probable erreur de saisie"
+        }
       ],
       "sources": [
         "positions_internes.csv:17"
@@ -125,6 +134,8 @@
       "ecart": "-30000",
       "action": "Vérifier une saisie manquante",
       "piste": "",
+      "explication": "aucune",
+      "alertes": [],
       "signalements": [],
       "sources": [
         "depositaire_B_20260925.txt:14"
@@ -145,6 +156,8 @@
       "ecart": "0",
       "action": "Corriger le référentiel dépositaire",
       "piste": "",
+      "explication": "aucune",
+      "alertes": [],
       "signalements": [],
       "sources": [
         "positions_internes.csv:36",
@@ -166,6 +179,8 @@
       "ecart": "50000",
       "action": "Vérifier les opérations de la veille non dénouées",
       "piste": "",
+      "explication": "aucune",
+      "alertes": [],
       "signalements": [],
       "sources": [
         "positions_internes.csv:21",
@@ -187,6 +202,8 @@
       "ecart": "25000",
       "action": "Vérifier les opérations de la veille non dénouées",
       "piste": "op. n°19 ACHAT 25 000 dén. 26/09/2026 → écart entièrement expliqué",
+      "explication": "totale",
+      "alertes": [],
       "signalements": [],
       "sources": [
         "positions_internes.csv:22",
@@ -209,6 +226,8 @@
       "ecart": "-1000",
       "action": "Vérifier les opérations de la veille non dénouées",
       "piste": "op. n°20 VENTE 1 000 dén. 29/09/2026 → écart entièrement expliqué",
+      "explication": "totale",
+      "alertes": [],
       "signalements": [],
       "sources": [
         "positions_internes.csv:38",

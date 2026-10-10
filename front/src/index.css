@@ -86,6 +86,8 @@
   --text-sm--line-height: 20px;
   --text-base: 14px;
   --text-base--line-height: 22px;
+  --text-mono: 11.5px;
+  --text-mono--line-height: 16px;
   --text-heading: 15px;
   --text-heading--line-height: 22px;
   --text-heading--font-weight: 600;

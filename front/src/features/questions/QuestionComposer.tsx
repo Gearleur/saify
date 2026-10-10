@@ -23,7 +23,7 @@ export function QuestionComposer({ onAsk, busy, inputRef }: QuestionComposerProp
   return (
     <form
       onSubmit={(e) => (e.preventDefault(), envoyer())}
-      className="rounded-xl border border-border-strong bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-colors duration-150 focus-within:border-ring"
+      className="rounded-lg border border-border-strong bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-colors duration-150 focus-within:border-ring"
     >
       <label htmlFor="question" className="sr-only">
         Votre question
@@ -42,7 +42,7 @@ export function QuestionComposer({ onAsk, busy, inputRef }: QuestionComposerProp
           }
         }}
         placeholder="Posez une question sur les fonds, les échéances, les opérations ou un suspens…"
-        className="block w-full resize-none bg-transparent px-4 pt-3 text-[15px] leading-6 outline-none placeholder:text-subtle"
+        className="block w-full resize-none bg-transparent px-3.5 pt-3 text-sm outline-none placeholder:text-subtle"
       />
       <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
         <span

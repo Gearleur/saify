@@ -24,8 +24,8 @@ def main() -> None:
         print(f"      → {s.action}")
         if s.piste:
             print(f"      piste : {s.piste}")
-        for message in s.signalements:
-            print(f"      ⚠ {message}")
+        for sig in s.signalements:
+            print(f"      ⚠ {sig.message}")
     normalises = sum(a.niveau == "NORMALISE" for a in resultat.journal)
     print(f"\nJournal ({normalises} normalisations non détaillées) :")
     for a in resultat.journal:

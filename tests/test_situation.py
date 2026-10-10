@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 from middle_office import rapprocher_dossier
-from middle_office.domaine.rapprochement.moteur import Suspens, priorite
+from middle_office.domaine.rapprochement.moteur import Signalement, Suspens, priorite
 from middle_office.domaine.rapprochement.situation import (
     COLONNES_CSV,
     point_de_situation,
@@ -25,7 +25,8 @@ ISINS = {
 
 def _suspens(type_="QTE", explication="aucune", alertes=None) -> Suspens:
     return Suspens("ORSAY OBLIGATIONS", "FR0000051641", "C", type_, Decimal(10), Decimal(5), "SFIL",
-                   [], explication=explication, alertes=alertes or set())  # fmt: skip
+                   [], explication=explication,
+                   signalements=[Signalement(code, code) for code in alertes or ()])  # fmt: skip
 
 
 def test_priorite_critique_si_risque_csdr():

@@ -38,7 +38,7 @@ export function SituationView() {
           </>
         }
       />
-      <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <article className="min-w-0 rounded-lg border border-border">
           <div className="border-b border-border px-5 py-2.5 text-xs text-muted-foreground">
             Aperçu du message

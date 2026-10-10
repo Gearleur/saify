@@ -22,9 +22,7 @@ export function KpiRow({ items, className }: { items: Kpi[]; className?: string 
               {kpi.tone && <StatusDot tone={kpi.tone} />}
               {kpi.label}
             </span>
-            <span className="mt-0.5 block text-figure">
-              {kpi.value}
-            </span>
+            <span className="mt-0.5 block text-figure">{kpi.value}</span>
             {kpi.hint && <span className="block text-xs text-subtle">{kpi.hint}</span>}
           </>
         );

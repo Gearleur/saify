@@ -3,20 +3,20 @@ import { Mono } from "@/components/Mono";
 import { StatusLabel } from "@/components/StatusDot";
 import { Tag } from "@/components/Tag";
 import { useReferentiel } from "@/hooks/useReferentiel";
-import { isCsdr, PRIORITES } from "@/lib/metier";
-import type { Suspens } from "@/types/api";
+import { PRIORITES } from "@/lib/metier";
+import type { Signalement, Suspens } from "@/types/api";
 
-function Signalements({ items }: { items: string[] }) {
+function Signalements({ items }: { items: Signalement[] }) {
   if (items.length === 0) return <span className="text-subtle">Aucun</span>;
   return (
     <ul className="space-y-1">
-      {items.map((t) => (
-        <li key={t}>
+      {items.map((g) => (
+        <li key={`${g.code}-${g.message}`}>
           <StatusLabel
-            tone={isCsdr(t) ? "red" : "amber"}
+            tone={g.code === "CSDR" ? "red" : "amber"}
             className="items-start whitespace-normal [&>span:last-child]:whitespace-normal"
           >
-            {t}
+            {g.message}
           </StatusLabel>
         </li>
       ))}

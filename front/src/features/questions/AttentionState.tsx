@@ -17,7 +17,7 @@ export function AttentionState({ reponse, onAsk }: AttentionStateProps) {
         <StatusLabel tone="amber" className="font-medium">
           Pas de réponse chiffrée
         </StatusLabel>
-        <p className="mt-1.5 max-w-[68ch] text-[15px] leading-6">{texte}</p>
+        <p className="mt-1.5 max-w-[68ch] text-base">{texte}</p>
       </div>
       {reponse.reformulations.length > 0 && (
         <div>
