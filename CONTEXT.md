@@ -18,3 +18,15 @@
 
 ## Pièges des données
 Formats FR (`1 234,56`, `dd/mm/yyyy`), séparateur `;`, encodages latin-1, colonnes débit/crédit séparées, noms de fournisseur abrégés, PDF texte vs scan.
+
+## Glossaire titres / middle office (cas Orsay Gestion)
+- **PMS** : outil de gestion de portefeuille. Il tient l'inventaire interne, en date de négociation.
+- **Conservateur / teneur de compte-conservateur (dépositaire)** : il détient les titres. Il voit les opérations au dénouement (J+2).
+- **Rapprochement de positions** : comparaison des quantités PMS et conservateur, par fonds, ISIN et conservateur.
+- **Suspens** : ligne qui ne rapproche pas. Types : `QTE` (quantité différente), `ABS_DEP` (absent chez le conservateur), `ABS_INT` (absent du PMS), `DEP` (chez un autre conservateur que prévu).
+- **Dénouement / règlement-livraison** : échange effectif des titres contre les espèces (J+2). Une opération non dénouée explique un écart temporaire.
+- **CSDR** : règlement européen qui pénalise les défauts de règlement-livraison.
+- **RCCI** : responsable de la conformité et du contrôle interne.
+- **Sous-compte** : subdivision de gestion dans le PMS. Plusieurs sous-comptes agrégés forment un fonds. `P3G` est un compte technique de passage, exclu.
+- **Nominal** : la quantité d'une obligation s'exprime en montant nominal. Les cours sont en % du nominal, pied de coupon (hors coupon couru).
+- **Journal de nettoyage** : trace de chaque transformation des données sources, au niveau NORMALISE, EXCLU, SIGNALE ou BLOQUANT.
