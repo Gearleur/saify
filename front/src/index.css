@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+/* Le sombre suit le système (prefers-color-scheme). */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/* Tokens shadcn calés sur Attio. La couleur ne porte que de l'information (points de 7 px). */
+:root {
+  --background: #ffffff;
+  --foreground: #1e1f22;
+  --sidebar: #fafafa;
+  --surface: #f7f7f8;
+  --muted: #f7f7f8;
+  --muted-foreground: #5f6167;
+  --subtle-foreground: #9a9da3;
+  --border: #ebecee;
+  --border-strong: #dfe1e4;
+  --hover: #f4f5f6;
+  --selected: #f2f5fe;
+  --primary: #1e1f22;
+  --primary-foreground: #ffffff;
+  --primary-hover: #34363b;
+  --ring: #2d6bf0;
+  --link: #2d6bf0;
+  --tag: #f4f5f6;
+  --tag-border: #e8e9eb;
+  --popover: #ffffff;
+  --danger-wash: #fdf3f3;
+  --danger-line: #f6d6d7;
+  --dot-red: #e5484d;
+  --dot-amber: #f0a000;
+  --dot-green: #30a46c;
+  --dot-gray: #b3b6bb;
+  --dot-blue: #2d6bf0;
+  --shadow-pop:
+    0 0 0 1px rgb(0 0 0 / 0.04), 0 4px 12px -2px rgb(16 17 19 / 0.08),
+    0 12px 32px -8px rgb(16 17 19 / 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #141516;
+    --foreground: #ececed;
+    --sidebar: #18191b;
+    --surface: #1b1c1e;
+    --muted: #1b1c1e;
+    --muted-foreground: #a2a4aa;
+    --subtle-foreground: #6e7177;
+    --border: #262729;
+    --border-strong: #303236;
+    --hover: #1f2022;
+    --selected: #1a2131;
+    --primary: #ececed;
+    --primary-foreground: #141516;
+    --primary-hover: #d4d5d8;
+    --ring: #5b8cff;
+    --link: #7aa2ff;
+    --tag: #1f2022;
+    --tag-border: #2c2d30;
+    --popover: #1b1c1e;
+    --danger-wash: #2a1617;
+    --danger-line: #4a2224;
+    --dot-gray: #6e7177;
+    --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.06), 0 8px 24px -4px rgb(0 0 0 / 0.5);
+  }
+}
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-tag: var(--tag);
+  --color-tag-border: var(--tag-border);
+  --color-popover: var(--popover);
+  --color-danger-wash: var(--danger-wash);
+  --color-danger-line: var(--danger-line);
+  --color-dot-red: var(--dot-red);
+  --color-dot-amber: var(--dot-amber);
+  --color-dot-green: var(--dot-green);
+  --color-dot-gray: var(--dot-gray);
+  --color-dot-blue: var(--dot-blue);
+  --shadow-pop: var(--shadow-pop);
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --animate-fade-in: fade-in 140ms ease-out;
+  --animate-slide-in: slide-in 160ms cubic-bezier(0.2, 0, 0, 1);
+  --animate-pulse-soft: pulse-soft 1.4s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    font-feature-settings: "cv11", "ss01";
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--ring) 22%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+    border-radius: 4px;
+  }
+  button,
+  input,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      transition-duration: 1ms !important;
+    }
+  }
+}
