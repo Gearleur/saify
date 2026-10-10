@@ -144,14 +144,6 @@ def test_valeur_vide_c_bloquante():
     assert "CHAMP_MANQUANT" in regles(resultat, "BLOQUANT")
 
 
-def test_action_inconnue_c_signalee_et_additionnee():
-    essilor = '<Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-PAT</Dim><Dim prop="CODE_ISIN">FR0000050007'
-    resultat = lancer(fichiers(c=remplacer(C, (essilor, essilor.replace(">C<", ">M<")))))
-    assert resultat.statut == "OK"
-    assert "ACTION_INCONNUE" in regles(resultat, "SIGNALE")
-    assert len(resultat.suspens) == 7  # additionné : ESSILOR rapproche toujours
-
-
 @pytest.mark.parametrize("quantite", ["10.000", "-10000"])
 def test_quantite_non_entiere_ou_negative_signalee(quantite):
     resultat = lancer(fichiers(pms=remplacer(PMS, (";VINCI;10000;", f";VINCI;{quantite};"))))

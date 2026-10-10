@@ -145,19 +145,50 @@ def test_position_nulle_ne_cree_pas_de_suspens():
     assert len(resultat.suspens) == 7
 
 
-# C. Une ligne en double chez A ou B est additionnée (on ne devine pas), mais signalée.
-def test_doublon_b_signale():
+# C. Une ligne en double bloque : additionnée, elle pourrait égaler le PMS et masquer un écart.
+def test_doublon_b_bloquant():
     ligne = "DORAFR0000014078000000001000000\r\n"
     b = remplacer(B, (ligne, ligne + ligne), ("T000013", "T000014"))
     resultat = lancer(fichiers(b=b))
-    assert "DOUBLON" in regles(resultat, "SIGNALE")
-    (vinci,) = _suspens(resultat, "FR0000014078")
-    assert vinci.type == "QTE"
+    assert resultat.statut == "BLOQUE"
+    assert "DOUBLON" in regles(resultat, "BLOQUANT")
 
 
-def test_doublon_a_signale():
+def test_doublon_a_bloquant():
     resultat = lancer(fichiers(a=xlsx_a(dupliquer=4)))
-    assert "DOUBLON" in regles(resultat, "SIGNALE")
+    assert resultat.statut == "BLOQUE"
+    assert "DOUBLON" in regles(resultat, "BLOQUANT")
+
+
+SFIL_LOT_1 = (
+    '<Dim prop="CODE_ISIN">FR0000051641</Dim><Dim prop="LIBELLE_TITRE">SFIL 3% 2033</Dim>'
+    '<Dim prop="QUANTITE">50000,00</Dim><Dim prop="LOT">1</Dim></Item>'
+)
+
+
+def _sfil_bis(action: str) -> bytes:
+    """Un second item SFIL (même lot) qui, additionné, égalerait le PMS (100 000) : l'écart disparaîtrait."""
+    bis = f'<Item><Dim prop="ACTION">{action}</Dim><Dim prop="COMPTE">ORS-OBL</Dim>{SFIL_LOT_1}'
+    return remplacer(
+        C, (SFIL_LOT_1, SFIL_LOT_1 + bis), ("<NbItems>9</NbItems>", "<NbItems>10</NbItems>")
+    )
+
+
+def test_lot_c_en_double_bloquant_plutot_que_masquer_l_ecart():
+    resultat = lancer(fichiers(c=_sfil_bis("C")))
+    assert resultat.statut == "BLOQUE"
+    assert "DOUBLON" in regles(resultat, "BLOQUANT")
+
+
+def test_lots_c_distincts_additionnes():
+    (hermes,) = [p for p in lancer(fichiers()).suspens if p.isin == "FR0000052052"] or [None]
+    assert hermes is None  # 10 000 (lot 1) + 15 000 (lot 2) = 25 000, comme le PMS
+
+
+def test_action_c_inconnue_bloquante_plutot_que_masquer_l_ecart():
+    resultat = lancer(fichiers(c=_sfil_bis("X")))
+    assert resultat.statut == "BLOQUE"
+    assert "ACTION_INCONNUE" in regles(resultat, "BLOQUANT")
 
 
 # Deux fichiers pour une même source : lequel est le bon ? On refuse.

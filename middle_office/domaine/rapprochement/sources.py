@@ -18,7 +18,7 @@ import openpyxl
 
 SOUS_COMPTES_EXCLUS = {"P3G"}
 NS_C = {"c": "urn:orsay:depositaire-c:positions:2026"}
-PROPS_C = ("ACTION", "COMPTE", "CODE_ISIN", "LIBELLE_TITRE", "QUANTITE")
+PROPS_C = ("ACTION", "COMPTE", "CODE_ISIN", "LIBELLE_TITRE", "QUANTITE", "LOT")
 ACTIONS_C = {"C", "S"}  # C : position, S : annulation
 COLONNES_PMS = ("date_arrete", "sous_compte", "isin", "libelle", "quantite", "depositaire")
 TYPES_REQUIS = ("QTE", "ABS_DEP", "ABS_INT", "DEP")
@@ -32,6 +32,8 @@ REMEDES = {
     "LIGNE_INCOMPLETE": "Compléter ou supprimer la ligne citée à la source, puis relancer",
     "TYPE_LIGNE_INCONNU": "Type d'enregistrement inconnu : vérifier le format avec le conservateur",
     "CHAMP_MANQUANT": "Item incomplet : redemander le fichier au conservateur, puis relancer",
+    "DOUBLON": "Ligne en double : faire confirmer la position par son émetteur, supprimer le doublon, puis relancer",
+    "ACTION_INCONNUE": "Code ACTION inconnu : vérifier sa signification avec le conservateur avant de relancer",
     "FORMAT": "Le format du fichier a changé : le vérifier avec son émetteur avant de relancer",
     "FORMAT_ILLISIBLE": "Redéposer le fichier d'origine, sans l'ouvrir ni le réenregistrer",
     "AUCUNE_LIGNE": "Aucune position lue : vérifier qu'il s'agit du bon fichier et du bon format",
@@ -103,16 +105,22 @@ class Lecture:
                    f"Ajouter « {valeur} » à la table {table} de parametrage.xlsx, puis relancer")  # fmt: skip
 
     def ajouter(self, source: str, entite: str, isin: str, conservateur: str,
-                quantite: Decimal, libelle: str, ligne: int, compte: str | None = None) -> None:  # fmt: skip
-        """`compte` : identifiant de ligne côté source ; deux lignes au même (compte, ISIN) sont
-        additionnées (on ne devine pas laquelle est la bonne) mais signalées. C n'en passe pas :
-        ses lots multiples sont normaux."""
-        if compte is not None:
-            cle = (compte, isin, conservateur)
-            if cle in self._vues:
-                self.noter("SIGNALE", "DOUBLON", ligne, f"{compte} {isin}", quantite,
-                           "ligne en double (même compte et ISIN) : additionnée, à vérifier")  # fmt: skip
-            self._vues.add(cle)
+                quantite: Decimal, libelle: str, ligne: int, compte: str) -> None:  # fmt: skip
+        """`compte` : identifiant de ligne côté source (pour C : compte et numéro de lot). Deux lignes
+        au même (compte, ISIN) bloquent : additionnées, elles pourraient égaler le PMS et masquer
+        un écart ; en garder une, ce serait deviner laquelle est la bonne."""
+        cle = (compte, isin, conservateur)
+        if cle in self._vues:
+            self.noter(
+                "BLOQUANT",
+                "DOUBLON",
+                ligne,
+                f"{compte} {isin}",
+                "",
+                "ligne en double (même compte et ISIN) : laquelle est la bonne ?",
+            )
+            return
+        self._vues.add(cle)
         if quantite < 0 or quantite != quantite.to_integral_value():
             self.noter("SIGNALE", "QUANTITE_SUSPECTE", ligne, quantite, quantite,
                        "quantité négative ou non entière : à confirmer")  # fmt: skip
@@ -417,7 +425,7 @@ def _dtd_present(contenu: bytes) -> bool:
 
 
 def lire_depositaire_c(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) -> Lecture:
-    """XML à namespace ; les lots d'un même (compte, ISIN) sont additionnés au rapprochement."""
+    """XML à namespace ; les lots distincts d'un même (compte, ISIN) sont additionnés, un lot répété bloque."""
     lecture = Lecture(nom)
     if _dtd_present(contenu):  # avant tout parsing : entités externes, « billion laughs »
         lecture.noter("BLOQUANT", "FORMAT", 0, "", "",
@@ -461,9 +469,16 @@ def lire_depositaire_c(nom: str, contenu: bytes, param: Parametrage, date_arrete
             )
             continue
         if dims["ACTION"] not in ACTIONS_C:
-            # Additionné plutôt qu'écarté : une erreur ressort en QTE visible, jamais en suspens caché.
-            lecture.noter("SIGNALE", "ACTION_INCONNUE", num, dims["ACTION"], "C",
-                          f"ACTION « {dims['ACTION']} » inconnue : item additionné, à vérifier")  # fmt: skip
+            # Ni additionné (il pourrait combler un écart) ni écarté (il pourrait en créer un) : refusé.
+            lecture.noter(
+                "BLOQUANT",
+                "ACTION_INCONNUE",
+                num,
+                dims["ACTION"],
+                "",
+                f"ACTION « {dims['ACTION']} » inconnue (attendu : C ou S)",
+            )
+            continue
         if dims["COMPTE"] not in param.comptes_c:
             lecture.transco_absente(num, dims["COMPTE"], "TRANSCO_DEPOSITAIRE_C")
             continue
@@ -475,6 +490,14 @@ def lire_depositaire_c(nom: str, contenu: bytes, param: Parametrage, date_arrete
             continue
         if "," in brut:
             lecture.noter("NORMALISE", "VIRGULE_DECIMALE", num, brut, qte, "virgule décimale")
-        lecture.ajouter("C", param.comptes_c[dims["COMPTE"]], _isin(lecture, num, dims["CODE_ISIN"]), "C",
-                        qte, dims["LIBELLE_TITRE"], num)  # fmt: skip
+        lecture.ajouter(
+            "C",
+            param.comptes_c[dims["COMPTE"]],
+            _isin(lecture, num, dims["CODE_ISIN"]),
+            "C",
+            qte,
+            dims["LIBELLE_TITRE"],
+            num,
+            compte=f"{dims['COMPTE']} lot {dims['LOT']}",
+        )
     return lecture
