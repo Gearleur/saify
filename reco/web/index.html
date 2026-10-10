@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Rapprochement titres · Orsay Gestion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navigation principale">
+      <div class="sb-top">
+        <button class="workspace" id="workspace" type="button" aria-label="Espace de travail">
+          <span class="ws-logo" aria-hidden="true">O</span>
+          <span class="ws-text">
+            <span class="ws-name">Orsay Gestion</span>
+            <span class="ws-sub">Middle office</span>
+          </span>
+          <span class="ico ws-chev" data-icon="chevrons"></span>
+        </button>
+
+        <div class="run-status" id="run-status">
+          <div class="rs-line">
+            <span class="rs-label">Arrêté du</span>
+            <span class="rs-date num" id="rs-date">—</span>
+          </div>
+          <div class="rs-line">
+            <span class="pill pill-neutral" id="rs-pill">Aucun rapprochement</span>
+            <span class="rs-time num" id="rs-time"></span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sb-nav" id="sb-nav">
+        <div class="sb-group">
+          <div class="sb-group-title">Rapprochement</div>
+          <a class="nav-item" href="#/a-traiter" data-view="a-traiter"><span class="ico" data-icon="inbox"></span><span class="nav-label">À traiter</span><span class="nav-badge badge-alert" id="badge-a-traiter"></span></a>
+          <a class="nav-item" href="#/suspens" data-view="suspens"><span class="ico" data-icon="rows"></span><span class="nav-label">Suspens</span><span class="nav-badge" id="badge-suspens"></span></a>
+          <a class="nav-item" href="#/point" data-view="point"><span class="ico" data-icon="file-text"></span><span class="nav-label">Point de situation</span></a>
+          <a class="nav-item" href="#/journal" data-view="journal"><span class="ico" data-icon="scroll"></span><span class="nav-label">Journal de nettoyage</span><span class="nav-badge" id="badge-journal"></span></a>
+          <a class="nav-item" href="#/fichiers" data-view="fichiers"><span class="ico" data-icon="folder"></span><span class="nav-label">Fichiers</span></a>
+        </div>
+        <div class="sb-group">
+          <div class="sb-group-title">Base de gestion</div>
+          <a class="nav-item" href="#/questions" data-view="questions"><span class="ico" data-icon="message"></span><span class="nav-label">Questions</span><span class="nav-badge badge-soon">bientôt</span></a>
+        </div>
+        <div class="sb-group">
+          <div class="sb-group-title">Référentiel</div>
+          <a class="nav-item" href="#/parametrage" data-view="parametrage"><span class="ico" data-icon="sliders"></span><span class="nav-label">Paramétrage</span></a>
+        </div>
+      </nav>
+
+      <div class="sb-bottom">
+        <div class="sb-group-title sb-hist-title">Historique</div>
+        <ul class="history" id="history" aria-label="Rapprochements récents"></ul>
+        <div class="sb-foot">
+          <span class="health" id="health" title="État de l'API"><span class="dot" id="health-dot"></span><span id="health-text">API…</span></span>
+          <button class="kbd-btn" id="open-palette" type="button" aria-label="Ouvrir la palette de commandes"><kbd id="kbd-mod">⌘</kbd><kbd>K</kbd></button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="sb-scrim" id="sb-scrim"></div>
+
+    <main class="main" id="main">
+      <header class="topbar" id="topbar">
+        <div class="tb-left">
+          <button class="icon-btn sb-toggle" id="sb-toggle" type="button" aria-label="Afficher la navigation"><span class="ico" data-icon="menu"></span></button>
+          <div class="tb-titles">
+            <nav class="crumbs" id="crumbs" aria-label="Fil d'Ariane"></nav>
+            <h1 class="tb-title" id="tb-title">À traiter</h1>
+          </div>
+        </div>
+        <div class="tb-actions">
+          <button class="btn btn-primary" id="act-exemple" type="button"><span class="ico" data-icon="play"></span><span id="act-exemple-label">Lancer sur les fichiers du 25/09</span></button>
+          <button class="btn" id="act-deposer" type="button"><span class="ico" data-icon="upload"></span><span>Déposer des fichiers</span></button>
+          <a class="btn" id="act-csv" href="#" aria-disabled="true" download><span class="ico" data-icon="download"></span><span>Exporter CSV</span></a>
+          <button class="btn" id="act-copier" type="button"><span class="ico" data-icon="copy"></span><span>Copier le point de situation</span></button>
+        </div>
+      </header>
+
+      <div class="view" id="view" tabindex="-1"></div>
+    </main>
+  </div>
+
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+  <aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+    <div class="sheet-head">
+      <div class="sheet-head-tags" id="sheet-tags"></div>
+      <div class="sheet-head-nav">
+        <button class="icon-btn" id="sheet-prev" type="button" aria-label="Suspens précédent"><span class="ico" data-icon="chevron-up"></span></button>
+        <button class="icon-btn" id="sheet-next" type="button" aria-label="Suspens suivant"><span class="ico" data-icon="chevron-down"></span></button>
+        <button class="icon-btn" id="sheet-close" type="button" aria-label="Fermer"><span class="ico" data-icon="x"></span></button>
+      </div>
+    </div>
+    <h2 class="sheet-title" id="sheet-title"></h2>
+    <div class="sheet-body" id="sheet-body"></div>
+  </aside>
+
+  <div class="palette-backdrop" id="palette-backdrop" hidden>
+    <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Palette de commandes">
+      <div class="palette-input-wrap">
+        <span class="ico" data-icon="search"></span>
+        <input class="palette-input" id="palette-input" type="text" placeholder="Aller à une vue, chercher un ISIN ou un titre…" autocomplete="off" spellcheck="false" aria-controls="palette-list">
+        <kbd>Échap</kbd>
+      </div>
+      <ul class="palette-list" id="palette-list" role="listbox"></ul>
+    </div>
+  </div>
+
+  <div class="drop-overlay" id="drop-overlay" hidden>
+    <div class="drop-overlay-inner">
+      <span class="ico ico-lg" data-icon="upload"></span>
+      <p>Déposez les fichiers du jour</p>
+      <p class="muted">positions_internes, depositaire_A, depositaire_B, depositaire_C</p>
+    </div>
+  </div>
+
+  <input type="file" id="file-input" multiple accept=".csv,.xlsx,.txt,.xml" hidden>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+</body>
+</html>
