@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cas pratique Orsay Gestion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F4F6F3; --surface:#FFFFFF; --surface-2:#EAEFEC; --ink:#10302F; --ink-2:#4E615F; --line:#D5DDD9;
+  --accent:#C8860B; --accent-soft:#FBEFD6; --petrol:#15514E; --petrol-soft:#DDEBE8;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0D1514; --surface:#15201F; --surface-2:#1C2A28; --ink:#E4ECE9; --ink-2:#9AAEAA; --line:#2A3B39;
+    --accent:#F0B43A; --accent-soft:#3A2E14; --petrol:#6FC2B8; --petrol-soft:#18332F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1514; --surface:#15201F; --surface-2:#1C2A28; --ink:#E4ECE9; --ink-2:#9AAEAA; --line:#2A3B39;
+  --accent:#F0B43A; --accent-soft:#3A2E14; --petrol:#6FC2B8; --petrol-soft:#18332F;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.6;padding-inline:20px;padding-block:0 64px}
+.wrap{max-width:860px;margin-inline:auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(1.35rem,3vw,1.65rem);font-weight:700}
+h3{font-size:1.05rem;font-weight:700}
+p{margin:0}
+code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.muted{color:var(--ink-2)}
+section{display:grid;gap:16px;padding-block:34px;border-top:1px solid var(--line)}
+ul,ol{margin:0;padding-left:1.25em;display:grid;gap:6px}
+
+header{display:grid;gap:22px;padding-block:44px 34px}
+header h1{font-size:clamp(2.1rem,5.5vw,3.3rem);font-weight:800;line-height:1.04}
+header h1 span{color:var(--accent)}
+.lede{max-width:62ch;font-size:1.05rem;color:var(--ink-2)}
+.timing{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.timing div{flex:1 1 180px;padding:14px 18px;display:grid;gap:2px;border-right:1px solid var(--line)}
+.timing div:last-child{border-right:0}
+.timing b{font-family:var(--display);font-size:1.5rem;font-variant-numeric:tabular-nums}
+.timing small{color:var(--ink-2);font-size:.84rem}
+
+blockquote{margin:0;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;display:grid;gap:10px;font-size:1rem}
+blockquote cite{font-style:normal;font-size:.84rem;color:var(--ink-2)}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:.9rem}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+thead th{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500;background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+pre{margin:0;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto;font-family:var(--mono);font-size:.84rem;line-height:1.5}
+
+.levels{display:grid;gap:12px}
+.level{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.level .tag{grid-row:span 2;font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;align-self:start;white-space:nowrap}
+.level.l1 .tag{background:var(--petrol);color:var(--bg)}
+.level.l2 .tag{background:var(--petrol-soft);color:var(--petrol)}
+.level.l3 .tag{background:var(--accent-soft);color:var(--accent)}
+.level ul{margin-top:4px}
+
+.rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px}
+.rule{border-left:3px solid var(--petrol);padding:2px 0 2px 14px;display:grid;gap:3px}
+.rule b{font-weight:600}
+.rule span{font-size:.92rem;color:var(--ink-2)}
+
+footer{padding-top:24px;border-top:1px solid var(--line);font-size:.82rem;color:var(--ink-2)}
+@media (max-width:640px){ .rules{grid-template-columns:1fr} .level{grid-template-columns:1fr} .level .tag{grid-row:auto;justify-self:start} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Saify · Cas pratique · Énoncé candidat</div>
+  <h1>Le middle office <span>d'Orsay Gestion</span></h1>
+  <p class="lede">Vous êtes consultant chez Saify. Un client vous expose son besoin. Comment y répondre, avec quels outils et sous quelle forme : c'est à vous de le décider et de le défendre. Vous avez une heure pour construire, puis une heure pour nous présenter votre réponse.</p>
+  <div class="timing">
+    <div><b>1 h</b><small>de construction, seul, sur le poste fourni</small></div>
+    <div><b>1 h</b><small>de restitution avec l'équipe Saify</small></div>
+    <div><b>Libre</b><small>solution, technologies, forme du livrable</small></div>
+  </div>
+</header>
+
+<section>
+  <div class="eyebrow">Le client</div>
+  <h2>Orsay Gestion</h2>
+  <p>Orsay Gestion est une société de gestion de portefeuille agréée par l'AMF. Elle gère trois FCP : <b>Orsay Patrimoine</b> (diversifié), <b>Orsay Obligations</b> (taux euro, <i>investment grade</i>) et <b>Orsay Actions Europe</b> (grandes capitalisations). La conservation des actifs est répartie entre trois teneurs de compte-conservateurs, désignés ici <b>A</b>, <b>B</b> et <b>C</b>.</p>
+  <p>Le middle office tient l'inventaire des positions dans l'outil de gestion (PMS). Les opérations y sont enregistrées en date de négociation. Chez les conservateurs, elles n'apparaissent qu'au dénouement, dans le cycle de règlement-livraison à J+2.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Premier besoin</div>
+  <h2>Le rapprochement quotidien des positions titres</h2>
+  <p>Chaque matin, un opérateur rapproche à la main l'inventaire du PMS avec les relevés de positions des trois conservateurs, arrêtés à J−1. Cela lui prend environ 1 h 30. Les suspens sont parfois identifiés plusieurs jours après leur apparition, alors que chaque suspens de règlement non traité peut coûter des pénalités CSDR et remonte au RCCI.</p>
+  <blockquote>
+    <p>« Je veux déposer mes fichiers du matin et savoir tout de suite quelles lignes ne tombent pas juste, pour quel fonds, chez quel conservateur, et ce que je dois faire pour chacune. Je veux aussi pouvoir envoyer un point de situation à mon responsable sans rien retaper. »</p>
+    <cite>Responsable middle office, Orsay Gestion</cite>
+  </blockquote>
+  <p>Ce que le middle office nous a expliqué de ses règles de gestion :</p>
+  <div class="rules">
+    <div class="rule"><b>La source du rapprochement</b><span>Le rapprochement part de l'extraction du matin, <code>positions_internes.csv</code>, comparée aux trois relevés des conservateurs. La base de gestion <code>orsay.db</code> sert uniquement à s'informer : elle n'est pas la référence du rapprochement.</span></div>
+    <div class="rule"><b>La maille de rapprochement</b><span>Une ligne se rapproche par fonds, code ISIN et conservateur. Les quantités s'entendent en nombre de titres pour les actions et en nominal pour les obligations.</span></div>
+    <div class="rule"><b>Les sous-comptes de gestion</b><span>Un fonds peut porter la même valeur sur plusieurs sous-comptes du PMS. Le conservateur ne voit que le compte-titres du fonds.</span></div>
+    <div class="rule"><b>Ce qui n'entre pas dans l'inventaire</b><span>Le sous-compte <code>P3G</code> est un compte technique de passage. Une ligne sans sous-compte est une saisie incomplète. Un mouvement annulé par le conservateur n'est plus une position.</span></div>
+    <div class="rule"><b>Les libellés des conservateurs</b><span>Dans le PMS, les libellés varient : « CACEIS » désigne A, « EUROCLEAR » désigne B, « BNP » ou « BP2S » désigne C.</span></div>
+    <div class="rule"><b>Aucun seuil de tolérance</b><span>Un écart d'une seule unité de quotité est un suspens.</span></div>
+    <div class="rule"><b>La typologie des suspens</b><span>Elle figure dans le fichier de paramétrage, avec l'action attendue pour chaque type. Une valeur attendue chez un conservateur mais livrée chez un autre est un seul suspens, pas deux.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Second besoin</div>
+  <h2>Répondre aux gérants et au contrôle</h2>
+  <p>Toute la journée, les gérants et le RCCI sollicitent le middle office : l'encours valorisé d'un fonds au cours de clôture, les tombées d'échéances à venir, la concentration par émetteur, les opérations non dénouées, l'origine d'un suspens. L'opérateur y répond en fouillant la base de gestion à la main.</p>
+  <blockquote>
+    <p>« Je veux que les gérants obtiennent eux-mêmes, en le demandant simplement, une réponse fiable tirée de notre base. Qu'ils sachent d'où vient chaque chiffre. Un chiffre inventé, ici, c'est un incident qui finit chez le RCCI. Et personne ne doit pouvoir modifier l'inventaire par ce biais. »</p>
+    <cite>Responsable middle office, Orsay Gestion</cite>
+  </blockquote>
+  <p>La base de gestion vous est fournie. Les obligations y sont cotées en pourcentage du nominal, au pied de coupon. Les actions sont cotées à l'unité.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Dossier donnees/</div>
+  <h2>Ce que le client vous remet</h2>
+  <p>Arrêté du 25 septembre 2026, dans la forme où le client reçoit ces fichiers : personne ne les a nettoyés pour vous.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Fichier</th><th>Contenu</th></tr></thead>
+      <tbody>
+        <tr><td><code>positions_internes.csv</code></td><td>Extraction de l'inventaire du PMS, par sous-compte et par valeur. C'est la source interne du rapprochement</td></tr>
+        <tr><td><code>depositaire_A_20260925.xlsx</code></td><td>Relevé de positions du conservateur A</td></tr>
+        <tr><td><code>depositaire_B_20260925.txt</code></td><td>Relevé de positions du conservateur B, au format décrit en annexe</td></tr>
+        <tr><td><code>depositaire_C_20260925.xml</code></td><td>Relevé de positions du conservateur C, au format décrit en annexe</td></tr>
+        <tr><td><code>parametrage.xlsx</code></td><td>Tables de transcodification des comptes vers les fonds, et typologie des suspens</td></tr>
+        <tr><td><code>orsay.db</code></td><td>Base de gestion (SQLite) : fonds, référentiel valeurs, cours de clôture, inventaire, opérations de la semaine. Base d'information, à ne pas utiliser comme source du rapprochement</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Ce que nous regardons</div>
+  <h2>Votre réponse</h2>
+  <ul>
+    <li><b>La forme de la solution est libre.</b> Vous choisissez ce que vous construisez, avec quelles technologies, et comment le client s'en sert.</li>
+    <li><b>Les deux besoins ne tiennent pas en une heure.</b> Ce que vous choisissez de traiter, dans quel ordre et à quel niveau de fiabilité fait partie de l'évaluation.</li>
+    <li><b>Ce que vous livrez doit fonctionner</b> sur ce poste, lancé par nous à partir de vos instructions.</li>
+    <li><b>Vous êtes consultant</b> : si le besoin vous paraît ambigu, choisissez une interprétation, écrivez-la et continuez.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow">Fournis par Saify</div>
+  <h2>Vos moyens</h2>
+  <ul>
+    <li><b>Claude Code</b> est à votre disposition et son usage est attendu. Nous regardons autant votre façon de l'utiliser que le résultat.</li>
+    <li>Une <b>clé d'API Anthropic</b> vous est fournie dans le fichier <code>.env</code> du dossier, variable <code>ANTHROPIC_API_KEY</code>. Vous l'utilisez si et comme vous le jugez utile. Elle est plafonnée et révoquée après la session. Ne la recopiez pas dans le code et ne commitez pas <code>.env</code>, déjà exclu par <code>.gitignore</code>.</li>
+    <li>Le poste dispose de git, Python 3.12 et Node.js. Vous pouvez installer ce dont vous avez besoin. Internet et la documentation sont autorisés, l'aide d'une autre personne ne l'est pas.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow">Pendant et à la fin de l'heure</div>
+  <h2>Ce que vous nous laissez</h2>
+  <ul>
+    <li><b>Des commits réguliers</b>, au moins toutes les 15 minutes. Le dépôt git est déjà initialisé.</li>
+    <li>Un <code>README.md</code> court : comment lancer votre solution, vos choix, ce qui marche et ce qui manque. Distinguez ce que vous avez <b>vérifié vous-même</b> de ce que l'assistant de code affirme.</li>
+    <li>L'historique de votre session Claude Code, exporté avec la commande <code>/export</code>.</li>
+  </ul>
+  <p class="muted">La durée est fixe : à la fin de l'heure, on s'arrête là où on en est.</p>
+</section>
+
+<section>
+  <div class="eyebrow">La deuxième heure</div>
+  <h2>La restitution</h2>
+  <ol>
+    <li><b>15 minutes de démonstration</b>, comme devant le responsable middle office. Nous jouerons aussi les gérants et poserons nos propres questions.</li>
+    <li><b>Revue du code</b> : nous choisissons des passages et vous nous les expliquez, y compris ceux écrits par Claude Code.</li>
+    <li><b>Vos choix</b> : pourquoi cette solution, ces technologies, ces priorités, et ce que vous feriez avec une journée de plus.</li>
+    <li><b>Votre méthode</b> : nous parcourons ensemble l'historique de vos prompts.</li>
+  </ol>
+</section>
+
+<section>
+  <div class="eyebrow">Annexe</div>
+  <h2>Spécifications transmises par les conservateurs</h2>
+
+  <h3>Conservateur B : fichier à largeur fixe</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Ligne</th><th>Positions</th><th>Contenu</th></tr></thead>
+      <tbody>
+        <tr><td>En-tête</td><td class="num">1 · 2-9</td><td><code>H</code>, puis la date d'arrêté <code>AAAAMMJJ</code>, puis un libellé libre</td></tr>
+        <tr><td>Détail</td><td class="num">1</td><td><code>D</code></td></tr>
+        <tr><td></td><td class="num">2-4</td><td>Code desk du client</td></tr>
+        <tr><td></td><td class="num">5-16</td><td>Code ISIN</td></tr>
+        <tr><td></td><td class="num">17-31</td><td>Quantité sur 15 chiffres, 2 décimales implicites</td></tr>
+        <tr><td>Contrôle</td><td class="num">1 · 2-7</td><td><code>T</code>, puis le nombre de lignes de détail sur 6 chiffres</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <pre>H20260925DEPOSITAIRE B RELEVE POSITIONS
+DOROFR0000010373000000000500000
+…
+T000013</pre>
+
+  <h3>Conservateur C : fichier XML</h3>
+  <p>Espace de noms <code>urn:orsay:depositaire-c:positions:2026</code>. Chaque <code>Item</code> est une suite de <code>Dim</code> identifiées par leur attribut <code>prop</code>.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Élément</th><th>Contenu</th></tr></thead>
+      <tbody>
+        <tr><td><code>Entete/DateArrete</code></td><td>Date d'arrêté, <code>JJMMAAAA</code></td></tr>
+        <tr><td><code>Entete/NbItems</code></td><td>Nombre total d'<code>Item</code>, annulations comprises</td></tr>
+        <tr><td><code>ACTION</code></td><td><code>C</code> = position, <code>S</code> = annulation</td></tr>
+        <tr><td><code>COMPTE</code></td><td>Compte-titres du client</td></tr>
+        <tr><td><code>CODE_ISIN</code> · <code>LIBELLE_TITRE</code></td><td>Code ISIN et libellé</td></tr>
+        <tr><td><code>QUANTITE</code></td><td>Quantité, virgule décimale</td></tr>
+        <tr><td><code>LOT</code></td><td>Numéro de lot : une position peut être livrée en plusieurs lots</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <pre>&lt;RelevePositions xmlns="urn:orsay:depositaire-c:positions:2026"&gt;
+  &lt;Entete&gt;&lt;DateArrete&gt;25092026&lt;/DateArrete&gt;&lt;Emetteur&gt;DEPOSITAIRE C&lt;/Emetteur&gt;&lt;NbItems&gt;9&lt;/NbItems&gt;&lt;/Entete&gt;
+  &lt;Positions&gt;
+    &lt;Item&gt;&lt;Dim prop="ACTION"&gt;C&lt;/Dim&gt;&lt;Dim prop="COMPTE"&gt;ORS-PAT&lt;/Dim&gt;&lt;Dim prop="CODE_ISIN"&gt;FR0000050007&lt;/Dim&gt;
+          &lt;Dim prop="LIBELLE_TITRE"&gt;ESSILORLUXOTTICA&lt;/Dim&gt;&lt;Dim prop="QUANTITE"&gt;50000,00&lt;/Dim&gt;&lt;Dim prop="LOT"&gt;1&lt;/Dim&gt;&lt;/Item&gt;
+    …</pre>
+</section>
+
+<footer>Saify · Cas pratique « Orsay Gestion » · Version 3.0 du 27 septembre 2026. Société, fonds, comptes et données fictifs, créés pour le recrutement.</footer>
+
+</div>
+</body>
+</html>

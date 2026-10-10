@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelevePositions xmlns="urn:orsay:depositaire-c:positions:2026">
+  <Entete><DateArrete>25092026</DateArrete><Emetteur>DEPOSITAIRE C</Emetteur><NbItems>9</NbItems></Entete>
+  <Positions>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-PAT</Dim><Dim prop="CODE_ISIN">FR0000050007</Dim><Dim prop="LIBELLE_TITRE">ESSILORLUXOTTICA</Dim><Dim prop="QUANTITE">50000,00</Dim><Dim prop="LOT">1</Dim></Item>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-PAT</Dim><Dim prop="CODE_ISIN">FR0000050411</Dim><Dim prop="LIBELLE_TITRE">OAT 1.75% 2039</Dim><Dim prop="QUANTITE">10000,00</Dim><Dim prop="LOT">1</Dim></Item>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-OBL</Dim><Dim prop="CODE_ISIN">FR0000050825</Dim><Dim prop="LIBELLE_TITRE">CAISSE DES DEPOTS 2.5% 2031</Dim><Dim prop="QUANTITE">150000,00</Dim><Dim prop="LOT">1</Dim></Item>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-OBL</Dim><Dim prop="CODE_ISIN">FR0000051237</Dim><Dim prop="LIBELLE_TITRE">RTE 3.75% 2036</Dim><Dim prop="QUANTITE">25000,00</Dim><Dim prop="LOT">1</Dim></Item>
+    <Item><Dim prop="ACTION">S</Dim><Dim prop="COMPTE">ORS-OBL</Dim><Dim prop="CODE_ISIN">FR0000051237</Dim><Dim prop="LIBELLE_TITRE">RTE 3.75% 2036</Dim><Dim prop="QUANTITE">10000,00</Dim><Dim prop="LOT">2</Dim></Item>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-OBL</Dim><Dim prop="CODE_ISIN">FR0000051641</Dim><Dim prop="LIBELLE_TITRE">SFIL 3% 2033</Dim><Dim prop="QUANTITE">50000,00</Dim><Dim prop="LOT">1</Dim></Item>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-ACT</Dim><Dim prop="CODE_ISIN">FR0000052052</Dim><Dim prop="LIBELLE_TITRE">HERMES</Dim><Dim prop="QUANTITE">10000,00</Dim><Dim prop="LOT">1</Dim></Item>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-ACT</Dim><Dim prop="CODE_ISIN">FR0000052052</Dim><Dim prop="LIBELLE_TITRE">HERMES</Dim><Dim prop="QUANTITE">15000,00</Dim><Dim prop="LOT">2</Dim></Item>
+    <Item><Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-ACT</Dim><Dim prop="CODE_ISIN">FR0000052466</Dim><Dim prop="LIBELLE_TITRE">DASSAULT SYSTEMES</Dim><Dim prop="QUANTITE">150000,00</Dim><Dim prop="LOT">1</Dim></Item>
+  </Positions>
+</RelevePositions>

@@ -1,0 +1,5 @@
+code;libelle;action_attendue
+QTE;Quantité différente;Vérifier les opérations de la veille non dénouées
+ABS_DEP;Position interne absente chez le dépositaire;Contacter le dépositaire
+ABS_INT;Position dépositaire absente du livre interne;Vérifier une saisie manquante
+DEP;Titre détenu chez un autre dépositaire que prévu;Corriger le référentiel dépositaire
