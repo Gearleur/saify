@@ -3,6 +3,7 @@
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from reco.sources import (
     Anomalie,
     Lecture,
     Position,
+    isin_valide,
     lire_depositaire_a,
     lire_depositaire_b,
     lire_depositaire_c,
@@ -23,6 +25,7 @@ LECTEURS = {
     "B": ("depositaire_B", lire_depositaire_b),
     "C": ("depositaire_C", lire_depositaire_c),
 }
+DATE_ARRETE = date(2026, 9, 25)
 
 
 @dataclass
@@ -42,6 +45,7 @@ class Suspens:
 
 @dataclass
 class Resultat:
+    statut: str = "OK"  # OK, ou BLOQUE si une anomalie BLOQUANT empêche le rapprochement
     suspens: list[Suspens] = field(default_factory=list)
     journal: list[Anomalie] = field(default_factory=list)
 
@@ -67,25 +71,90 @@ def _piste(db: sqlite3.Connection, fonds: str, isin: str) -> str:
         " WHERE portefeuille = ? AND isin = ? AND statut = 'EN_ATTENTE' ORDER BY id",
         (fonds, isin),
     ).fetchall()
-    return " ; ".join(
-        f"{sens} {qte} EN_ATTENTE (dén. {date[8:10]}/{date[5:7]})" for sens, qte, date in lignes
-    )
+    pistes = [f"{sens} {qte} EN_ATTENTE (dén. {d[8:10]}/{d[5:7]})" for sens, qte, d in lignes]
+    if not isin_valide(isin):
+        pistes.append("ISIN à clé invalide, probable erreur de saisie")
+    return " ; ".join(pistes)
 
 
-def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path) -> Resultat:
-    """`fichiers` : nom de fichier -> contenu brut, une entrée par source (PMS, A, B, C)."""
+def _signaler(positions: list[Position], referentiel: dict[str, str]) -> list[Anomalie]:
+    """ISIN douteux et libellés divergents : conservés, mais remontés à un humain."""
+    anomalies = []
+    vus: set[str] = set()
+    for p in positions:
+        if p.isin in vus:
+            continue
+        vus.add(p.isin)
+        if not isin_valide(p.isin):
+            anomalies.append(Anomalie(p.fichier, p.ligne, "SIGNALE", "ISIN_CLE_INVALIDE", p.isin, p.isin,
+                                      "clé de contrôle ISIN invalide : probable erreur de saisie"))  # fmt: skip
+        if p.isin not in referentiel:
+            anomalies.append(Anomalie(p.fichier, p.ligne, "SIGNALE", "ISIN_HORS_REFERENTIEL", p.isin, p.isin,
+                                      "ISIN absent du référentiel titres"))  # fmt: skip
+    libelles: dict[str, dict[str, Position]] = defaultdict(dict)
+    for p in positions:
+        if p.libelle:
+            libelles[p.isin].setdefault("PMS" if p.source == "PMS" else "DEP", p)
+    for isin, par_cote in libelles.items():
+        if (
+            len(par_cote) == 2
+            and par_cote["PMS"].libelle.upper() != par_cote["DEP"].libelle.upper()
+        ):
+            p, d = par_cote["PMS"], par_cote["DEP"]
+            anomalies.append(Anomalie(d.fichier, d.ligne, "SIGNALE", "LIBELLE_DIFFERENT", d.libelle, p.libelle,
+                                      f"{isin} : libellé PMS « {p.libelle} » ≠ conservateur « {d.libelle} »"))  # fmt: skip
+    return anomalies
+
+
+def rapprocher(
+    fichiers: dict[str, bytes], parametrage: Path, db_path: Path, date_arrete: date = DATE_ARRETE
+) -> Resultat:
+    """`fichiers` : nom de fichier -> contenu brut, une entrée par source (PMS, A, B, C).
+
+    Une seule anomalie BLOQUANT suffit à refuser le rapprochement : un rapprochement partiel
+    rendrait des faux négatifs invisibles.
+    """
     param = lire_parametrage(parametrage)
     resultat = Resultat()
     pms: list[Position] = []
     dep: list[Position] = []
     for source, (prefixe, lecteur) in LECTEURS.items():
-        nom = next(n for n in fichiers if Path(n).name.startswith(prefixe))
-        lecture: Lecture = lecteur(nom, fichiers[nom], param)
+        nom = next((n for n in fichiers if Path(n).name.startswith(prefixe)), None)
+        if nom is None:
+            resultat.journal.append(
+                Anomalie(
+                    prefixe, 0, "BLOQUANT", "FICHIER_MANQUANT", "", "", f"fichier {source} absent"
+                )
+            )
+            continue
+        try:
+            lecture: Lecture = lecteur(nom, fichiers[nom], param, date_arrete)
+        except Exception as erreur:  # fichier corrompu ou format inattendu : refusé, pas deviné
+            resultat.journal.append(
+                Anomalie(
+                    nom,
+                    0,
+                    "BLOQUANT",
+                    "FORMAT_ILLISIBLE",
+                    "",
+                    "",
+                    f"{type(erreur).__name__} : {erreur}",
+                )
+            )
+            continue
+        if not lecture.positions:
+            lecture.noter("BLOQUANT", "AUCUNE_LIGNE", 0, "", "", "0 position lue")
         resultat.journal.extend(lecture.journal)
         (pms if source == "PMS" else dep).extend(lecture.positions)
 
+    if any(a.niveau == "BLOQUANT" for a in resultat.journal):
+        resultat.statut = "BLOQUE"
+        return resultat
+
     db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     fonds_par_entite = dict(db.execute("SELECT nom, code FROM portefeuilles").fetchall())
+    referentiel = dict(db.execute("SELECT isin, libelle FROM titres").fetchall())
+    resultat.journal.extend(_signaler(pms + dep, referentiel))
 
     cote_pms, cote_dep = _agreger(pms), _agreger(dep)
     bruts: list[tuple[str, tuple[str, str, str], list[Position], list[Position]]] = []
@@ -123,7 +192,7 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path) -> 
                 type=type_,
                 qte_pms=_somme(g_pms) if g_pms else None,
                 qte_dep=_somme(g_dep) if g_dep else None,
-                libelle_titre=_libelle(g_pms, g_dep),
+                libelle_titre=_libelle(g_pms, g_dep) or referentiel.get(isin, ""),
                 libelle_type=libelle_type,
                 action=action,
                 piste=_piste(db, fonds, isin),

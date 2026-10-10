@@ -61,7 +61,7 @@ Chaîne : dépôt des fichiers → nettoyage par source (journal 4 niveaux) → 
 | # | Résultat vérifiable | Test | Durée | État |
 |---|---|---|---|---|
 | 1 | Bout en bout en ligne de commande : 4 parseurs + rapprochement, `uv run python -m reco data/donnees` affiche les 7 suspens | Test oracle = tableau « Résultat attendu » ci-dessus | 15 min | fait |
-| 2 | Journal de nettoyage (NORMALISE / EXCLU / SIGNALE / BLOQUANT) et contrôles bloquants (date, T/NbItems, transco, 0 ligne lue) | Un test par piège, avec des fichiers altérés en mémoire | 12 min | à faire |
+| 2 | Journal de nettoyage (NORMALISE / EXCLU / SIGNALE / BLOQUANT) et contrôles bloquants (date, T/NbItems, transco, 0 ligne lue) | Un test par piège, avec des fichiers altérés en mémoire | 12 min | fait |
 | 3 | Page HTML + FastAPI : dépôt de fichiers en base64 ou bouton « fichiers du 25/09 », tableau des suspens filtrable, onglet journal | TestClient : POST → 7 suspens ; GET `/` → page | 12 min | à faire |
 | 4 | Point de situation : synthèse par fonds et conservateur, suspens, actions, anomalies ; copier et export CSV | Le texte contient les 7 suspens et les 3 exclusions | 5 min | à faire |
 | 5 | Mesure sur jeu étiqueté : 6 à 8 mutations, chacune avec son suspens attendu | Rappel 100 %, 0 faux positif, chiffres reportés dans le README | 6 min | à faire |
@@ -95,3 +95,6 @@ Un commit à chaque étape verte, au moins toutes les 15 minutes.
 - Paquet `reco/` à la racine plutôt que `src/reco/` : `python -m reco` fonctionne sans packaging (`pythonpath = ["."]` pour pytest).
 - Code fonds (PAT/OBL/ACT) lu dans `orsay.db.portefeuilles` (nom d'entité → code) plutôt que codé en dur : la transco ne donne que le nom d'entité.
 - Le rapprochement prend `{nom de fichier: octets}` : la même fonction sert la ligne de commande et, plus tard, l'API (base64 → octets).
+- Une anomalie BLOQUANT sur n'importe quel fichier donne le statut `BLOQUE` et 0 suspens (pas de rapprochement des seules sources saines) : sinon, de faux ABS_DEP apparaissent, ou de vrais suspens disparaissent.
+- Une exception imprévue dans un parseur devient BLOQUANT `FORMAT_ILLISIBLE` : on refuse le fichier, on ne devine pas.
+- Contrôles ISIN (clé de Luhn, présence dans `titres`) et libellés divergents faits après la lecture, dans le rapprochement, parce qu'ils ont besoin de `orsay.db`. Libellé de repli lu dans `titres` (B n'a pas de libellé).
