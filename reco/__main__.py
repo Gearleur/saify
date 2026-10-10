@@ -31,6 +31,8 @@ def main() -> None:
     for a in resultat.journal:
         if a.niveau != "NORMALISE":
             print(f"  {a.niveau:<9} {a.regle:<21} {a.fichier}:{a.ligne}  {a.motif}")
+            if a.remede:
+                print(f"            → {a.remede}")
 
 
 if __name__ == "__main__":

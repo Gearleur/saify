@@ -3,7 +3,17 @@
 import pytest
 
 from reco.sources import isin_valide
-from tests.fabrique import PMS, B, C, fichiers, lancer, regles, remplacer, xlsx_a
+from tests.fabrique import (
+    PMS,
+    B,
+    C,
+    fichiers,
+    lancer,
+    parametrage_modifie,
+    regles,
+    remplacer,
+    xlsx_a,
+)
 
 
 def test_fichiers_du_jour_non_bloques():
@@ -74,6 +84,7 @@ def test_piege_bloquant(fichier, avant, apres, regle):
     assert resultat.statut == "BLOQUE"
     assert regle in regles(resultat, "BLOQUANT")
     assert resultat.suspens == []
+    assert all(a.remede for a in resultat.journal if a.niveau == "BLOQUANT")
 
 
 def test_a_date_arrete_bloquante():
@@ -98,3 +109,90 @@ def test_libelle_different_signale_sans_bloquer():
     resultat = lancer(fichiers(c=contenu))
     assert resultat.statut == "OK"
     assert "LIBELLE_DIFFERENT" in regles(resultat, "SIGNALE")
+
+
+# Revue étape 2 : une donnée ne sort pas de nulle part, et ne disparaît pas sans trace.
+def test_ligne_a_vide_ignoree():
+    resultat = lancer(fichiers(a=xlsx_a(ajouter=[None, None, " ", None])))
+    assert resultat.statut == "OK"
+
+
+def test_ligne_a_incomplete_bloquante():
+    resultat = lancer(fichiers(a=xlsx_a(ajouter=[None, "FR0000010001", "OAT 2.5% 2030", "1 000"])))
+    assert "LIGNE_INCOMPLETE" in regles(resultat, "BLOQUANT")
+
+
+def test_ligne_b_vide_ignoree():
+    resultat = lancer(fichiers(b=remplacer(B, ("T000013", "\r\nT000013"))))
+    assert resultat.statut == "OK"
+
+
+def test_ligne_b_type_inconnu_bloquante():
+    resultat = lancer(
+        fichiers(b=remplacer(B, ("T000013", "XORAFR0000014078000000001000000\r\nT000013")))
+    )
+    assert "TYPE_LIGNE_INCONNU" in regles(resultat, "BLOQUANT")
+
+
+def test_isin_vide_pms_bloquant():
+    resultat = lancer(fichiers(pms=remplacer(PMS, (" fr0000014078 ", ""))))
+    assert "LIGNE_INCOMPLETE" in regles(resultat, "BLOQUANT")
+
+
+def test_valeur_vide_c_bloquante():
+    resultat = lancer(fichiers(c=remplacer(C, ('"CODE_ISIN">FR0000050007', '"CODE_ISIN">'))))
+    assert "CHAMP_MANQUANT" in regles(resultat, "BLOQUANT")
+
+
+def test_action_inconnue_c_signalee_et_additionnee():
+    essilor = '<Dim prop="ACTION">C</Dim><Dim prop="COMPTE">ORS-PAT</Dim><Dim prop="CODE_ISIN">FR0000050007'
+    resultat = lancer(fichiers(c=remplacer(C, (essilor, essilor.replace(">C<", ">M<")))))
+    assert resultat.statut == "OK"
+    assert "ACTION_INCONNUE" in regles(resultat, "SIGNALE")
+    assert len(resultat.suspens) == 7  # additionné : ESSILOR rapproche toujours
+
+
+@pytest.mark.parametrize("quantite", ["10.000", "-10000"])
+def test_quantite_non_entiere_ou_negative_signalee(quantite):
+    resultat = lancer(fichiers(pms=remplacer(PMS, (";VINCI;10000;", f";VINCI;{quantite};"))))
+    assert resultat.statut == "OK"
+    assert "QUANTITE_SUSPECTE" in regles(resultat, "SIGNALE")
+
+
+def test_parametrage_type_manquant_bloquant(tmp_path):
+    def retirer_dep(ws):
+        ws.delete_rows(next(c.row for c in ws["A"] if c.value == "DEP"))
+
+    param = parametrage_modifie(tmp_path, "TYPES_ECARTS", retirer_dep)
+    resultat = lancer(fichiers(), param=param)
+    assert resultat.statut == "BLOQUE"
+    assert "PARAMETRAGE" in regles(resultat, "BLOQUANT")
+
+
+def test_parametrage_transco_contradictoire_bloquante(tmp_path):
+    param = parametrage_modifie(
+        tmp_path, "TRANSCO_SOUS_COMPTES", lambda ws: ws.append(["SC-PAT-01", "ORSAY OBLIGATIONS"])
+    )
+    resultat = lancer(fichiers(), param=param)
+    assert "PARAMETRAGE" in regles(resultat, "BLOQUANT")
+
+
+def test_bloquant_dit_quoi_faire():
+    resultat = lancer(
+        fichiers(pms=remplacer(PMS, ("SC-OBL-01;FR0000011488", "SC-XXX-01;FR0000011488")))
+    )
+    (transco,) = [a for a in resultat.journal if a.regle == "TRANSCO"]
+    assert "SC-XXX-01" in transco.remede and "TRANSCO_SOUS_COMPTES" in transco.remede
+
+
+def test_encodage_latin1_trace():
+    texte = (remplacer(PMS, (";VINCI;", ";VINCI É;"))).decode()
+    resultat = lancer(fichiers(pms=texte.encode("latin-1")))
+    assert resultat.statut == "OK"
+    assert "ENCODAGE" in regles(resultat, "NORMALISE")
+
+
+def test_entete_csv_incomplete_bloquante():
+    resultat = lancer(fichiers(pms=remplacer(PMS, (";quantite;", ";qte;"))))
+    (format_,) = [a for a in resultat.journal if a.regle == "FORMAT"]
+    assert "quantite" in format_.motif

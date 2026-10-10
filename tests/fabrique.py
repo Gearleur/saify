@@ -26,8 +26,12 @@ def fichiers(**remplacements: bytes) -> dict[str, bytes]:
     return tous
 
 
-def lancer(depot: dict[str, bytes], db: Path | None = DONNEES / "orsay.db"):
-    return rapprocher(depot, DONNEES / "parametrage.xlsx", db)
+def lancer(
+    depot: dict[str, bytes],
+    db: Path | None = DONNEES / "orsay.db",
+    param: Path = DONNEES / "parametrage.xlsx",
+):
+    return rapprocher(depot, param, db)
 
 
 def regles(resultat, niveau: str) -> set[str]:
@@ -43,7 +47,10 @@ def remplacer(nom: str, *paires: tuple[str, str]) -> bytes:
 
 
 def xlsx_a(
-    titre: str | None = None, quantite: str | None = None, dupliquer: int | None = None
+    titre: str | None = None,
+    quantite: str | None = None,
+    dupliquer: int | None = None,
+    ajouter: list | None = None,
 ) -> bytes:
     wb = openpyxl.load_workbook(DONNEES / A)
     ws = wb.worksheets[0]
@@ -53,6 +60,8 @@ def xlsx_a(
         ws["D4"] = quantite
     if dupliquer is not None:
         ws.append([cellule.value for cellule in ws[dupliquer]])
+    if ajouter is not None:
+        ws.append(ajouter)
     sortie = io.BytesIO()
     wb.save(sortie)
     return sortie.getvalue()
@@ -65,4 +74,13 @@ def db_modifiee(dossier: Path, *requetes: str) -> Path:
     with sqlite3.connect(copie) as db:
         for requete in requetes:
             db.execute(requete)
+    return copie
+
+
+def parametrage_modifie(dossier: Path, feuille: str, modifier) -> Path:
+    """Copie de parametrage.xlsx dont la feuille est passée à `modifier(ws)`."""
+    wb = openpyxl.load_workbook(DONNEES / "parametrage.xlsx")
+    modifier(wb[feuille])
+    copie = dossier / "parametrage.xlsx"
+    wb.save(copie)
     return copie

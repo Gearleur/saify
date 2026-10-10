@@ -17,6 +17,7 @@ from reco.sources import (
     Lecture,
     Parametrage,
     Position,
+    anomalie,
     isin_valide,
     lire_depositaire_a,
     lire_depositaire_b,
@@ -279,8 +280,14 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
     Une seule anomalie BLOQUANT suffit à refuser le rapprochement : un rapprochement partiel
     rendrait des faux négatifs invisibles. orsay.db est facultative : elle informe, elle ne décide pas.
     """
-    param = lire_parametrage(parametrage)
     resultat = Resultat()
+    try:
+        param = lire_parametrage(parametrage)
+    except Exception as erreur:  # sans paramétrage fiable, aucun fonds n'est identifiable
+        resultat.journal.append(anomalie(Path(parametrage).name, 0, "BLOQUANT", "PARAMETRAGE", "", "",
+                                         f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
+        resultat.statut = "BLOQUE"
+        return resultat
     pms: list[Position] = []
     dep: list[Position] = []
     for source, (prefixe, lecteur) in LECTEURS.items():
@@ -292,14 +299,14 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
                 else ("FICHIERS_MULTIPLES", f"{len(noms)} fichiers {source} : lequel est le bon ?")
             )
             resultat.journal.append(
-                Anomalie(prefixe, 0, "BLOQUANT", regle, ", ".join(noms), "", motif)
+                anomalie(prefixe, 0, "BLOQUANT", regle, ", ".join(noms), "", motif)
             )
             continue
         nom = noms[0]
         try:
             lecture: Lecture = lecteur(nom, fichiers[nom], param, date_arrete)
         except Exception as erreur:  # fichier corrompu ou format inattendu : refusé, pas deviné
-            resultat.journal.append(Anomalie(nom, 0, "BLOQUANT", "FORMAT_ILLISIBLE", "", "",
+            resultat.journal.append(anomalie(nom, 0, "BLOQUANT", "FORMAT_ILLISIBLE", "", "",
                                              f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
             continue
         if not lecture.positions:
