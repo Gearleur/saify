@@ -34,6 +34,8 @@ LECTEURS = {
 }
 DATE_ARRETE = date(2026, 9, 25)
 PRIORITES = ("critique", "a_relever", "en_attente")  # ordre de traitement
+EXPLICATIONS = ("aucune", "totale", "partielle", "contraire")  # par les opérations en attente
+ALERTES = ("CSDR", "DEP_AMBIGU", "ISIN_INVALIDE", "PISTE_MULTI_CONSERVATEURS")
 
 
 @dataclass
@@ -51,6 +53,9 @@ class Suspens:
     action: str = ""
     piste: str = ""
     signalements: list[str] = field(default_factory=list)
+    # Ce qui décide de la priorité : des codes stables, pas les libellés ci-dessus (faits pour les humains).
+    explication: str = "aucune"  # EXPLICATIONS
+    alertes: set[str] = field(default_factory=set)  # ALERTES
 
     @property
     def ecart(self) -> Decimal:
@@ -63,10 +68,10 @@ class Suspens:
 
 
 def priorite(s: Suspens) -> str:
-    """critique : risque CSDR ; en_attente : QTE entièrement expliqué sans signalement ; sinon a_relever."""
-    if any("risque CSDR" in message for message in s.signalements):
+    """critique : risque CSDR ; en_attente : QTE entièrement expliqué sans alerte ; sinon a_relever."""
+    if "CSDR" in s.alertes:
         return "critique"
-    if s.type == "QTE" and "écart entièrement expliqué" in s.piste and not s.signalements:
+    if s.type == "QTE" and s.explication == "totale" and not s.alertes:
         return "en_attente"
     return "a_relever"
 
@@ -235,27 +240,33 @@ def _fusionner_dep(suspens: list[Suspens]) -> list[Suspens]:
             )
             for s in groupe:
                 s.signalements.append(message)
+                s.alertes.add("DEP_AMBIGU")
     return suspens
 
 
-def _piste(mouvements: list[Mouvement], ecart: Decimal, plusieurs_conservateurs: bool) -> str:
-    """Cite les opérations en attente et dit, calcul signé à l'appui, si elles expliquent l'écart."""
+def _piste(mouvements: list[Mouvement], ecart: Decimal,
+           plusieurs_conservateurs: bool) -> tuple[str, str]:  # fmt: skip
+    """Cite les opérations en attente et dit, calcul signé à l'appui, si elles expliquent l'écart.
+
+    Renvoie (libellé pour l'opérateur, explication parmi EXPLICATIONS).
+    """
     if not mouvements:
-        return ""
+        return "", "aucune"
     operations = ", ".join(
         f"op. n°{m.id} {m.sens} {formater_quantite(m.quantite)} dén. {_date_fr(m.date_denouement)}"
         for m in mouvements
     )
     net = sum((m.signe for m in mouvements), Decimal(0))
     if net == ecart:
-        verdict = "écart entièrement expliqué"
+        explication, verdict = "totale", "écart entièrement expliqué"
     elif net * ecart > 0 and abs(net) < abs(ecart):
+        explication = "partielle"
         verdict = f"écart partiellement expliqué, reste {formater_quantite(ecart - net)}"
     else:
-        verdict = "n'explique pas l'écart"
+        explication, verdict = "contraire", "n'explique pas l'écart"
     if plusieurs_conservateurs:  # mouvements n'indique pas le conservateur
         verdict += " (explication possible seulement : titre détenu chez plusieurs conservateurs)"
-    return f"{operations} → {verdict}"
+    return f"{operations} → {verdict}", explication
 
 
 def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arrete: date,
@@ -271,19 +282,22 @@ def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arre
             s.libelle_titre = base.referentiel.get(s.isin, "")
         mouvements = [m for m in base.en_attente if m.portefeuille == s.fonds and m.isin == s.isin]
         plusieurs = sorted(conservateurs[(s.entite, s.isin)])
-        s.piste = _piste(mouvements, s.ecart, len(plusieurs) > 1)
+        s.piste, s.explication = _piste(mouvements, s.ecart, len(plusieurs) > 1)
         if mouvements and len(plusieurs) > 1:
+            s.alertes.add("PISTE_MULTI_CONSERVATEURS")
             s.signalements.append(
                 f"piste à vérifier : titre détenu chez plusieurs conservateurs ({', '.join(plusieurs)}),"
                 " l'opération peut concerner l'autre"
             )
         for m in mouvements:
             if m.date_denouement <= date_arrete:
+                s.alertes.add("CSDR")
                 s.signalements.append(
                     f"op. n°{m.id} non dénouée au {_date_fr(m.date_denouement)} : "
                     "défaut de règlement-livraison, risque CSDR"
                 )
         if not isin_valide(s.isin):
+            s.alertes.add("ISIN_INVALIDE")
             s.signalements.append("ISIN à clé invalide, probable erreur de saisie")
 
 
@@ -323,7 +337,8 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
             resultat.journal.append(anomalie(nom, 0, "BLOQUANT", "FORMAT_ILLISIBLE", "", "",
                                              f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
             continue
-        if not lecture.positions:
+        # Un lecteur qui a déjà bloqué a dit pourquoi : « 0 position » en plus serait du bruit.
+        if not lecture.positions and not any(a.niveau == "BLOQUANT" for a in lecture.journal):
             lecture.noter("BLOQUANT", "AUCUNE_LIGNE", 0, "", "", "0 position lue")
         resultat.journal.extend(lecture.journal)
         (pms if source == "PMS" else dep).extend(lecture.positions)

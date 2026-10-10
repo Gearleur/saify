@@ -5,5 +5,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 logs/
+var/
 *.jsonl
 *:Zone.Identifier

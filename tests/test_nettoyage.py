@@ -72,7 +72,7 @@ def test_isin_hors_referentiel_signale():
             "c",
             'xmlns="urn:orsay:depositaire-c:positions:2026"',
             'xmlns="urn:autre"',
-            "AUCUNE_LIGNE",
+            "DATE_ARRETE",  # rien n'est lu hors namespace : date introuvable, donc pas AUCUNE_LIGNE
         ),
         ("c", '<Dim prop="COMPTE">ORS-PAT</Dim>', "", "CHAMP_MANQUANT"),
         ("c", "ORS-OBL", "ORS-XXX", "TRANSCO"),

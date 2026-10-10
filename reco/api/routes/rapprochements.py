@@ -10,7 +10,6 @@ from reco.api.schemas import (
     RapprochementResume,
 )
 from reco.api.services import depot, rapprochements
-from reco.domaine.situation import point_de_situation, suspens_csv
 
 router = APIRouter(prefix="/api/rapprochements", tags=["rapprochements"])
 
@@ -41,19 +40,21 @@ def lister(historique: HistoriqueDep) -> list[RapprochementResume]:
 
 @router.get("/{id_}")
 def lire(id_: str, historique: HistoriqueDep) -> Rapprochement:
-    return historique.lire(id_)[0]
+    return historique.lire(id_).modele
 
 
 @router.get("/{id_}/suspens.csv")
 def csv_suspens(id_: str, historique: HistoriqueDep) -> Response:
-    modele, resultat = historique.lire(id_)
+    entree = historique.lire(id_)
     return Response(
-        suspens_csv(resultat.suspens),
+        entree.csv,
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="suspens_{modele.date_arrete}.csv"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="suspens_{entree.modele.date_arrete}.csv"'
+        },
     )
 
 
 @router.get("/{id_}/point-de-situation")
 def situation(id_: str, historique: HistoriqueDep) -> PointDeSituation:
-    return PointDeSituation(texte=point_de_situation(historique.lire(id_)[1]))
+    return PointDeSituation(texte=historique.lire(id_).situation)

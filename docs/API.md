@@ -26,7 +26,7 @@ Lancement : `uv run uvicorn reco.api:app --reload` puis http://127.0.0.1:8000
 | XML | refus de `<!DOCTYPE` / `<!ENTITY>` (entités externes, billion laughs) | rapprochement `BLOQUE`, règle `FORMAT` |
 | `orsay.db` | ouverte en lecture seule (`mode=ro`) | — |
 | En-têtes de sécurité | CSP stricte : `default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'` (donc **ni script inline, ni `<style>` inline, ni attribut `style=""`, ni `onclick=`** côté front), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` | — |
-| Historique en mémoire | 20 derniers rapprochements | les plus anciens sont oubliés |
+| Historique persistant | SQLite séparé `var/historique.db` (hors git : positions du client), jamais `orsay.db` ; réponse JSON, CSV et point de situation figés à la création | `GET /api/rapprochements` liste les 20 plus récents ; `GET /api/rapprochements/{id}` (et ses exports) relit tout l'historique, sans suppression automatique |
 
 Un fichier refusé par le *métier* (date, total de contrôle…) n'est **pas** une erreur HTTP : la réponse est `200` avec `statut: "BLOQUE"` et le journal explique quoi faire (`remede`).
 

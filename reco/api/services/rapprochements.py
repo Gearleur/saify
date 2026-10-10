@@ -18,7 +18,7 @@ from reco.api.schemas import (
 from reco.api.services.depot import source_de
 from reco.api.services.historique import Historique
 from reco.domaine.rapprochement import DATE_ARRETE, PRIORITES, Resultat, rapprocher
-from reco.domaine.situation import quantite_texte
+from reco.domaine.situation import point_de_situation, quantite_texte, suspens_csv
 from reco.domaine.sources import TYPES_REQUIS
 
 NIVEAUX = ("BLOQUANT", "SIGNALE", "EXCLU", "NORMALISE")
@@ -31,7 +31,8 @@ def executer(depot: dict[str, bytes], reglages: Reglages, historique: Historique
     resultat = rapprocher(depot, reglages.parametrage, reglages.base)
     cree_le = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     modele = vers_modele(historique.nouvel_id(), cree_le, depot, resultat)
-    historique.ajouter(modele, resultat)
+    # CSV et point de situation figés maintenant : l'historique les relit sans garder `resultat`.
+    historique.ajouter(modele, suspens_csv(resultat.suspens), point_de_situation(resultat))
     log.info("audit rapprochement id=%s statut=%s nb_suspens=%d fichiers=%s", modele.id,
              modele.statut, modele.synthese.nb_suspens,
              ",".join(f"{f.nom}:{f.sha256}" for f in modele.fichiers))  # fmt: skip

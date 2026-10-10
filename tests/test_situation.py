@@ -18,35 +18,26 @@ ISINS = {
 }
 
 
-def _suspens(type_="QTE", piste="", signalements=None) -> Suspens:
+def _suspens(type_="QTE", explication="aucune", alertes=None) -> Suspens:
     return Suspens("ORSAY OBLIGATIONS", "FR0000051641", "C", type_, Decimal(10), Decimal(5), "SFIL",
-                   [], piste=piste, signalements=signalements or [])  # fmt: skip
+                   [], explication=explication, alertes=alertes or set())  # fmt: skip
 
 
 def test_priorite_critique_si_risque_csdr():
-    s = _suspens(
-        piste="op. n°1 ACHAT 5 dén. 24/09/2026 → écart entièrement expliqué",
-        signalements=[
-            "op. n°1 non dénouée au 24/09/2026 : défaut de règlement-livraison, risque CSDR"
-        ],
-    )
-    assert priorite(s) == "critique"
+    assert priorite(_suspens(explication="totale", alertes={"CSDR"})) == "critique"
 
 
 def test_priorite_en_attente_si_qte_entierement_expliquee_sans_signalement():
-    assert priorite(_suspens(piste="op. n°1 ACHAT 5 → écart entièrement expliqué")) == "en_attente"
+    assert priorite(_suspens(explication="totale")) == "en_attente"
 
 
 def test_priorite_a_relever_sinon():
     assert priorite(_suspens()) == "a_relever"
-    assert (
-        priorite(_suspens(piste="op. n°1 → écart partiellement expliqué, reste 2")) == "a_relever"
-    )
-    expliquee_mais_signalee = _suspens(
-        piste="op. n°1 → écart entièrement expliqué", signalements=["piste à vérifier"]
-    )
+    assert priorite(_suspens(explication="partielle")) == "a_relever"
+    assert priorite(_suspens(explication="contraire")) == "a_relever"
+    expliquee_mais_signalee = _suspens(explication="totale", alertes={"PISTE_MULTI_CONSERVATEURS"})
     assert priorite(expliquee_mais_signalee) == "a_relever"
-    assert priorite(_suspens("ABS_DEP", piste="→ écart entièrement expliqué")) == "a_relever"
+    assert priorite(_suspens("ABS_DEP", explication="totale")) == "a_relever"
 
 
 def test_tri_priorite_puis_entite_type_isin():
@@ -118,3 +109,5 @@ def test_xml_avec_doctype_bloque():
     assert resultat.statut == "BLOQUE"
     (refus,) = [a for a in resultat.journal if a.regle == "FORMAT"]
     assert refus.niveau == "BLOQUANT" and "DOCTYPE" in refus.motif and refus.remede
+    # Un seul blocage : « AUCUNE_LIGNE » en plus serait du bruit pour l'opérateur.
+    assert [a.regle for a in resultat.journal if a.niveau == "BLOQUANT"] == ["FORMAT"]

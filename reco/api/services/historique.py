@@ -1,41 +1,100 @@
-"""Historique borné des rapprochements, en mémoire (perdu au redémarrage : limite assumée en démo)."""
+"""Historique des rapprochements, dans un fichier SQLite séparé (traçabilité RCCI), ou en mémoire.
+
+Chaque entrée est figée à la création : réponse JSON, CSV des suspens et point de situation. On les
+relit tels quels, sans recalcul ni objet métier sérialisé. Jamais dans orsay.db, qui reste en lecture seule.
+"""
 
 import secrets
+import sqlite3
 import threading
-from collections import OrderedDict
+from pathlib import Path
+from typing import NamedTuple
 
 from reco.api.erreurs import ErreurApi
 from reco.api.schemas import Rapprochement
-from reco.domaine.rapprochement import Resultat
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS rapprochements (
+    rang INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    cree_le TEXT NOT NULL,
+    statut TEXT NOT NULL,
+    reponse TEXT NOT NULL,
+    csv BLOB NOT NULL,
+    situation TEXT NOT NULL
+)
+"""
+
+
+class Entree(NamedTuple):
+    modele: Rapprochement
+    csv: bytes
+    situation: str
 
 
 class Historique:
-    """Garde, pour chaque rapprochement, la réponse API et le résultat métier (pour CSV et situation)."""
+    """`fichier` None : en mémoire, borné à `taille` entrées (perdu au redémarrage).
 
-    def __init__(self, taille: int):
+    Sur disque, rien n'est supprimé : la liste montre les `taille` plus récents, mais tout se relit par id.
+    Une seule connexion, partagée entre les threads de FastAPI : d'où `check_same_thread=False` et le verrou
+    qui sérialise chaque opération. Elle est ouverte au premier usage : importer l'API n'écrit rien.
+    """
+
+    def __init__(self, taille: int, fichier: Path | None = None):
         self.taille = taille
-        self._entrees: OrderedDict[str, tuple[Rapprochement, Resultat]] = OrderedDict()
+        self.fichier = fichier
+        self._db: sqlite3.Connection | None = None
         self._verrou = threading.Lock()
 
+    def _connexion(self) -> sqlite3.Connection:
+        if self._db is None:
+            if self.fichier is None:
+                cible = ":memory:"
+            else:
+                self.fichier.parent.mkdir(parents=True, exist_ok=True)
+                cible = str(self.fichier)
+            self._db = sqlite3.connect(cible, check_same_thread=False)
+            with self._db:
+                self._db.execute(SCHEMA)
+        return self._db
+
+    def _lignes(self, requete: str, *parametres) -> list[tuple]:
+        with self._verrou:
+            return self._connexion().execute(requete, parametres).fetchall()
+
     def nouvel_id(self) -> str:
-        with self._verrou:
-            while (id_ := f"r_{secrets.token_hex(3)}") in self._entrees:
-                pass
-            return id_
+        while self._lignes(
+            "SELECT 1 FROM rapprochements WHERE id = ?", id_ := f"r_{secrets.token_hex(3)}"
+        ):
+            pass
+        return id_
 
-    def ajouter(self, modele: Rapprochement, resultat: Resultat) -> None:
-        with self._verrou:
-            self._entrees[modele.id] = (modele, resultat)
-            while len(self._entrees) > self.taille:
-                self._entrees.popitem(last=False)
+    def ajouter(self, modele: Rapprochement, csv: bytes, situation: str) -> None:
+        with self._verrou, self._connexion() as db:
+            db.execute(
+                "INSERT INTO rapprochements (id, cree_le, statut, reponse, csv, situation)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (modele.id, modele.cree_le, modele.statut, modele.model_dump_json(), csv, situation),
+            )  # fmt: skip
+            if self.fichier is None:
+                db.execute(
+                    "DELETE FROM rapprochements WHERE rang NOT IN"
+                    " (SELECT rang FROM rapprochements ORDER BY rang DESC LIMIT ?)",
+                    (self.taille,),
+                )
 
-    def lire(self, id_: str) -> tuple[Rapprochement, Resultat]:
-        with self._verrou:
-            if id_ not in self._entrees:
-                raise ErreurApi(404, "INTROUVABLE",
-                                f"rapprochement « {id_} » introuvable (historique limité aux {self.taille} derniers)")  # fmt: skip
-            return self._entrees[id_]
+    def lire(self, id_: str) -> Entree:
+        lignes = self._lignes(
+            "SELECT reponse, csv, situation FROM rapprochements WHERE id = ?", id_
+        )
+        if not lignes:
+            limite = "" if self.fichier else f" (historique limité aux {self.taille} derniers)"
+            raise ErreurApi(404, "INTROUVABLE", f"rapprochement « {id_} » introuvable{limite}")
+        ((reponse, csv, situation),) = lignes
+        return Entree(Rapprochement.model_validate_json(reponse), bytes(csv), situation)
 
     def recents(self) -> list[Rapprochement]:
-        with self._verrou:
-            return [modele for modele, _ in reversed(self._entrees.values())]
+        lignes = self._lignes(
+            "SELECT reponse FROM rapprochements ORDER BY rang DESC LIMIT ?", self.taille
+        )
+        return [Rapprochement.model_validate_json(reponse) for (reponse,) in lignes]

@@ -33,7 +33,9 @@ class Reglages:
     taille_fichier_max: int = 5 * MO
     dossier_web: Path = RACINE / "web"
     dossier_donnees: Path = RACINE.parent / "data" / "donnees"
-    historique_max: int = 20
+    historique_max: int = 20  # nombre de rapprochements listés (et gardés, si en mémoire)
+    # SQLite à part, hors git (positions du client) ; None : en mémoire, perdu au redémarrage.
+    fichier_historique: Path | None = RACINE.parent / "var" / "historique.db"
 
     @property
     def parametrage(self) -> Path:

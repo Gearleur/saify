@@ -2,6 +2,8 @@
 
 from decimal import Decimal
 
+from reco.domaine import rapprochement
+from reco.domaine.rapprochement import Suspens
 from tests.fabrique import (
     DONNEES,
     PMS,
@@ -68,6 +70,7 @@ def test_dep_ambigu_signale_sur_chaque_suspens():
         ("ABS_INT", "C"),
     ]
     assert all(any("ambigu" in m for m in s.signalements) for s in afd)
+    assert all("DEP_AMBIGU" in s.alertes for s in afd)
 
 
 # 3. orsay.db n'est qu'une source d'information : sans elle, le rapprochement tourne quand même.
@@ -86,18 +89,23 @@ def test_piste_ecart_entierement_explique():
     assert "op. n°19" in schneider.piste and "entièrement expliqué" in schneider.piste
     (safran,) = _suspens(resultat, SAFRAN)  # vente en attente : écart négatif
     assert "op. n°20" in safran.piste and "entièrement expliqué" in safran.piste
+    assert (schneider.explication, safran.explication) == ("totale", "totale")
+    (sfil,) = _suspens(resultat, "FR0000051641")
+    assert sfil.explication == "aucune"
 
 
 def test_piste_ecart_partiellement_explique(tmp_path):
     db = db_modifiee(tmp_path, "UPDATE mouvements SET quantite = 10000 WHERE id = 19")
     (schneider,) = _suspens(lancer(fichiers(), db=db), SCHNEIDER)
     assert "partiellement expliqué" in schneider.piste and "reste 15 000" in schneider.piste
+    assert schneider.explication == "partielle" and schneider.priorite == "a_relever"
 
 
 def test_piste_operation_en_sens_contraire(tmp_path):
     db = db_modifiee(tmp_path, "UPDATE mouvements SET sens = 'VENTE' WHERE id = 19")
     (schneider,) = _suspens(lancer(fichiers(), db=db), SCHNEIDER)
     assert "n'explique pas l'écart" in schneider.piste
+    assert schneider.explication == "contraire" and schneider.priorite == "a_relever"
 
 
 def test_piste_seulement_possible_si_plusieurs_conservateurs():
@@ -111,6 +119,8 @@ def test_piste_seulement_possible_si_plusieurs_conservateurs():
     assert "explication possible" in schneider.piste
     # Un vrai signalement, pour que l'opérateur n'oublie pas de vérifier le conservateur concerné.
     assert any("à vérifier" in m and "plusieurs conservateurs" in m for m in schneider.signalements)
+    assert schneider.alertes == {"PISTE_MULTI_CONSERVATEURS"}
+    assert schneider.priorite == "a_relever"
 
 
 def test_pas_de_signalement_si_un_seul_conservateur():
@@ -125,6 +135,7 @@ def test_denouement_depasse_signale(tmp_path):
     assert "DENOUEMENT_DEPASSE" in regles(resultat, "SIGNALE")
     (schneider,) = _suspens(resultat, SCHNEIDER)
     assert any("CSDR" in m for m in schneider.signalements)
+    assert "CSDR" in schneider.alertes and schneider.priorite == "critique"
 
 
 # B. Une position nulle est une absence : pas de suspens pour 0 titre.
@@ -156,3 +167,40 @@ def test_deux_fichiers_meme_source_bloquant():
     resultat = lancer(depot)
     assert resultat.statut == "BLOQUE"
     assert "FICHIERS_MULTIPLES" in regles(resultat, "BLOQUANT")
+
+
+# La priorité se lit dans des champs structurés, jamais dans le texte des messages (libellés humains).
+def test_isin_invalide_alerte():
+    (edf_invalide,) = _suspens(lancer(fichiers()), "FR0000012966")
+    assert edf_invalide.alertes == {"ISIN_INVALIDE"}
+
+
+def _qte(**champs) -> Suspens:
+    return Suspens("ORSAY ACTIONS EUROPE", SCHNEIDER, "A", "QTE", Decimal(250000), Decimal(225000),
+                   "SCHNEIDER", [], **champs)  # fmt: skip
+
+
+def test_priorite_independante_des_libelles():
+    assert _qte(piste="tout est couvert", explication="totale").priorite == "en_attente"
+    assert _qte(signalements=["livraison en retard"], alertes={"CSDR"}).priorite == "critique"
+    # Les anciens mots-clés dans le texte, sans le champ structuré, ne décident plus rien.
+    assert _qte(piste="écart entièrement expliqué").priorite == "a_relever"
+    assert _qte(signalements=["risque CSDR"]).priorite == "a_relever"
+    assert _qte(explication="totale", alertes={"ISIN_INVALIDE"}).priorite == "a_relever"
+    dep = _qte(explication="totale")
+    dep.type = "DEP"
+    assert dep.priorite == "a_relever"
+
+
+def test_reformuler_les_messages_ne_change_pas_la_priorite(monkeypatch):
+    attendu = {(s.isin, s.conservateur): s.priorite for s in lancer(fichiers()).suspens}
+    piste = rapprochement._piste
+
+    def piste_reformulee(*args):
+        _, explication = piste(*args)
+        return "libellé reformulé", explication
+
+    monkeypatch.setattr(rapprochement, "_piste", piste_reformulee)
+    resultat = lancer(fichiers())
+    assert {s.piste for s in resultat.suspens} <= {"", "libellé reformulé"}
+    assert {(s.isin, s.conservateur): s.priorite for s in resultat.suspens} == attendu

@@ -2,13 +2,21 @@
 
 import base64
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from reco.api import create_app
+from reco.api import create_app as _create_app
+from reco.api.config import RACINE, Reglages
 from tests.fabrique import DONNEES, PMS, A, B, C, fichiers, remplacer
+
+
+def create_app(**reglages):
+    """Historique en mémoire par défaut : les tests n'écrivent jamais dans var/."""
+    return _create_app(**{"fichier_historique": None, **reglages})
+
 
 EXEMPLE = json.loads(
     (Path(__file__).resolve().parents[1] / "docs" / "exemple_rapprochement.json").read_text()
@@ -326,3 +334,59 @@ def test_logs_requete_et_audit_sans_contenu(client, caplog):
     assert EXEMPLE["fichiers"][0]["sha256"] in texte
     assert "POST /api/rapprochements 201" in texte
     assert "SC-PAT-01" not in texte and _corps()["fichiers"][0]["contenu_b64"][:40] not in texte
+
+
+# Historique persistant (traçabilité RCCI) : il survit au redémarrage, hors de orsay.db
+
+
+def test_historique_par_defaut_dans_var_hors_git():
+    assert Reglages().fichier_historique == RACINE.parent / "var" / "historique.db"
+    ignores = (RACINE.parent / ".gitignore").read_text().splitlines()
+    assert "var/" in ignores
+
+
+def test_historique_survit_au_redemarrage(tmp_path):
+    fichier = tmp_path / "h.db"
+    avant = TestClient(create_app(fichier_historique=fichier))
+    cree = avant.post("/api/rapprochements", json=_corps()).json()
+    csv = avant.get(f"/api/rapprochements/{cree['id']}/suspens.csv")
+    texte = avant.get(f"/api/rapprochements/{cree['id']}/point-de-situation").json()
+    bloque = avant.post("/api/rapprochements", json=_corps(fichiers(c=b"<x/>"))).json()
+
+    apres = TestClient(create_app(fichier_historique=fichier))  # redémarrage
+    assert apres.get(f"/api/rapprochements/{cree['id']}").json() == cree
+    relu = apres.get(f"/api/rapprochements/{cree['id']}/suspens.csv")
+    assert relu.content == csv.content and relu.headers == csv.headers | {
+        "x-request-id": relu.headers["x-request-id"]
+    }
+    assert apres.get(f"/api/rapprochements/{cree['id']}/point-de-situation").json() == texte
+    assert [r["id"] for r in apres.get("/api/rapprochements").json()] == [bloque["id"], cree["id"]]
+    assert apres.get(f"/api/rapprochements/{bloque['id']}").json()["statut"] == "BLOQUE"
+
+
+def test_historique_persistant_liste_bornee_mais_tout_relisible(tmp_path):
+    client = TestClient(create_app(fichier_historique=tmp_path / "h.db", historique_max=2))
+    ids = [client.post("/api/rapprochements/exemple").json()["id"] for _ in range(3)]
+    assert [r["id"] for r in client.get("/api/rapprochements").json()] == ids[:0:-1]
+    assert client.get(f"/api/rapprochements/{ids[0]}").json()["id"] == ids[0]
+
+
+def test_historique_n_ecrit_jamais_dans_orsay_db(tmp_path, monkeypatch):
+    connexions = []
+    connect = sqlite3.connect
+
+    def espion(base, *args, **kwargs):
+        connexions.append(str(base))
+        return connect(base, *args, **kwargs)
+
+    monkeypatch.setattr(sqlite3, "connect", espion)
+    empreinte = (DONNEES / "orsay.db").read_bytes()
+    client = TestClient(create_app(fichier_historique=tmp_path / "h.db"))
+    id_ = client.post("/api/rapprochements/exemple").json()["id"]
+    client.get(f"/api/rapprochements/{id_}/suspens.csv")
+    client.get("/api/rapprochements")
+    assert any(c.endswith("h.db") for c in connexions)
+    assert all("mode=ro" in c for c in connexions if "orsay.db" in c)
+    assert (DONNEES / "orsay.db").read_bytes() == empreinte
+    with pytest.raises(ValueError, match="orsay.db"):
+        create_app(fichier_historique=DONNEES / "orsay.db")

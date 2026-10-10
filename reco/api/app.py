@@ -18,13 +18,16 @@ def create_app(**surcharges) -> FastAPI:
     if inconnus:
         raise TypeError(f"réglage(s) inconnu(s) : {', '.join(sorted(inconnus))}")
     reglages = Reglages(**surcharges)
+    fichier = reglages.fichier_historique
+    if fichier is not None and fichier.resolve() == reglages.base.resolve():
+        raise ValueError("l'historique ne doit jamais être écrit dans orsay.db (lecture seule)")
     configurer_logs()
 
     # Swagger désactivé : incompatible avec la CSP stricte (scripts et styles externes).
     app = FastAPI(title="Rapprochement Orsay Gestion", version=VERSION,
                   docs_url=None, redoc_url=None, openapi_url=None)  # fmt: skip
     app.state.reglages = reglages
-    app.state.historique = Historique(reglages.historique_max)
+    app.state.historique = Historique(reglages.historique_max, fichier)
 
     enregistrer_gestionnaires(app)
     for module in (systeme, rapprochements, questions, web):
