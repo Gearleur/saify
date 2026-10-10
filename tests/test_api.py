@@ -297,13 +297,15 @@ def test_erreur_interne_sans_trace(monkeypatch):
 
 
 def test_page_et_static(tmp_path):
-    (tmp_path / "index.html").write_text("<!doctype html><title>Reco</title>")
-    (tmp_path / "app.css").write_text("body{}")
+    # Même forme que le build Vite : index.html + assets/ servis sous /static/.
+    (tmp_path / "index.html").write_text("<!doctype html><title>Middle office</title>")
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "index-abc123.css").write_text("body{}")
     client = TestClient(create_app(dossier_web=tmp_path))
     page = client.get("/")
-    assert page.status_code == 200 and "<title>Reco</title>" in page.text
+    assert page.status_code == 200 and "<title>Middle office</title>" in page.text
     assert "content-security-policy" in page.headers
-    assert client.get("/static/app.css").text == "body{}"
+    assert client.get("/static/assets/index-abc123.css").text == "body{}"
     _erreur(client.get("/static/absent.js"), 404, "INTROUVABLE")
 
 
@@ -319,7 +321,7 @@ def test_noms_de_l_exemple_coherents():
 
 def test_static_sans_dossier_web_404(tmp_path):
     client = TestClient(create_app(dossier_web=tmp_path / "absent"))
-    _erreur(client.get("/static/app.js"), 404, "INTROUVABLE")
+    _erreur(client.get("/static/assets/index.js"), 404, "INTROUVABLE")
 
 
 def test_logs_requete_et_audit_sans_contenu(client, caplog):

@@ -4,8 +4,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 // Le build est servi par FastAPI : la page sur `/`, les fichiers sous `/static/`.
-export default defineConfig({
-  base: "/static/",
+// En développement, Vite sert l'application sur `/` et relaie `/api` vers FastAPI (`API_URL`).
+const API_URL = process.env.API_URL ?? "http://127.0.0.1:8000";
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/static/" : "/",
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   build: {
@@ -15,5 +17,5 @@ export default defineConfig({
     modulePreload: { polyfill: false },
     assetsInlineLimit: 0,
   },
-  server: { proxy: { "/api": "http://127.0.0.1:8000" } },
-});
+  server: { port: 5173, proxy: { "/api": API_URL } },
+}));

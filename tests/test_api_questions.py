@@ -157,7 +157,7 @@ def test_modele_impose():
 
 
 def test_sante_expose_l_etat_du_llm_jamais_la_cle(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-cle-de-test-secrete")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "cle-factice-de-test-0000")
     faux = FauxClient(_intention())
     client = _client(client_llm=faux, llm_budget_jour=50)
     _poser(client, "Combien pèse le fonds obligataire ?")
@@ -165,8 +165,8 @@ def test_sante_expose_l_etat_du_llm_jamais_la_cle(monkeypatch):
     llm = sante.json()["llm"]
     assert llm == {"actif": True, "modele": MODELE, "appels_aujourdhui": 1, "budget_jour": 50}
     for route in ("/api/sante", "/api/parametrage"):
-        assert "sk-ant" not in client.get(route).text
-    assert "sk-ant" not in _poser(client, "Encours OBL").text
+        assert "cle-factice-de-test-0000" not in client.get(route).text
+    assert "cle-factice-de-test-0000" not in _poser(client, "Encours OBL").text
 
 
 def test_sans_llm_sante_le_dit():
