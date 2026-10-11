@@ -76,7 +76,9 @@ export function SuspensSheet() {
         <Bloc title="Action attendue">
           <p className="pb-3 font-medium">{s.action}</p>
           <StatutControl value={get(s)} onChange={(v) => set(s, v)} />
-          <p className="mt-2 text-xs text-subtle">Statut partagé avec l'équipe ; chaque changement est tracé.</p>
+          <p className="mt-2 text-xs text-subtle">
+            Statut partagé avec l'équipe ; chaque changement est tracé.
+          </p>
         </Bloc>
         <Bloc title="Détails">
           <SheetDetails s={s} />

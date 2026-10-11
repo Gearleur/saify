@@ -34,6 +34,11 @@ export function useQuestionStream() {
         tComprehension: null,
         tReponse: null,
       });
+      // Une question doit toujours finir (réponse, erreur ou annulation) : sinon elle reste « en cours »
+      // pour toujours dans le rail. Un abandon fait sortir la boucle sans exception, d'où ce suivi.
+      let fini = false;
+      const terminer = (code: string, message: string) =>
+        sessionStore.update(id, { phase: "erreur", error: new ApiError(0, code, message) });
       try {
         for await (const ev of questionsApi.flux(question, ctrl.signal)) {
           if (ev.type === "etape")
@@ -43,25 +48,32 @@ export function useQuestionStream() {
             });
           else if (ev.type === "comprehension")
             sessionStore.update(id, { comprehension: ev.data, tComprehension: performance.now() });
-          else if (ev.type === "reponse")
+          else if (ev.type === "reponse") {
+            fini = true;
             sessionStore.update(id, {
               reponse: ev.data,
               phase: "termine",
               tReponse: performance.now(),
             });
-          else if (ev.type === "erreur")
+          } else if (ev.type === "erreur") {
+            fini = true;
             sessionStore.update(id, {
               phase: "erreur",
               error: new ApiError(200, ev.data.code, ev.data.message),
             });
+          }
         }
+        if (!fini && ctrl.signal.aborted)
+          terminer("ANNULEE", "Remplacée par la question suivante.");
+        else if (!fini) terminer("INCOMPLET", "Le flux s'est interrompu avant la réponse.");
       } catch (e) {
-        if (ctrl.signal.aborted) return;
-        sessionStore.update(id, {
-          phase: "erreur",
-          error:
-            e instanceof ApiError ? e : new ApiError(0, "INCONNU", "Le flux s'est interrompu."),
-        });
+        if (ctrl.signal.aborted) terminer("ANNULEE", "Remplacée par la question suivante.");
+        else
+          sessionStore.update(id, {
+            phase: "erreur",
+            error:
+              e instanceof ApiError ? e : new ApiError(0, "INCONNU", "Le flux s'est interrompu."),
+          });
       } finally {
         if (enCours.current === ctrl) enCours.current = null;
         rafraichirSante();
