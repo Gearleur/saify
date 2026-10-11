@@ -74,7 +74,7 @@ Panneau ancré à droite, lu comme un record Attio ; la table reste visible à g
 
 1. **Comparer** : PMS, conservateur (son nom), écart signé (PMS moins conservateur) ; trois chiffres nus.
 2. **Action attendue** (lue dans TYPES_ECARTS par le back), puis le **statut local** À traiter / En cours / Traité juste sous le geste qu'il conclut.
-3. **Détails** en liste clé → valeur : priorité, type (libellé officiel et code), fonds, conservateur, ISIN, piste, signalements (point rouge si CSDR).
+3. **Détails** en liste clé → valeur : priorité, type (libellé officiel et code), fonds, conservateur, ISIN, piste, signalements (point rouge si leur code est `CSDR` ; le front lit les codes, jamais le texte).
 4. **Lignes sources** : fichier et numéro de ligne en mono, la traçabilité jusqu'à la donnée brute.
 
 Clavier : `↑` `↓` passent au suspens voisin **dans l'ordre de la liste d'où la fiche a été ouverte**, `Échap` ferme. Statut dans `localStorage` (clé : date d'arrêté + fonds + ISIN + conservateur + type, accès en try/catch).
