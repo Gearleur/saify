@@ -285,8 +285,8 @@ def test_rate_limit_get():
 def test_en_tetes_de_securite_et_request_id(client):
     reponse = client.get("/api/sante")
     assert reponse.headers["content-security-policy"] == (
-        "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
-        "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; "
+        "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; "
+        "img-src 'self' data:; connect-src 'self'; "
         "frame-ancestors 'none'"
     )
     assert reponse.headers["x-content-type-options"] == "nosniff"

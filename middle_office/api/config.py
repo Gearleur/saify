@@ -24,8 +24,9 @@ MO = 1024 * 1024
 EXTENSIONS = (".csv", ".xlsx", ".txt", ".xml")
 
 CSP = (
-    "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
-    "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; "
+    # Tout est servi par l'application, polices comprises : aucune requête vers un tiers.
+    "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; "
+    "img-src 'self' data:; connect-src 'self'; "
     "frame-ancestors 'none'"
 )
 EN_TETES_SECURITE = {

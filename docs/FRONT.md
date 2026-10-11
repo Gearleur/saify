@@ -153,7 +153,7 @@ Quatre onglets (Types d'écarts, Fonds et conservateurs, Transcodifications, Exc
 ## Intégration et sécurité
 
 - Vite : `base: "/static/"`, `build.outDir: "../middle_office/web"` (`emptyOutDir`), `modulePreload.polyfill: false` et aucun script inline : l'`index.html` buildé ne référence que `/static/assets/*.js` et `*.css`.
-- **CSP inchangée** (`style-src 'self' https://fonts.googleapis.com`, sans `'unsafe-inline'`) : aucune violation en console sur tout le parcours. Les composants qui injectent un `<style>` sont évités : DropdownMenu en `modal={false}` (pas de `react-remove-scroll`), pas de Dialog/Sheet/ScrollArea/Select Radix, palette et fiche faites à la main. Les positions calculées par Radix (Popper) passent par le CSSOM (`element.style`), que la CSP n'interdit pas.
+- **CSP stricte, sans aucun tiers** (`style-src 'self'; font-src 'self'`, sans `'unsafe-inline'` ; polices servies par l'application via `@fontsource`) : aucune violation en console sur tout le parcours. Les composants qui injectent un `<style>` sont évités : DropdownMenu en `modal={false}` (pas de `react-remove-scroll`), pas de Dialog/Sheet/ScrollArea/Select Radix, palette et fiche faites à la main. Les positions calculées par Radix (Popper) passent par le CSSOM (`element.style`), que la CSP n'interdit pas.
 - Aucun `dangerouslySetInnerHTML` (interdit par une règle ESLint), aucune date en dur, aucun `parseFloat` (interdit aussi) : quantités et montants restent des chaînes, formatées par `lib/decimal.ts` (espace fine insécable, virgule, vrai signe moins, `+` devant un écart positif) et triées par comparaison décimale exacte.
 
 ## Architecture du code (`front/src/`)
