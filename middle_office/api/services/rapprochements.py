@@ -18,13 +18,14 @@ from middle_office.api.schemas import (
 )
 from middle_office.api.services.depot import source_de
 from middle_office.api.services.historique import Historique
-from middle_office.domaine.rapprochement.moteur import PRIORITES, Resultat, rapprocher
+from middle_office.domaine.rapprochement.moteur import rapprocher
 from middle_office.domaine.rapprochement.situation import (
     point_de_situation,
     quantite_texte,
     suspens_csv,
 )
 from middle_office.domaine.rapprochement.sources import TYPES_REQUIS
+from middle_office.domaine.rapprochement.suspens import PRIORITES, Resultat
 
 NIVEAUX = ("BLOQUANT", "SIGNALE", "EXCLU", "NORMALISE")
 

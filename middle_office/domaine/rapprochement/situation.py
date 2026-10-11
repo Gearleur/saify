@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import overload
 
 from middle_office.domaine.formats import formater_quantite
-from middle_office.domaine.rapprochement.moteur import (
+from middle_office.domaine.rapprochement.suspens import (
     PRIORITES,
     Resultat,
     Suspens,

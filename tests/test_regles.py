@@ -2,8 +2,8 @@
 
 from decimal import Decimal
 
-from middle_office.domaine.rapprochement import moteur as rapprochement
-from middle_office.domaine.rapprochement.moteur import Signalement, Suspens
+from middle_office.domaine.rapprochement import informations
+from middle_office.domaine.rapprochement.suspens import Signalement, Suspens
 from tests.fabrique import (
     DONNEES,
     PMS,
@@ -237,13 +237,13 @@ def test_priorite_independante_des_libelles():
 
 def test_reformuler_les_messages_ne_change_pas_la_priorite(monkeypatch):
     attendu = {(s.isin, s.conservateur): s.priorite for s in lancer(fichiers()).suspens}
-    piste = rapprochement._piste
+    piste = informations.piste
 
     def piste_reformulee(*args):
         _, explication = piste(*args)
         return "libellé reformulé", explication
 
-    monkeypatch.setattr(rapprochement, "_piste", piste_reformulee)
+    monkeypatch.setattr(informations, "piste", piste_reformulee)
     resultat = lancer(fichiers())
     assert {s.piste for s in resultat.suspens} <= {"", "libellé reformulé"}
     assert {(s.isin, s.conservateur): s.priorite for s in resultat.suspens} == attendu

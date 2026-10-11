@@ -3,13 +3,13 @@
 from decimal import Decimal
 
 from middle_office import rapprocher_dossier
-from middle_office.domaine.rapprochement.moteur import Signalement, Suspens, priorite
 from middle_office.domaine.rapprochement.situation import (
     COLONNES_CSV,
     point_de_situation,
     quantite_texte,
     suspens_csv,
 )
+from middle_office.domaine.rapprochement.suspens import Signalement, Suspens, priorite
 from tests.fabrique import DONNEES, PMS, C, db_modifiee, fichiers, lancer, remplacer
 
 ISINS = {
