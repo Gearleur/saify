@@ -123,8 +123,11 @@ question ─► LLM (Claude Haiku 5.5) ─► intention typée, validée par pyd
 ```
 middle_office/
 ├── domaine/                  métier pur, sans HTTP ni framework
-│   ├── rapprochement/        besoin 1 : sources.py (4 lecteurs + journal), moteur.py, situation.py, calendrier.py
-│   ├── questions/            besoin 2 : catalogue.py, vigilance.py, comprehension.py, modeles.py
+│   ├── rapprochement/        besoin 1
+│   │   ├── sources/          un lecteur par source (pms, depositaire_a/b/c), paramétrage, journal commun
+│   │   └── moteur.py         orchestration ; suspens, comparaison, informations (orsay.db), controles, situation
+│   ├── questions/            besoin 2 : comprehension (LLM, mots-clés), titres, dates, refus, vigilance
+│   │   └── catalogue/        une requête par intention : valorisation, echeances, operations, origine
 │   └── base_gestion.py · formats.py   orsay.db en lecture seule (3 verrous) · écritures françaises en Decimal
 ├── api/                      FastAPI (contrat : docs/API.md)
 │   ├── routes/               systeme · rapprochements · questions (JSON et flux SSE) · web
