@@ -1,4 +1,8 @@
-"""Usage : uv run python -m middle_office data/donnees"""
+"""Usage : uv run python -m middle_office data/donnees
+
+Code de sortie : 0 si le rapprochement est fait (suspens ou non), 1 s'il est bloqué. Une tâche
+planifiée voit ainsi l'échec sans lire la sortie.
+"""
 
 import sys
 from decimal import Decimal
@@ -12,8 +16,9 @@ def _qte(q: Decimal | None) -> str:
     return "-" if q is None else formater_quantite(q)
 
 
-def main() -> None:
-    dossier = Path(sys.argv[1] if len(sys.argv) > 1 else "data/donnees")
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    dossier = Path(args[0] if args else "data/donnees")
     resultat = rapprocher_dossier(dossier)
     print(f"Statut : {resultat.statut} · {len(resultat.suspens)} suspens\n")
     for s in resultat.suspens:
@@ -34,6 +39,8 @@ def main() -> None:
             if a.remede:
                 print(f"            → {a.remede}")
 
+    return 1 if resultat.statut == "BLOQUE" else 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
