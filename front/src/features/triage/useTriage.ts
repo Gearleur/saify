@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocalStatus } from "@/features/suspens/localStatus";
+import { useStatuts } from "@/features/suspens/statutsTraitement";
 import { ORDRE_PRIORITES } from "@/lib/metier";
 import type { Priorite, Rapprochement, Suspens } from "@/types/api";
 
@@ -10,7 +10,7 @@ export interface TriageGroup {
 
 /** File du matin : suspens groupés par priorité (ordre du back), anomalies hors suspens, avancement local. */
 export function useTriage(r: Rapprochement | null) {
-  const { get } = useLocalStatus(r?.date_arrete ?? null);
+  const { get } = useStatuts(r);
   return useMemo(() => {
     const suspens = r?.suspens ?? [];
     const groups: TriageGroup[] = ORDRE_PRIORITES.map((priorite) => ({

@@ -1,5 +1,7 @@
 """Modèles d'entrée et de sortie (contrat : docs/API.md). Quantités en chaînes décimales, jamais de float."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from middle_office.api.config import EXTENSIONS
@@ -29,6 +31,13 @@ class FichierEntree(Entree):
 
 class DemandeRapprochement(Entree):
     fichiers: list[FichierEntree] = Field(min_length=1, max_length=8)
+
+
+StatutTraitement = Literal["a_traiter", "en_cours", "traite"]
+
+
+class ChangementStatut(Entree):
+    statut: StatutTraitement
 
 
 class Question(Entree):
@@ -124,6 +133,18 @@ class RapprochementResume(BaseModel):
     statut: str
     nb_suspens: int
     nb_a_traiter: int
+
+
+class StatutsTraitement(BaseModel):
+    """Statut de chaque suspens du rapprochement (id S1…Sn) ; absent = « a_traiter »."""
+
+    statuts: dict[str, StatutTraitement]
+
+
+class StatutSuspens(BaseModel):
+    suspens: str
+    statut: StatutTraitement
+    modifie_le: str
 
 
 class PointDeSituation(BaseModel):

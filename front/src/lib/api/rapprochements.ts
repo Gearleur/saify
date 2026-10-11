@@ -3,8 +3,11 @@ import type {
   PointDeSituation,
   Rapprochement,
   RapprochementResume,
+  StatutsTraitement,
+  StatutSuspens,
+  StatutTraitement,
 } from "@/types/api";
-import { getJson, postJson } from "./http";
+import { getJson, postJson, putJson } from "./http";
 
 const BASE = "/api/rapprochements";
 
@@ -16,6 +19,12 @@ export const rapprochementsApi = {
   exemple: () => postJson<Rapprochement>(`${BASE}/exemple`),
   pointDeSituation: (id: string, signal?: AbortSignal) =>
     getJson<PointDeSituation>(`${BASE}/${encodeURIComponent(id)}/point-de-situation`, signal),
+  statuts: (id: string) => getJson<StatutsTraitement>(`${BASE}/${encodeURIComponent(id)}/statuts`),
+  changerStatut: (id: string, suspens: string, statut: StatutTraitement) =>
+    putJson<StatutSuspens>(
+      `${BASE}/${encodeURIComponent(id)}/suspens/${encodeURIComponent(suspens)}/statut`,
+      { statut },
+    ),
   /** Lien direct (téléchargement par le navigateur, `Content-Disposition: attachment`). */
   csvUrl: (id: string) => `${BASE}/${encodeURIComponent(id)}/suspens.csv`,
 };

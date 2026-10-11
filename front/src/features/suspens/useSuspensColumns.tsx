@@ -9,7 +9,7 @@ import { compareDecimal } from "@/lib/decimal";
 import { ORDRE_PRIORITES, PRIORITES } from "@/lib/metier";
 import { cn } from "@/lib/utils";
 import type { Suspens } from "@/types/api";
-import { ORDRE_STATUTS, useLocalStatus } from "./localStatus";
+import { ORDRE_STATUTS, useStatuts } from "./statutsTraitement";
 import { ACTION_EN_COLONNE, StatusCell, TitleCell, TypeCell } from "./SuspensCells";
 
 /**
@@ -18,7 +18,7 @@ import { ACTION_EN_COLONNE, StatusCell, TitleCell, TypeCell } from "./SuspensCel
  */
 export function useSuspensColumns(variant: "triage" | "analyse"): Column<Suspens>[] {
   const { courant } = useReconciliation();
-  const { get } = useLocalStatus(courant?.date_arrete ?? null);
+  const { get } = useStatuts(courant);
   const { nomConservateur } = useReferentiel();
 
   return useMemo(() => {

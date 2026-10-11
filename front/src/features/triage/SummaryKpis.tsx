@@ -23,7 +23,7 @@ export function SummaryKpis({ synthese, traites }: SummaryKpisProps) {
         })),
         {
           id: "traites",
-          label: "Traités sur ce poste",
+          label: "Traités",
           value: `${traites} / ${synthese.nb_suspens}`,
           tone: "green" as const,
         },

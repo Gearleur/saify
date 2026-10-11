@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useReconciliation } from "@/hooks/useReconciliation";
-import { useLocalStatus } from "./localStatus";
-import { LocalStatusControl } from "./LocalStatusControl";
+import { useStatuts } from "./statutsTraitement";
+import { StatutControl } from "./StatutControl";
 import { SheetComparison } from "./SheetComparison";
 import { SheetDetails } from "./SheetDetails";
 import { SheetSources } from "./SheetSources";
@@ -25,7 +25,7 @@ function Bloc({ title, children }: { title: string; children: ReactNode }) {
 export function SuspensSheet() {
   const { courant } = useReconciliation();
   const { openId, sequence, open, close } = useSuspensSheet();
-  const { get, set } = useLocalStatus(courant?.date_arrete ?? null);
+  const { get, set } = useStatuts(courant);
   const s = courant?.suspens.find((x) => x.id === openId);
   useHotkeys({ Escape: close }, !!s);
   if (!s) return null;
@@ -75,8 +75,8 @@ export function SuspensSheet() {
         </div>
         <Bloc title="Action attendue">
           <p className="pb-3 font-medium">{s.action}</p>
-          <LocalStatusControl value={get(s)} onChange={(v) => set(s, v)} />
-          <p className="mt-2 text-xs text-subtle">Statut enregistré sur ce poste uniquement.</p>
+          <StatutControl value={get(s)} onChange={(v) => set(s, v)} />
+          <p className="mt-2 text-xs text-subtle">Statut partagé avec l'équipe ; chaque changement est tracé.</p>
         </Bloc>
         <Bloc title="Détails">
           <SheetDetails s={s} />

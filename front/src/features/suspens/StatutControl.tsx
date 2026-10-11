@@ -1,14 +1,15 @@
 import { StatusDot } from "@/components/StatusDot";
 import { cn } from "@/lib/utils";
-import { LOCAL_STATUS, ORDRE_STATUTS, type LocalStatus } from "./localStatus";
+import { STATUTS_TRAITEMENT, ORDRE_STATUTS } from "./statutsTraitement";
+import type { StatutTraitement } from "@/types/api";
 
-interface LocalStatusControlProps {
-  value: LocalStatus;
-  onChange: (value: LocalStatus) => void;
+interface StatutControlProps {
+  value: StatutTraitement;
+  onChange: (value: StatutTraitement) => void;
 }
 
-/** Contrôle segmenté À traiter / En cours / Traité (enregistré sur ce poste). */
-export function LocalStatusControl({ value, onChange }: LocalStatusControlProps) {
+/** Contrôle segmenté À traiter / En cours / Traité (partagé avec l'équipe, chaque changement tracé). */
+export function StatutControl({ value, onChange }: StatutControlProps) {
   return (
     <div
       role="radiogroup"
@@ -27,8 +28,8 @@ export function LocalStatusControl({ value, onChange }: LocalStatusControlProps)
               "bg-hover font-medium text-foreground shadow-[inset_0_0_0_1px_var(--border-strong)]",
           )}
         >
-          <StatusDot tone={LOCAL_STATUS[s].tone} />
-          {LOCAL_STATUS[s].label}
+          <StatusDot tone={STATUTS_TRAITEMENT[s].tone} />
+          {STATUTS_TRAITEMENT[s].label}
         </button>
       ))}
     </div>

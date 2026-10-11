@@ -2,8 +2,8 @@ import { Mono } from "@/components/Mono";
 import { StatusLabel } from "@/components/StatusDot";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TYPES_COURTS } from "@/lib/metier";
-import type { Suspens } from "@/types/api";
-import { LOCAL_STATUS, type LocalStatus } from "./localStatus";
+import type { StatutTraitement, Suspens } from "@/types/api";
+import { STATUTS_TRAITEMENT } from "./statutsTraitement";
 
 /** Largeur de table (requête de conteneur) à partir de laquelle l'action a sa propre colonne. */
 export const ACTION_EN_COLONNE = "@5xl:table-cell";
@@ -41,8 +41,8 @@ export function TypeCell({ s }: { s: Suspens }) {
   return <span className="text-muted-foreground">{TYPES_COURTS[s.type] ?? s.type}</span>;
 }
 
-export function StatusCell({ status }: { status: LocalStatus }) {
-  const info = LOCAL_STATUS[status];
+export function StatusCell({ status }: { status: StatutTraitement }) {
+  const info = STATUTS_TRAITEMENT[status];
   return (
     <StatusLabel
       tone={info.tone}

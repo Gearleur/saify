@@ -52,7 +52,7 @@ Ordre vertical, dans l'ordre du geste :
 1. **En-tête** : titre, phrase d'état (« Arrêté du 25/09/2026, lancé à 20:48. Aucun critique : 5 suspens à relever. »), bouton « Lancer sur les fichiers d'exemple (25/09) ». La date de ce bouton vient de `GET /api/sante` (`date_arrete` = date de référence de la base de gestion), **jamais d'une constante**. Bouton noir tant que rien n'est chargé, puis secondaire.
 2. **Bandeau « Rapprochement bloqué »**, uniquement s'il y a un BLOQUANT. Il passe avant tout le reste : sans lui, aucun suspens n'est calculé. Chaque point donne fichier, ligne, règle, valeur brute et surtout **« Que faire »** (le `remede` du back), avec une case « corrigé » pour suivre la relance (état local à l'écran).
 3. **Fichiers du jour** : les 4 sources attendues (PMS, A CACEIS, B Euroclear, C BNP/BP2S) côte à côte, avec le fichier reçu et son état (Accepté, Refusé + règle, Non reçu). Pendant un dépôt (glisser-déposer n'importe où, ou « Déposer des fichiers »), la même bande montre **la sélection en cours seulement** (« Prêt à envoyer », problème détecté localement, « Non sélectionné »), le bouton « Rapprocher ces fichiers (n) » et l'erreur 413 / 422 / 429 (avec le compte à rebours `Retry-After`). Envoi en base64 dans du JSON.
-4. **Synthèse** : Critique, À relever, En attente, Traités sur ce poste. Un clic fait défiler jusqu'au groupe.
+4. **Synthèse** : Critique, À relever, En attente, Traités (statuts partagés par le serveur). Un clic fait défiler jusqu'au groupe.
 5. **File de traitement** : **une seule table** groupée par priorité (Critique, À relever, En attente de dénouement), colonnes alignées entre les groupes. Un groupe vide le dit en une ligne (« Aucun risque CSDR détecté. ») : l'absence de critique est une information.
 6. **Écarté ou signalé au nettoyage** : les EXCLU et SIGNALE du journal (SANOFI sans sous-compte, P3G, annulation RTE, ISIN invalide), avec un lien vers le journal complet.
 
@@ -77,7 +77,7 @@ Panneau ancré à droite, lu comme un record Attio ; la table reste visible à g
 3. **Détails** en liste clé → valeur : priorité, type (libellé officiel et code), fonds, conservateur, ISIN, piste, signalements (point rouge si leur code est `CSDR` ; le front lit les codes, jamais le texte).
 4. **Lignes sources** : fichier et numéro de ligne en mono, la traçabilité jusqu'à la donnée brute.
 
-Clavier : `↑` `↓` passent au suspens voisin **dans l'ordre de la liste d'où la fiche a été ouverte**, `Échap` ferme. Statut dans `localStorage` (clé : date d'arrêté + fonds + ISIN + conservateur + type, accès en try/catch).
+Clavier : `↑` `↓` passent au suspens voisin **dans l'ordre de la liste d'où la fiche a été ouverte**, `Échap` ferme. Statut **partagé côté serveur** (`GET /api/rapprochements/{id}/statuts`, `PUT …/suspens/{sid}/statut`), clé stable d'un rapprochement à l'autre du même arrêté (date + entité + ISIN + conservateur + type), chaque changement journalisé. Mise à jour optimiste, annulée avec un toast si le serveur refuse.
 
 **Écarté** : la fenêtre modale qui masque la file (on perd le contexte d'un suspens à l'autre) ; la Sheet modale de shadcn (verrou de défilement qui injecte un `<style>`, refusé par la CSP).
 
@@ -201,7 +201,7 @@ Pourquoi ce découpage :
 - **`lib/` sans React** : formatage décimal, SSE, contrôles de fichiers et client HTTP sont des fonctions pures ou des modules sans état d'interface ; on les relit et on les teste sans navigateur.
 - **`components/` vs `features/`** : un composant qui sert à deux fonctionnalités monte dans `components/` (la `DataTable` sert la file, les suspens, le journal, les fichiers, le paramétrage ; `StatusDot` partout). Ce qui ne sert qu'à une fonctionnalité reste dans son dossier : on supprime une fonctionnalité en supprimant un dossier.
 - **Partage entre fonctionnalités par import explicite** : la file du matin réutilise les colonnes de `suspens/` et du `journal/`, la palette réutilise l'action de `files/` ; pas de copie.
-- **État** : pas de librairie de state global. Trois contextes React (données de rapprochement, fiche ouverte, dépôt en cours), deux petits stores `useSyncExternalStore` (statuts locaux, historique de questions) ; la route est le hash de l'URL.
+- **État** : pas de librairie de state global. Trois contextes React (données de rapprochement, fiche ouverte, dépôt en cours), deux petits stores `useSyncExternalStore` (statuts de traitement, cache du serveur ; historique de questions de l'onglet) ; la route est le hash de l'URL.
 - **Règles** : composants courts (le plus long fait moins de 150 lignes), une responsabilité par fichier, props typées, pas de `any`, imports par alias `@/`, la logique (filtres, tri, groupes, matrice, formatage) dans des hooks ou dans `lib/`, pas dans le JSX.
 
 ## Limites connues

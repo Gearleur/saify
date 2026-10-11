@@ -118,6 +118,19 @@ export interface Signalement {
   message: string;
 }
 
+/** Statut de traitement d'un suspens, partagé entre les postes (absent = « a_traiter »). */
+export type StatutTraitement = "a_traiter" | "en_cours" | "traite";
+
+export interface StatutsTraitement {
+  statuts: Record<string, StatutTraitement>;
+}
+
+export interface StatutSuspens {
+  suspens: string;
+  statut: StatutTraitement;
+  modifie_le: string;
+}
+
 export interface Anomalie {
   fichier: string;
   ligne: number;

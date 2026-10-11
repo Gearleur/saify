@@ -22,7 +22,22 @@ CREATE TABLE IF NOT EXISTS rapprochements (
     reponse TEXT NOT NULL,
     csv BLOB NOT NULL,
     situation TEXT NOT NULL
-)
+);
+-- Statut de traitement d'un suspens, partagé entre les postes. Clé stable d'un rapprochement à
+-- l'autre du même arrêté : date d'arrêté, entité, ISIN, conservateur, type.
+CREATE TABLE IF NOT EXISTS statuts (
+    cle TEXT PRIMARY KEY,
+    statut TEXT NOT NULL,
+    modifie_le TEXT NOT NULL
+);
+-- Chaque changement, jamais effacé : qui (identifiant de requête) a changé quoi, et quand.
+CREATE TABLE IF NOT EXISTS statuts_journal (
+    rang INTEGER PRIMARY KEY AUTOINCREMENT,
+    cle TEXT NOT NULL,
+    statut TEXT NOT NULL,
+    modifie_le TEXT NOT NULL,
+    request_id TEXT NOT NULL
+);
 """
 
 
@@ -55,7 +70,7 @@ class Historique:
                 cible = str(self.fichier)
             self._db = sqlite3.connect(cible, check_same_thread=False)
             with self._db:
-                self._db.execute(SCHEMA)
+                self._db.executescript(SCHEMA)
         return self._db
 
     def _lignes(self, requete: str, *parametres) -> list[tuple]:
@@ -109,6 +124,26 @@ class Historique:
             statut,
         )
         return Rapprochement.model_validate_json(lignes[0][0]) if lignes else None
+
+    def statuts(self, cles: list[str]) -> dict[str, str]:
+        """Statut enregistré de chaque clé connue ; une clé absente est « à traiter »."""
+        if not cles:
+            return {}
+        marques = ", ".join("?" * len(cles))
+        lignes = self._lignes(f"SELECT cle, statut FROM statuts WHERE cle IN ({marques})", *cles)
+        return dict(lignes)
+
+    def changer_statut(self, cle: str, statut: str, modifie_le: str, request_id: str) -> None:
+        with self._verrou, self._connexion() as db:
+            db.execute(
+                "INSERT INTO statuts (cle, statut, modifie_le) VALUES (?, ?, ?)"
+                " ON CONFLICT(cle) DO UPDATE SET statut = excluded.statut, modifie_le = excluded.modifie_le",
+                (cle, statut, modifie_le),
+            )
+            db.execute(
+                "INSERT INTO statuts_journal (cle, statut, modifie_le, request_id) VALUES (?, ?, ?, ?)",
+                (cle, statut, modifie_le, request_id),
+            )
 
     def recents(self) -> list[Rapprochement]:
         lignes = self._lignes(

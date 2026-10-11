@@ -92,3 +92,8 @@ export async function postJson<T>(path: string, json?: unknown): Promise<T> {
   const res = await send(path, { method: "POST", json });
   return (await res.json()) as T;
 }
+
+export async function putJson<T>(path: string, json: unknown): Promise<T> {
+  const res = await send(path, { method: "PUT", json });
+  return (await res.json()) as T;
+}

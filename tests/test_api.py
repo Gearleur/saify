@@ -406,3 +406,53 @@ def test_historique_n_ecrit_jamais_dans_orsay_db(tmp_path, monkeypatch):
     assert (DONNEES / "orsay.db").read_bytes() == empreinte
     with pytest.raises(ValueError, match="orsay.db"):
         create_app(fichier_historique=DONNEES / "orsay.db")
+
+
+# Statut de traitement partagé (il ne vivait que dans le navigateur de l'opérateur)
+def test_statut_de_traitement_partage_et_journalise(tmp_path, caplog):
+    caplog.set_level("INFO", logger="middle_office.api")
+    fichier = tmp_path / "historique.db"
+    client = TestClient(create_app(fichier_historique=fichier, client_llm=None))
+    premier = client.post("/api/rapprochements/exemple").json()
+    assert client.get(f"/api/rapprochements/{premier['id']}/statuts").json() == {"statuts": {}}
+
+    reponse = client.put(
+        f"/api/rapprochements/{premier['id']}/suspens/S1/statut",
+        json={"statut": "en_cours"},
+        headers={"X-Request-ID": "rid-statut"},
+    )
+    assert reponse.status_code == 200 and reponse.json()["statut"] == "en_cours"
+    assert "audit statut rid=rid-statut" in caplog.text
+
+    # Un autre poste (autre processus, même base) et un nouveau rapprochement du même jour le voient.
+    autre_poste = TestClient(create_app(fichier_historique=fichier, client_llm=None))
+    second = autre_poste.post("/api/rapprochements/exemple").json()
+    assert autre_poste.get(f"/api/rapprochements/{second['id']}/statuts").json() == {
+        "statuts": {"S1": "en_cours"}
+    }
+    with sqlite3.connect(fichier) as db:
+        assert db.execute("SELECT statut, request_id FROM statuts_journal").fetchall() == [
+            ("en_cours", "rid-statut")
+        ]
+
+
+def test_retour_a_traiter_n_est_plus_renvoye(client):
+    id_ = client.post("/api/rapprochements/exemple").json()["id"]
+    for statut in ("traite", "a_traiter"):
+        client.put(f"/api/rapprochements/{id_}/suspens/S2/statut", json={"statut": statut})
+    assert client.get(f"/api/rapprochements/{id_}/statuts").json() == {"statuts": {}}
+
+
+@pytest.mark.parametrize(
+    ("suspens", "corps", "statut", "code"),
+    [
+        ("S99", {"statut": "traite"}, 404, "INTROUVABLE"),
+        ("S1", {"statut": "fini"}, 422, "VALIDATION"),
+        ("S1", {"statut": "traite", "par": "moi"}, 422, "VALIDATION"),
+    ],
+)
+def test_statut_invalide(client, suspens, corps, statut, code):
+    id_ = client.post("/api/rapprochements/exemple").json()["id"]
+    _erreur(
+        client.put(f"/api/rapprochements/{id_}/suspens/{suspens}/statut", json=corps), statut, code
+    )

@@ -9,7 +9,7 @@ import { useSort } from "@/hooks/useSort";
 import { rapprochementsApi } from "@/lib/api";
 import { rapprochementLabel } from "@/lib/dates";
 import { NoReconciliation } from "@/features/files/NoReconciliation";
-import { useLocalStatus } from "./localStatus";
+import { useStatuts } from "./statutsTraitement";
 import { SuspensToolbar } from "./SuspensToolbar";
 import { useSuspensColumns } from "./useSuspensColumns";
 import { useSuspensFilters } from "./useSuspensFilters";
@@ -19,7 +19,7 @@ import { useSuspensSheet } from "./useSuspensSheet";
 export function SuspensView() {
   const { courant } = useReconciliation();
   const { route, navigate } = useHashRoute();
-  const { get } = useLocalStatus(courant?.date_arrete ?? null);
+  const { get } = useStatuts(courant);
   const columns = useSuspensColumns("analyse");
   const state = useSuspensFilters(courant?.suspens ?? [], get, route.params);
   const { sort, toggle, sorted } = useSort(state.filtered, columns);

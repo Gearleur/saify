@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import type { FilterOption } from "@/components/FilterMenu";
 import { useReferentiel } from "@/hooks/useReferentiel";
 import { ORDRE_PRIORITES, ORDRE_TYPES, PRIORITES, TYPES_COURTS } from "@/lib/metier";
-import type { Suspens } from "@/types/api";
-import { LOCAL_STATUS, ORDRE_STATUTS, type LocalStatus } from "./localStatus";
+import type { StatutTraitement, Suspens } from "@/types/api";
+import { STATUTS_TRAITEMENT, ORDRE_STATUTS } from "./statutsTraitement";
 
 export type FilterKey = "priorite" | "fonds" | "conservateur" | "type" | "statut";
 export type Filters = Record<FilterKey, string[]>;
@@ -30,7 +30,7 @@ function compter(valeurs: string[]): Map<string, number> {
 /** Recherche (titre, ISIN, action) et filtres cumulables ; les effectifs portent sur toute la liste. */
 export function useSuspensFilters(
   suspens: Suspens[],
-  getStatus: (s: Suspens) => LocalStatus,
+  getStatus: (s: Suspens) => StatutTraitement,
   params: URLSearchParams,
 ) {
   const [query, setQuery] = useState(() => params.get("q") ?? "");
@@ -88,8 +88,8 @@ export function useSuspensFilters(
       })),
       statut: ORDRE_STATUTS.map((s) => ({
         value: s,
-        label: LOCAL_STATUS[s].label,
-        tone: LOCAL_STATUS[s].tone,
+        label: STATUTS_TRAITEMENT[s].label,
+        tone: STATUTS_TRAITEMENT[s].tone,
         count: n("statut").get(s) ?? 0,
       })),
     };

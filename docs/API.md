@@ -88,6 +88,9 @@ En-tête `Content-Disposition: attachment; filename="suspens_2026-09-25.csv"`.
 ```
 Texte brut, prêt à coller dans un mail : statut, synthèse par fonds et conservateur, suspens par priorité avec action attendue, exclusions et signalements.
 
+### `GET /api/rapprochements/{id}/statuts` · `PUT /api/rapprochements/{id}/suspens/{sid}/statut`
+Statut de traitement des suspens, **partagé entre les postes** : `{"statuts": {"S1": "en_cours"}}` (un suspens absent est `a_traiter`). `PUT` avec `{"statut": "a_traiter" | "en_cours" | "traite"}` → `200` `{"suspens", "statut", "modifie_le"}` ; suspens inconnu `404 INTROUVABLE`, statut invalide `422 VALIDATION`. La clé ne dépend pas du rapprochement (date d'arrêté, entité, ISIN, conservateur, type) : relancer le rapprochement du jour garde le travail fait. Chaque changement est conservé dans `historique.db` (table `statuts_journal`, avec l'identifiant de requête) et tracé dans le log d'audit.
+
 ### `POST /api/questions` (besoin 2)
 Corps `{"question": "Combien pèse le fonds obligataire ?"}` → `200` + **ReponseQuestion**.
 Le LLM (Haiku 5.5) ne fait que **classer** la question dans le catalogue (encours, échéances, concentration,

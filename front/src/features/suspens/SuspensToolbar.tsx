@@ -37,7 +37,7 @@ export function SuspensToolbar({ state, total, csvUrl }: SuspensToolbarProps) {
           options={state.options[k]}
           selected={state.filters[k]}
           onChange={(v) => state.setFilter(k, v)}
-          description={k === "statut" ? "Statut enregistré sur ce poste" : undefined}
+          description={k === "statut" ? "Statut partagé avec l'équipe" : undefined}
         />
       ))}
       {state.actifs && (

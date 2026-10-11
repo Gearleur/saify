@@ -1,15 +1,18 @@
 """Rapprochements : création (dépôt ou exemple), historique, exports (CSV, point de situation)."""
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
 from middle_office.api.dependances import HistoriqueDep, ReglagesDep
 from middle_office.api.schemas import (
+    ChangementStatut,
     DemandeRapprochement,
     PointDeSituation,
     Rapprochement,
     RapprochementResume,
+    StatutsTraitement,
+    StatutSuspens,
 )
-from middle_office.api.services import depot, rapprochements
+from middle_office.api.services import depot, rapprochements, statuts
 
 router = APIRouter(prefix="/api/rapprochements", tags=["rapprochements"])
 
@@ -62,3 +65,19 @@ def csv_suspens(id_: str, historique: HistoriqueDep) -> Response:
 @router.get("/{id_}/point-de-situation")
 def situation(id_: str, historique: HistoriqueDep) -> PointDeSituation:
     return PointDeSituation(texte=historique.lire(id_).situation)
+
+
+@router.get("/{id_}/statuts")
+def lire_statuts(id_: str, historique: HistoriqueDep) -> StatutsTraitement:
+    return statuts.lire(historique, id_)
+
+
+@router.put("/{id_}/suspens/{suspens}/statut")
+def changer_statut(
+    id_: str,
+    suspens: str,
+    changement: ChangementStatut,
+    request: Request,
+    historique: HistoriqueDep,
+) -> StatutSuspens:
+    return statuts.changer(historique, id_, suspens, changement.statut, request.state.request_id)
