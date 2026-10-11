@@ -10,9 +10,10 @@ install:        ## Python 3.12 et dépendances verrouillées (uv.lock)
 test:           ## Tests (le LLM est coupé, aucun appel réseau)
 	uv run pytest -q
 
-lint:           ## Lint et format, sans rien modifier
+lint:           ## Lint, format et typage, sans rien modifier
 	uv run ruff check .
 	uv run ruff format --check .
+	uv run pyright
 
 format:         ## Formate le code Python
 	uv run ruff format .

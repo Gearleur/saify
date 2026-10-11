@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import overload
 
 LECTURES = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION}
 
@@ -30,6 +31,10 @@ def connexion_lecture_seule(base: Path) -> Iterator[sqlite3.Connection]:
         db.close()
 
 
+@overload
+def decimal(valeur: None) -> None: ...
+@overload
+def decimal(valeur: float | int) -> Decimal: ...
 def decimal(valeur: float | int | None) -> Decimal | None:
     """Les cours sont stockés en REAL : on passe par leur écriture décimale, jamais par le binaire."""
     return None if valeur is None else Decimal(str(valeur))

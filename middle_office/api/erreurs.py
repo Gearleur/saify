@@ -1,6 +1,7 @@
 """Erreurs de l'API : un seul format `{"erreur": {"code", "message", "details"}}`, jamais de trace."""
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -31,7 +32,7 @@ def reponse_erreur(
     code: str,
     message: str,
     details: Any = None,
-    en_tetes: dict[str, str] | None = None,
+    en_tetes: Mapping[str, str] | None = None,
 ) -> JSONResponse:
     corps = {"erreur": {"code": code, "message": message, "details": details}}
     return JSONResponse(corps, status_code=statut, headers=en_tetes)

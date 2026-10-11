@@ -16,7 +16,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest", "ruff", "httpx"]  # httpx : client de test FastAPI
+dev = [
+    "pytest",
+    "ruff",
+    "httpx",
+    "pyright>=1.1.414",
+]  # httpx : client de test FastAPI
 exploration = ["pandas>=3.0.6"]  # notebook exploration/Visual.ipynb uniquement
 
 [tool.ruff]
@@ -29,6 +34,11 @@ select = ["E", "F", "I", "UP", "B"]
 # Le formateur coupe le code à 100 ; les chaînes et commentaires qu'il ne coupe pas ont une limite dure à 120.
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
+
+[tool.pyright]
+include = ["middle_office", "tests"]
+typeCheckingMode = "standard"
+pythonVersion = "3.12"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

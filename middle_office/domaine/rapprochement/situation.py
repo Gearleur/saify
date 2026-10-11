@@ -4,6 +4,7 @@ import csv
 import io
 from collections import Counter
 from decimal import Decimal
+from typing import overload
 
 from middle_office.domaine.formats import formater_quantite
 from middle_office.domaine.rapprochement.moteur import (
@@ -32,6 +33,10 @@ COLONNES_CSV = (
 TITRES_PRIORITES = {"critique": "CRITIQUE", "a_relever": "À RELEVER", "en_attente": "EN ATTENTE"}
 
 
+@overload
+def quantite_texte(q: Decimal) -> str: ...
+@overload
+def quantite_texte(q: None) -> None: ...
 def quantite_texte(q: Decimal | None) -> str | None:
     """Écriture décimale sans exposant ni zéros inutiles (25000000 au 1/100 → « 250000 »)."""
     if q is None:

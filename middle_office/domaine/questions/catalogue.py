@@ -369,7 +369,7 @@ def operations_non_denouees(
         date_op,
         date_den,
         code,
-        isin,
+        isin_op,
         libelle,
         mode,
         sens,
@@ -384,11 +384,11 @@ def operations_non_denouees(
             en_retard += 1
             avertissements.insert(
                 0,
-                f"Op. n°{id_} ({libelle or isin}) devait être dénouée le {date_fr(prevue)} : "
+                f"Op. n°{id_} ({libelle or isin_op}) devait être dénouée le {date_fr(prevue)} : "
                 "défaut de règlement-livraison, risque CSDR.",
             )
         details.append(
-            f"n°{id_} {sens} {formater_quantite(qte)} {libelle or isin} ({code}, dén. prévu {date_fr(prevue)})"
+            f"n°{id_} {sens} {formater_quantite(qte)} {libelle or isin_op} ({code}, dén. prévu {date_fr(prevue)})"
         )
         sources.append(
             LigneSource(
@@ -398,7 +398,7 @@ def operations_non_denouees(
                     "date_operation": date_op,
                     "date_denouement": date_den,
                     "portefeuille": code,
-                    "isin": isin,
+                    "isin": isin_op,
                     "sens": sens,
                     "quantite": str(qte),
                     "prix": "" if cours is None else str(cours),

@@ -435,6 +435,7 @@ def executer(
     elif c.intention == "NON_DENOUEES":
         reponse = catalogue.operations_non_denouees(base, c.fonds, date_ref, c.isin)
     else:
+        assert c.isin is not None  # _blocage refuse ORIGINE_SUSPENS sans titre reconnu
         reponse = catalogue.origine_suspens(base, c.isin, contexte)
     reponse.question = question
     reponse.comprehension = c.trace()

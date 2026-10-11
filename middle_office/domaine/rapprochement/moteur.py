@@ -464,6 +464,8 @@ def rapprocher(
     if any(a.niveau == "BLOQUANT" for a in resultat.journal):
         resultat.statut = "BLOQUE"
         return resultat
+    # Sans blocage, le PMS était présent, seul, et d'une seule date : elle est établie.
+    assert date_arrete is not None
 
     base = _lire_base(db_path, resultat.journal)
     resultat.journal.extend(_signaler(pms + dep, base))

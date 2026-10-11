@@ -54,10 +54,9 @@ def decoder(demande: DemandeRapprochement, taille_fichier_max: int) -> dict[str,
 def depot_exemple(dossier_donnees: Path) -> dict[str, bytes]:
     """Les fichiers du 25/09 fournis par le client, pour la démonstration."""
     ordre = list(LECTEURS)  # PMS, A, B, C
-    reconnus = [(source_du_fichier(f.name), f) for f in dossier_donnees.iterdir() if f.is_file()]
-    return {
-        f.name: f.read_bytes()
-        for source, f in sorted(
-            (r for r in reconnus if r[0]), key=lambda r: (ordre.index(r[0]), r[1].name)
-        )
-    }
+    reconnus = [
+        (ordre.index(source), f.name, f)
+        for f in dossier_donnees.iterdir()
+        if f.is_file() and (source := source_du_fichier(f.name))
+    ]
+    return {nom: f.read_bytes() for _, nom, f in sorted(reconnus)}

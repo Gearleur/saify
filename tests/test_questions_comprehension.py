@@ -33,14 +33,16 @@ def _llm(
     reformulations=(),
     date_demandee=None,
 ):
-    return IntentionLLM(
-        intention=intention,
-        fonds=fonds,
-        horizon_mois=horizon_mois,
-        titre=titre,
-        confiance=confiance,
-        reformulations=list(reformulations),
-        date_demandee=date_demandee,
+    return IntentionLLM.model_validate(
+        {
+            "intention": intention,
+            "fonds": fonds,
+            "horizon_mois": horizon_mois,
+            "titre": titre,
+            "confiance": confiance,
+            "reformulations": list(reformulations),
+            "date_demandee": date_demandee,
+        }
     )
 
 

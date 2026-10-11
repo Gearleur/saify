@@ -20,13 +20,16 @@ def _client(**surcharges) -> TestClient:
 
 
 def _intention(intention="ENCOURS", fonds="OBL", confiance=0.95) -> IntentionLLM:
-    return IntentionLLM(
-        intention=intention,
-        fonds=fonds,
-        horizon_mois=None,
-        titre=None,
-        confiance=confiance,
-        reformulations=[],
+    # model_validate : les littéraux (intention, fonds) sont vérifiés comme pour une vraie sortie du LLM.
+    return IntentionLLM.model_validate(
+        {
+            "intention": intention,
+            "fonds": fonds,
+            "horizon_mois": None,
+            "titre": None,
+            "confiance": confiance,
+            "reformulations": [],
+        }
     )
 
 

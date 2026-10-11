@@ -317,7 +317,9 @@ def _texte(lecture: Lecture, contenu: bytes) -> str:
         return contenu.decode("latin-1")
 
 
-def lire_pms(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) -> Lecture:
+# `date_arrete` vaut None quand le PMS n'a pas permis de l'établir : ce blocage est déjà tracé, les
+# lecteurs lisent quand même pour signaler tout le reste en une fois.
+def lire_pms(nom: str, contenu: bytes, param: Parametrage, date_arrete: date | None) -> Lecture:
     lecture = Lecture(nom)
     lignes = csv.DictReader(io.StringIO(_texte(lecture, contenu), newline=""), delimiter=";")
     absentes = [c for c in COLONNES_PMS if c not in (lignes.fieldnames or [])]
@@ -409,7 +411,9 @@ def lire_pms(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) ->
     return lecture
 
 
-def lire_depositaire_a(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) -> Lecture:
+def lire_depositaire_a(
+    nom: str, contenu: bytes, param: Parametrage, date_arrete: date | None
+) -> Lecture:
     lecture = Lecture(nom)
     with closing(openpyxl.load_workbook(io.BytesIO(contenu), read_only=True, data_only=True)) as wb:
         lignes = list(wb.worksheets[0].iter_rows(values_only=True))
@@ -460,7 +464,9 @@ def lire_depositaire_a(nom: str, contenu: bytes, param: Parametrage, date_arrete
     return lecture
 
 
-def lire_depositaire_b(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) -> Lecture:
+def lire_depositaire_b(
+    nom: str, contenu: bytes, param: Parametrage, date_arrete: date | None
+) -> Lecture:
     """Largeur fixe : H+date, D + desk(3) + ISIN(12) + quantité(15, 2 décimales implicites), T+nb."""
     lecture = Lecture(nom)
     lignes = _texte(lecture, contenu).splitlines()
@@ -527,7 +533,9 @@ def _dtd_present(contenu: bytes) -> bool:
     return any(b"<!DOCTYPE" in t or b"<!ENTITY" in t for t in textes)
 
 
-def lire_depositaire_c(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) -> Lecture:
+def lire_depositaire_c(
+    nom: str, contenu: bytes, param: Parametrage, date_arrete: date | None
+) -> Lecture:
     """XML à namespace ; les lots distincts d'un même (compte, ISIN) sont additionnés, un lot répété bloque."""
     lecture = Lecture(nom)
     if _dtd_present(contenu):  # avant tout parsing : entités externes, « billion laughs »
