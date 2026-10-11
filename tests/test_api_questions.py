@@ -186,3 +186,24 @@ def test_sante_expose_l_etat_du_llm_jamais_la_cle(monkeypatch):
 
 def test_sans_llm_sante_le_dit():
     assert _client().get("/api/sante").json()["llm"]["actif"] is False
+
+
+def test_chaque_question_laisse_une_ligne_d_audit_sans_la_question(caplog):
+    caplog.set_level("INFO", logger="middle_office.api")
+    client = _client()
+    question = "Encours valorisé du fonds OBL"
+    reponse = client.post(
+        "/api/questions", json={"question": question}, headers={"X-Request-ID": "rid-audit-1"}
+    )
+    client.post(
+        "/api/questions/flux", json={"question": question}, headers={"X-Request-ID": "rid-audit-2"}
+    )
+    audits = [r.getMessage() for r in caplog.records if r.getMessage().startswith("audit question")]
+    assert len(audits) == 2
+    assert "rid=rid-audit-1" in audits[0] and "rid=rid-audit-2" in audits[1]
+    assert (
+        "intention=ENCOURS source=mots_cles" in audits[0]
+        and "reponse=haute chiffres=1" in audits[0]
+    )
+    assert all(question not in a for a in audits)
+    assert reponse.status_code == 200

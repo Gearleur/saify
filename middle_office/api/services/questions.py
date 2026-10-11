@@ -1,5 +1,14 @@
-"""Pont entre l'API et le domaine des questions : contexte du dernier rapprochement, sérialisation."""
+"""Traitement d'une question, partagé par la route JSON et le flux SSE : date de référence, compréhension,
+réponse sur le dernier rapprochement exploitable, sérialisation, et une ligne d'audit par question."""
 
+import hashlib
+import logging
+import sqlite3
+from datetime import date
+from pathlib import Path
+
+from middle_office.api.config import Reglages
+from middle_office.api.erreurs import ErreurApi
 from middle_office.api.schemas import (
     ChiffreSortie,
     ComprehensionSortie,
@@ -8,7 +17,47 @@ from middle_office.api.schemas import (
     VigilanceSortie,
 )
 from middle_office.api.services.historique import Historique
+from middle_office.api.services.llm import ClientEncadre
+from middle_office.domaine.questions.base import date_reference
+from middle_office.domaine.questions.comprehension import Comprehension, comprendre, executer
 from middle_office.domaine.questions.modeles import ContexteRapprochement, Reponse
+
+log = logging.getLogger("middle_office.api.audit")
+
+
+def date_de_reference(base: Path) -> date:
+    """Les questions portent sur la date des dernières positions de la base, affichée dans chaque réponse."""
+    try:
+        jour = date_reference(base)
+    except sqlite3.Error as exc:
+        raise ErreurApi(
+            503, "BASE_INDISPONIBLE", "Base de gestion illisible : réessayer plus tard"
+        ) from exc
+    if jour is None:
+        raise ErreurApi(503, "BASE_INDISPONIBLE", "Aucune position dans la base de gestion")
+    return jour
+
+
+def comprendre_question(
+    question: str, reglages: Reglages, llm: ClientEncadre | None, jour: date
+) -> Comprehension:
+    return comprendre(question, reglages.base, llm, jour)
+
+
+def repondre_question(c: Comprehension, question: str, reglages: Reglages, historique: Historique,
+                      jour: date, rid: str) -> ReponseQuestion:  # fmt: skip
+    """Exécute l'intention comprise et trace la décision : qui a compris quoi (LLM ou mots-clés), avec
+    quelle confiance, et ce qui a été répondu. Ni la question ni la réponse en clair : une empreinte
+    de la question suffit à rapprocher une plainte de sa ligne d'audit."""
+    reponse = executer(c, question, reglages.base, jour, contexte_suspens(historique))
+    log.info(
+        "audit question rid=%s empreinte=%s intention=%s source=%s confiance=%.2f fonds=%s isin=%s "
+        "horizon=%s date_demandee=%s reponse=%s chiffres=%d detail=%s",
+        rid, hashlib.sha256(question.encode()).hexdigest()[:12], c.intention, c.source, c.confiance,
+        c.fonds, c.isin, c.horizon_mois, getattr(c, "date_demandee", None), reponse.confiance,
+        len(reponse.chiffres), c.detail or "-",
+    )  # fmt: skip
+    return vers_sortie(reponse)
 
 
 def contexte_suspens(historique: Historique) -> ContexteRapprochement | None:

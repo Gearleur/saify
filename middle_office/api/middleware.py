@@ -36,6 +36,7 @@ class Garde:
             return await self.app(scope, receive, send)
         debut = time.perf_counter()
         rid = request_id(Headers(scope=scope).get("x-request-id"))
+        scope.setdefault("state", {})["request_id"] = rid  # lu par les routes (request.state)
         etat = {"statut": 500, "demarre": False}
 
         async def envoyer(message):

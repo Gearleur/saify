@@ -6,44 +6,32 @@ l'eau, puis la réponse complète, identique à celle de la route JSON.
 
 import json
 import logging
-import sqlite3
 from collections.abc import Iterator
-from datetime import date
-from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from middle_office.api.dependances import HistoriqueDep, LLMDep, ReglagesDep
-from middle_office.api.erreurs import ERREUR_INTERNE, ErreurApi
+from middle_office.api.erreurs import ERREUR_INTERNE
 from middle_office.api.schemas import Question, ReponseQuestion
-from middle_office.api.services.questions import contexte_suspens, vers_sortie
-from middle_office.domaine.questions.base import date_reference
-from middle_office.domaine.questions.comprehension import comprendre, executer
+from middle_office.api.services.questions import (
+    comprendre_question,
+    date_de_reference,
+    repondre_question,
+)
 
 router = APIRouter(prefix="/api/questions", tags=["questions"])
 log = logging.getLogger("middle_office.api.questions")
 
 
 @router.post("")
-def poser(question: Question, reglages: ReglagesDep, historique: HistoriqueDep, llm: LLMDep) -> ReponseQuestion:  # fmt: skip
-    jour = _date_de_reference(reglages.base)
-    c = comprendre(question.question, reglages.base, llm, jour)
-    contexte = contexte_suspens(historique)
-    return vers_sortie(executer(c, question.question, reglages.base, jour, contexte))
-
-
-def _date_de_reference(base: Path) -> date:
-    """Les questions portent sur la date des dernières positions de la base, affichée dans chaque réponse."""
-    try:
-        jour = date_reference(base)
-    except sqlite3.Error as exc:
-        raise ErreurApi(
-            503, "BASE_INDISPONIBLE", "Base de gestion illisible : réessayer plus tard"
-        ) from exc
-    if jour is None:
-        raise ErreurApi(503, "BASE_INDISPONIBLE", "Aucune position dans la base de gestion")
-    return jour
+def poser(question: Question, request: Request, reglages: ReglagesDep, historique: HistoriqueDep,
+          llm: LLMDep) -> ReponseQuestion:  # fmt: skip
+    jour = date_de_reference(reglages.base)
+    c = comprendre_question(question.question, reglages, llm, jour)
+    return repondre_question(
+        c, question.question, reglages, historique, jour, request.state.request_id
+    )
 
 
 def _evenement(nom: str, donnees: dict) -> str:
@@ -51,23 +39,24 @@ def _evenement(nom: str, donnees: dict) -> str:
 
 
 @router.post("/flux")
-def poser_en_flux(question: Question, reglages: ReglagesDep, historique: HistoriqueDep, llm: LLMDep) -> StreamingResponse:  # fmt: skip
+def poser_en_flux(question: Question, request: Request, reglages: ReglagesDep,
+                  historique: HistoriqueDep, llm: LLMDep) -> StreamingResponse:  # fmt: skip
     """L'entrée et la base sont vérifiées avant d'ouvrir le flux : on reçoit un vrai 422 ou 503."""
-    jour = _date_de_reference(reglages.base)
+    jour = date_de_reference(reglages.base)
+    rid = request.state.request_id
 
     def flux() -> Iterator[str]:
         try:
             yield _evenement(
                 "etape", {"etape": "comprehension", "message": "Analyse de la question…"}
             )
-            c = comprendre(question.question, reglages.base, llm, jour)
+            c = comprendre_question(question.question, reglages, llm, jour)
             yield _evenement("comprehension", c.trace())
             yield _evenement("etape", {"etape": "calcul", "message": "Requête en lecture seule sur la base de gestion…"})  # fmt: skip
-            contexte = contexte_suspens(historique)
-            reponse = executer(c, question.question, reglages.base, jour, contexte)
-            yield _evenement("reponse", vers_sortie(reponse).model_dump(mode="json"))
+            reponse = repondre_question(c, question.question, reglages, historique, jour, rid)
+            yield _evenement("reponse", reponse.model_dump(mode="json"))
         except Exception:
-            log.exception("erreur dans le flux de question")
+            log.exception("rid=%s erreur dans le flux de question", rid)
             _, code, message = ERREUR_INTERNE
             yield _evenement("erreur", {"code": code, "message": message})
         yield _evenement("fin", {})

@@ -243,10 +243,4 @@ def executer(c: Comprehension, question: str, base: Path, date_ref: date,
 def repondre(question: str, base: Path, date_ref: date, client=None,
              contexte: ContexteRapprochement | None = None) -> Reponse:  # fmt: skip
     c = comprendre(question, base, client, date_ref)
-    log.info(
-        "question comprise : intention=%s source=%s confiance=%.2f",
-        c.intention,
-        c.source,
-        c.confiance,
-    )
     return executer(c, question, base, date_ref, contexte)
