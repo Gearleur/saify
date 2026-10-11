@@ -24,6 +24,8 @@ Ouvrez http://127.0.0.1:8000, puis cliquez sur **« Lancer sur les fichiers d'ex
 
 **La clé Anthropic est facultative.** Sans clé, l'outil fonctionne entièrement : les questions sont comprises par mots-clés au lieu du LLM. Pour activer le LLM : `cp .env.example .env`, puis renseignez `ANTHROPIC_API_KEY`. Le fichier `.env` est ignoré par git.
 
+**En production**, `DATE_ARRETE_ATTENDUE=auto` refuse des fichiers qui ne sont pas arrêtés à J-1 ouvré (calendrier TARGET2). Laissée vide (par défaut), la démo sur les fichiers du 25/09 fonctionne.
+
 ### Front et back sur deux serveurs séparés (développement)
 
 ```bash
@@ -47,8 +49,8 @@ Après une modification du front : `make front-build`, qui reconstruit `middle_o
 | `make run` | application complète (API + front construit) sur `:8000` |
 | `make back` / `make front-dev` | les deux serveurs séparés, pour développer |
 | `make cli` | rapprochement du 25/09 en ligne de commande |
-| `make check` | lint, format et 186 tests (sans réseau ni LLM) |
-| `make front-check` / `make front-build` | lint et typage du front / build dans `middle_office/web/` |
+| `make check` | lint, format, typage (pyright) et 245 tests Python (sans réseau ni LLM) |
+| `make front-check` / `make front-build` | lint, typage, format et 21 tests du front / build dans `middle_office/web/` |
 
 ---
 
@@ -63,24 +65,24 @@ Après une modification du front : `make front-build`, qui reconstruit `middle_o
 | `NORMALISE` | forme corrigée, sens inchangé | ` fr0000014078 ` → `FR0000014078` ; `"10 000"` → 10000 ; 2 décimales implicites |
 | `EXCLU` | ligne retirée selon une règle du client | sous-compte technique P3G ; ligne sans sous-compte ; lot annulé chez BNP |
 | `SIGNALE` | ligne conservée mais douteuse | ISIN à la clé de contrôle invalide |
-| `BLOQUANT` | fichier refusé, **avec le remède** | mauvaise date, total de contrôle faux, compte inconnu de la transco |
+| `BLOQUANT` | fichier refusé, **avec le remède** | mauvaise date, total de contrôle faux, compte inconnu de la transco, ligne ou lot en double, code `ACTION` inconnu |
 
-Une seule anomalie bloquante, et **aucun suspens n'est produit**. Un rapprochement partiel cacherait des écarts : c'est le pire risque pour le client.
+Une seule anomalie bloquante, et **aucun suspens n'est produit**. Un rapprochement partiel cacherait des écarts : c'est le pire risque pour le client. Pour la même raison, tout doute qui pourrait combler un écart bloque au lieu d'être additionné ([ADR 0003](docs/adr/0003-un-doute-qui-peut-masquer-un-ecart-bloque.md)).
 
 **8 h 05 : traiter par priorité.** Les suspens arrivent à la maille fonds × ISIN × conservateur, avec leur type (`QTE`, `ABS_DEP`, `ABS_INT`, `DEP`) et l'action attendue lue dans le paramétrage du client :
 - **Critique** : une opération aurait dû être dénouée et ne l'est pas (risque CSDR) ;
 - **À relever** : titre absent, mauvais conservateur, écart inexpliqué ;
-- **En attente** : écart **entièrement expliqué**, avec un calcul signé, par une opération en cours (« op. n°19 ACHAT 25 000, dén. 26/09 »).
+- **En attente** : écart ou absence **entièrement expliqué**, avec un calcul signé, par une opération en cours (« op. n°19 ACHAT 25 000, dén. 26/09 »).
 
 ![Table des suspens et fiche de détail, avec la piste et les lignes sources](docs/images/02-suspens-fiche.png)
 
-Chaque suspens est traçable jusqu'à la ligne du fichier d'origine. Le statut de traitement (à traiter, en cours, traité) est gardé sur le poste.
+Chaque suspens est traçable jusqu'à la ligne du fichier d'origine. Le statut de traitement (à traiter, en cours, traité) est **partagé avec l'équipe** et chaque changement est journalisé ; relancer le rapprochement du jour ne remet pas le travail à zéro.
 
 **Le lendemain matin.** La date d'arrêté est lue dans les fichiers, jamais codée en dur. Avec les mêmes fichiers datés du 26/09, l'achat SCHNEIDER aurait dû se dénouer et ne l'est toujours pas : il passe **en critique**.
 
 ![Fichiers du 26/09 : SCHNEIDER passe en critique, risque CSDR](docs/images/07-lendemain-critique.png)
 
-**10 h : le point de situation.** Un texte prêt à coller dans un mail pour le responsable, l'export CSV, et la matrice fonds × conservateur.
+**10 h : le point de situation.** Un texte prêt à coller dans un mail pour le responsable, l'export CSV (formules neutralisées pour Excel), et la matrice fonds × conservateur.
 
 | Point de situation | Journal de nettoyage |
 |---|---|
@@ -107,6 +109,8 @@ question ─► LLM (Claude Haiku 5.5) ─► intention typée, validée par pyd
 - **Le LLM classe la question, il ne répond pas.** Il choisit une entrée du catalogue et ses paramètres. Les chiffres viennent du SQL, la phrase vient d'un gabarit.
 - **Lecture seule garantie par 3 verrous** : fichier ouvert en `mode=ro`, `PRAGMA query_only`, et un autorisateur SQLite qui refuse toute opération autre qu'une lecture. « Personne ne doit pouvoir modifier l'inventaire » : c'est testé.
 - **Sous le seuil de confiance, aucune réponse chiffrée** : l'outil affiche « Attention » et propose 2 ou 3 reformulations, revérifiées contre le catalogue. C'est le cas aussi pour une demande hors catalogue ou d'écriture.
+- **Jamais de réponse à côté** : une autre date que celle de la base, l'encours d'un titre seul ou un titre ambigu (« l'OAT » : 4 titres) donnent un « Attention » plutôt qu'un vrai chiffre qui répondrait à une autre question. Les titres se citent par ISIN, libellé, nom court (« SFIL ») ou émetteur.
+- **Chaque question laisse une ligne d'audit** : intention retenue, source (LLM ou mots-clés), confiance, paramètres, avec l'identifiant de requête mais jamais le texte de la question.
 - **Règles de vigilance** : des seuils internes simples (un émetteur au-delà de 10 % ; les émetteurs au-delà de 5 % cumulant plus de 40 %), modifiables, et **jamais présentés comme un verdict réglementaire**.
 - **Usage de la clé encadré** : modèle imposé, budget de 300 appels par jour, 4 appels simultanés au maximum, timeout, cache des questions identiques, rate limit dédié, consommation journalisée. La clé n'est jamais renvoyée ni écrite dans les logs.
 
@@ -119,11 +123,12 @@ question ─► LLM (Claude Haiku 5.5) ─► intention typée, validée par pyd
 ```
 middle_office/
 ├── domaine/                  métier pur, sans HTTP ni framework
-│   ├── rapprochement/        besoin 1 : sources.py (4 lecteurs + journal), moteur.py, situation.py
-│   └── questions/            besoin 2 : base.py (lecture seule), catalogue.py, vigilance.py, comprehension.py
+│   ├── rapprochement/        besoin 1 : sources.py (4 lecteurs + journal), moteur.py, situation.py, calendrier.py
+│   ├── questions/            besoin 2 : catalogue.py, vigilance.py, comprehension.py, modeles.py
+│   └── base_gestion.py · formats.py   orsay.db en lecture seule (3 verrous) · écritures françaises en Decimal
 ├── api/                      FastAPI (contrat : docs/API.md)
 │   ├── routes/               systeme · rapprochements · questions (JSON et flux SSE) · web
-│   ├── services/             dépôt, exécution, historique SQLite, référentiel, encadrement du LLM
+│   ├── services/             dépôt, exécution, historique et statuts (SQLite), questions et audit, référentiel, encadrement du LLM
 │   ├── middleware.py         request id, rate limit, taille des requêtes, en-têtes de sécurité, logs
 │   └── config.py · schemas.py · erreurs.py · limiteur.py · dependances.py · app.py
 └── web/                      build du front (généré)
@@ -132,10 +137,10 @@ front/src/                    React + TypeScript + Tailwind + shadcn/ui (archite
 ├── components/ · components/ui/   composants partagés, primitives shadcn
 ├── features/                 triage · files · suspens · situation · journal · questions · settings
 └── app/                      coquille, barre latérale, routes, palette ⌘K
-tests/                        186 tests Python, oracles calculés à la main
+tests/                        245 tests Python, oracles calculés à la main (front : 21 tests vitest)
 ```
 
-Le domaine ne sait rien du HTTP, et l'API ne connaît aucun format de fichier : ajouter un quatrième conservateur, c'est écrire un lecteur. Sécurité : CSP stricte (`script-src 'self'`, sans `unsafe-inline`), en-têtes de sécurité, erreurs sans trace interne, validation de chaque entrée, refus des XML piégés (`DOCTYPE`/`ENTITY`).
+Le domaine ne sait rien du HTTP, et l'API ne connaît aucun format de fichier : ajouter un quatrième conservateur, c'est écrire un lecteur. Sécurité : CSP stricte sans aucun tiers (`'self'` partout, polices servies par l'application), en-têtes de sécurité, erreurs sans trace interne, validation de chaque entrée, refus des XML piégés (`DOCTYPE`/`ENTITY`).
 
 ## Les choix, et pourquoi
 
@@ -153,54 +158,36 @@ Les décisions détaillées et les alternatives écartées sont dans [`NOTES.md`
 
 ## Ce qui est vérifié, et ce qui ne l'est pas
 
-**Vérifié, avec la sortie vue :**
-- **Les 7 suspens du 25/09** égalent un oracle calculé à la main, et les encours aussi (OBL 724 836,00 €, ACT 167 647 000,00 €, PAT 256 448 170,50 €).
-- **186 tests** : un par piège des données, un par règle métier, et l'API (erreurs, 413, 422, 429, SSE, lecture seule, secret jamais exposé). La CI les rejoue sans réseau.
-- **Clone neuf sans `.env`** : installation, tests verts, serveur et front fonctionnels.
-- **Essai réel avec Claude Haiku 5.5**, sur des questions formulées librement. Il a révélé 4 défauts invisibles aux tests (horizon « fin d'année », refus d'écriture, hors catalogue, reformulations inventées), tous corrigés.
-- **Front** : typage strict, lint sans avertissement, zéro violation CSP sur le parcours complet, navigation au clavier.
+**Vérifié par exécution, et rejouable par vous en une commande :**
 
-**Non vérifié :**
-- La CI GitHub n'a pas encore tourné.
-- Aucun test de composants React.
-- Le glisser-déposer à la vraie souris.
-- La clé API a été révoquée après la session (401), comme prévu par l'énoncé : le chemin LLM est désormais vérifié par des faux clients, et le repli par mots-clés en conditions réelles.
+| Quoi | Commande |
+|---|---|
+| Les 7 suspens du 25/09 égalent un oracle calculé à la main (NOTES.md), les encours aussi (OBL 724 836,00 €, ACT 167 647 000,00 €, PAT 256 448 170,50 €) | `make cli`, `make check` |
+| 245 tests Python : un par piège des données, un par règle métier, chaque bug trouvé en revue reproduit avant d'être corrigé, et l'API (erreurs, 413, 422, 429, SSE, lecture seule, audit, secret jamais exposé) | `make check` |
+| Typage : pyright (code et tests) et TypeScript strict, 0 erreur ; lint et format sans exception (plus aucun `fmt: skip`) | `make check`, `make front-check` |
+| 21 tests front, dont un test de contrat sur la vraie réponse de l'API | `make front-check` |
+| Le build commité correspond aux sources du front | CI (`git diff --exit-code`) |
+
+**Affirmé par l'assistant de code (Claude Code), d'après ses sessions, non rejoué ici :**
+- Un essai réel avec Claude Haiku 5.5, sur des questions formulées librement, a révélé 4 défauts invisibles aux tests (horizon « fin d'année », refus d'écriture, hors catalogue, reformulations inventées), tous corrigés. La clé a depuis été révoquée (401), comme prévu par l'énoncé : le chemin LLM n'est plus vérifié que par des faux clients.
+- Clone neuf sans `.env` : installation, tests, serveur et front fonctionnels.
+- Front : zéro violation CSP sur le parcours complet, navigation au clavier.
+
+**Non vérifié :** la CI GitHub sur cette version ; des tests de composants React (seule la logique pure est testée) ; le glisser-déposer à la vraie souris.
 
 ## Limites connues
 
-- **Processus unique** : le rate limit et le budget LLM vivent en mémoire, l'historique dans un SQLite local (`var/`, hors git) sans rétention définie. Pour la production : Redis, ou une base partagée, et une durée de conservation fixée avec le RCCI.
+- **Pas d'authentification** : le journal des statuts et l'audit des questions identifient une requête, pas une personne.
+- **Processus unique** : le rate limit et le budget LLM vivent en mémoire, l'historique et les statuts dans un SQLite local (`var/`, hors git) sans rétention définie. Pour la production : une base partagée, et une durée de conservation fixée avec le RCCI.
 - **Le seuil de confiance (0,7) repose sur la confiance que le LLM s'attribue**, un signal faible. Il faudrait le calibrer sur un jeu de vraies questions de gérants.
 - **Unités** : on suppose les obligations en nominal partout. Un conservateur qui enverrait un nombre de titres produirait de faux écarts.
 - **Un titre trouvé dans un autre fonds** (erreur de transco probable) donne deux suspens, non fusionnés.
 - **Remèdes et horizon des échéances (12 mois)** : rédigés et choisis par nous, à valider avec le middle office.
 - **Le domaine importe le SDK Anthropic** : une interface « classifieur » le rendrait indépendant du fournisseur.
 
----
+## Ce que la relecture a changé
 
-## Si personne n'avait relu le code, ni recadré
-
-Ce projet a été construit avec Claude Code, étape par étape. Chaque étape passait par une revue humaine qui **challengeait les choix**, et pas seulement le résultat. Tout ce qui suit est réellement arrivé pendant la construction : l'historique git et [`NOTES.md`](NOTES.md) en gardent la trace.
-
-**Ce que la première version, « qui marchait », contenait :**
-
-| Sans relecture | Conséquence pour le client | Ce qu'a apporté la relecture |
-|---|---|---|
-| Les lignes à moitié vides d'un relevé étaient **ignorées sans trace** | des **faux négatifs invisibles**, le pire cas (pénalités CSDR) | BLOQUANT `LIGNE_INCOMPLETE` : une donnée n'apparaît ni ne disparaît sans trace |
-| `"10.000"` était lu **10**, sans alerte | un faux écart, ou un vrai écart mal chiffré | contrôle sur le **texte brut**. Le test a montré que ma première idée (« quantité non entière ») ne protégeait rien, puisque `Decimal("10.000")` est entier |
-| Une piste « op. n°19 » affichée à côté de **n'importe quel** écart | l'opérateur classe un suspens que l'opération n'explique pas | calcul signé : entièrement, partiellement ou pas du tout expliqué |
-| La priorité déduite en **cherchant des mots** dans les messages | reformuler un message déclasse un critique en silence | champs structurés (`explication`, `alertes`) |
-| La date d'arrêté **codée en dur** (25/09) | inutilisable le lendemain matin | date lue dans les fichiers ; le scénario du 26/09 fait apparaître le CSDR |
-| `orsay.db` utilisée comme **clé** du rapprochement | contraire à l'énoncé ; base absente = plus de contrôle | base facultative, clé fonds tirée du paramétrage |
-| Une seule anomalie de paramétrage faisait **planter** l'outil, ou « le dernier fonds lu gagnait » | un résultat faux sans erreur | BLOQUANT `PARAMETRAGE` avec le remède |
-| Le LLM sans date de référence ; un « supprime la position » répondu par « pas compris » | une réponse sur le mauvais horizon ; un refus incompréhensible | trouvé par un **essai réel**, corrigé et verrouillé par des tests |
-
-**Ce que la base de code aurait été :**
-- **Une API en un fichier de 650 lignes** qui mêlait configuration, sécurité, schémas et routes. Elle a été découpée en couches (`domaine` / `api` / `web`), sans changer un seul comportement : les 95 tests de l'époque étaient le filet.
-- **Un front HTML de 1 700 lignes dans un seul fichier**, à la finition « générée » : des pastilles colorées partout, si bien que la couleur ne signalait plus rien. Il a été refait en React avec shadcn, en composants de moins de 150 lignes, dans le style d'Attio : la couleur n'apparaît que là où elle porte une information.
-- **Un dépôt encombré** : un `test.py` « Hello world », des CSV générés commités, des dépendances jamais utilisées (LangGraph, pdfplumber, rapidfuzz…), un paquet nommé `reco` alors qu'il portait aussi le besoin 2.
-- **Des étapes enchaînées sans validation.** L'agent avait déjà commité l'étape 2 et commencé la 3 quand il a été arrêté : « on fait étape par étape, je veux comprendre pourquoi on implémente ça ». Chaque étape s'est ensuite terminée par une revue avec des questions précises.
-
-Sans ces recadrages, l'outil aurait passé ses propres tests et donné les 7 bons suspens sur les données du 25/09. Mais il aurait été **fragile précisément là où le client a peur** : des écarts perdus en silence, des chiffres mal lus, des priorités qui se dérèglent au moindre changement de texte. Le code aurait aussi été difficile à reprendre. Les tests vérifient ce qu'on a pensé à écrire ; la relecture sert à trouver ce qu'on n'avait pas pensé à tester.
+Le projet a été construit avec Claude Code, étape par étape, chaque étape relue et challengée. Sans ces relectures, l'outil aurait passé ses propres tests et donné les 7 bons suspens, mais il aurait été fragile là où le client a peur : des écarts perdus en silence, des chiffres répondant à une autre question. Le détail, avec la revue de code finale (deux faux négatifs et une réponse fausse reproduits puis corrigés), est dans [`docs/RELECTURE.md`](docs/RELECTURE.md).
 
 ---
 
@@ -208,7 +195,7 @@ Sans ces recadrages, l'outil aurait passé ses propres tests et donné les 7 bon
 
 - [`docs/API.md`](docs/API.md) : le contrat d'API (routes, erreurs, garde-fous, flux SSE)
 - [`docs/FRONT.md`](docs/FRONT.md) : les choix d'agencement vue par vue, et l'architecture du front
-- [`docs/adr/`](docs/adr/) : les décisions d'architecture
+- [`docs/adr/`](docs/adr/) : les décisions d'architecture · [`docs/RELECTURE.md`](docs/RELECTURE.md) : ce que la relecture a trouvé et changé
 - [`NOTES.md`](NOTES.md) : le journal des choix, dans l'ordre, avec les alternatives écartées
 - [`CONTEXT.md`](CONTEXT.md) : le glossaire métier (middle office, suspens, CSDR…)
 - [`docs/CONSIGNE.md`](docs/CONSIGNE.md) : l'énoncé du cas · [`docs/sessions/`](docs/sessions/) : les exports des sessions Claude Code
