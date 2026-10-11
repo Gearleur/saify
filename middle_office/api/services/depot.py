@@ -6,17 +6,17 @@ from pathlib import Path
 
 from middle_office.api.erreurs import ErreurApi
 from middle_office.api.schemas import DemandeRapprochement
-from middle_office.domaine.rapprochement.moteur import LECTEURS
+from middle_office.domaine.rapprochement.moteur import LECTEURS, source_du_fichier
 
 
 def source_de(nom: str) -> str:
-    """PMS, A, B ou C d'après le préfixe du nom ; 422 si aucun ne correspond."""
-    for source, (prefixe, _) in LECTEURS.items():
-        if nom.startswith(prefixe):
-            return source
-    attendus = ", ".join(prefixe for prefixe, _ in LECTEURS.values())
-    raise ErreurApi(422, "FICHIER_NON_RECONNU",
-                    f"« {nom} » : source non reconnue, préfixes attendus : {attendus}", {"nom": nom})  # fmt: skip
+    """PMS, A, B ou C d'après le début du nom (casse ignorée) ; 422 si aucun ne correspond."""
+    source = source_du_fichier(nom)
+    if source is None:
+        attendus = ", ".join(prefixe for prefixe, _ in LECTEURS.values())
+        raise ErreurApi(422, "FICHIER_NON_RECONNU",
+                        f"« {nom} » : source non reconnue, préfixes attendus : {attendus}", {"nom": nom})  # fmt: skip
+    return source
 
 
 def decoder(demande: DemandeRapprochement, taille_fichier_max: int) -> dict[str, bytes]:
@@ -42,8 +42,11 @@ def decoder(demande: DemandeRapprochement, taille_fichier_max: int) -> dict[str,
 
 def depot_exemple(dossier_donnees: Path) -> dict[str, bytes]:
     """Les fichiers du 25/09 fournis par le client, pour la démonstration."""
+    ordre = list(LECTEURS)  # PMS, A, B, C
+    reconnus = [(source_du_fichier(f.name), f) for f in dossier_donnees.iterdir() if f.is_file()]
     return {
         f.name: f.read_bytes()
-        for prefixe, _ in LECTEURS.values()
-        for f in sorted(dossier_donnees.glob(f"{prefixe}*"))
+        for source, f in sorted(
+            (r for r in reconnus if r[0]), key=lambda r: (ordre.index(r[0]), r[1].name)
+        )
     }

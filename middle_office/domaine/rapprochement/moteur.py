@@ -34,6 +34,19 @@ LECTEURS = {
     "B": ("depositaire_B", lire_depositaire_b),
     "C": ("depositaire_C", lire_depositaire_c),
 }
+
+
+def source_du_fichier(nom: str) -> str | None:
+    """PMS, A, B ou C d'après le début du nom, sans tenir compte de la casse ; None si inconnu.
+
+    Seule règle de reconnaissance des fichiers (dépôt, exemple, CLI) : le front applique la même.
+    """
+    base = Path(nom).name.lower()
+    return next(
+        (src for src, (prefixe, _) in LECTEURS.items() if base.startswith(prefixe.lower())), None
+    )
+
+
 PRIORITES = ("critique", "a_relever", "en_attente")  # ordre de traitement
 TYPES_EXPLICABLES = ("QTE", "ABS_DEP", "ABS_INT")  # par une opération en attente de dénouement
 EXPLICATIONS = ("aucune", "totale", "partielle", "contraire")  # par les opérations en attente
@@ -319,7 +332,7 @@ def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arre
 
 def _date_du_depot(fichiers: dict[str, bytes], date_attendue: date | None) -> tuple[date | None, Anomalie | None]:  # fmt: skip
     """Date d'arrêté du PMS (source de référence) : une seule date, et l'attendue si elle est fixée."""
-    noms = [n for n in fichiers if Path(n).name.startswith(LECTEURS["PMS"][0])]
+    noms = [n for n in fichiers if source_du_fichier(n) == "PMS"]
     if len(noms) != 1:
         return None, None  # FICHIER_MANQUANT ou FICHIERS_MULTIPLES, tracés par la boucle de lecture
     try:
@@ -361,7 +374,7 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
     pms: list[Position] = []
     dep: list[Position] = []
     for source, (prefixe, lecteur) in LECTEURS.items():
-        noms = [n for n in fichiers if Path(n).name.startswith(prefixe)]
+        noms = [n for n in fichiers if source_du_fichier(n) == source]
         if len(noms) != 1:
             regle, motif = (
                 ("FICHIER_MANQUANT", f"fichier {source} absent")
@@ -421,6 +434,6 @@ def rapprocher_dossier(dossier: Path) -> Resultat:
     fichiers = {
         f.name: f.read_bytes()
         for f in sorted(dossier.iterdir())
-        if any(f.name.startswith(prefixe) for prefixe, _ in LECTEURS.values())
+        if f.is_file() and source_du_fichier(f.name)
     }
     return rapprocher(fichiers, dossier / "parametrage.xlsx", dossier / "orsay.db")

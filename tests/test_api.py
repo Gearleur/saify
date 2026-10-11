@@ -220,6 +220,15 @@ def test_fichier_non_reconnu(client):
     assert "depositaire_C" in erreur["message"]
 
 
+def test_nom_de_fichier_reconnu_quelle_que_soit_la_casse(client):
+    """Reproduit en revue : le front acceptait « Depositaire_A… », le back répondait 422."""
+    depot = {nom.replace("depositaire_A", "Depositaire_a").upper() if "_A_" in nom else nom: contenu
+             for nom, contenu in fichiers().items()}  # fmt: skip
+    reponse = client.post("/api/rapprochements", json=_corps(depot))
+    assert reponse.status_code == 201 and reponse.json()["statut"] == "OK"
+    assert len(reponse.json()["suspens"]) == 7
+
+
 def test_corps_trop_gros():
     client = TestClient(create_app(taille_corps_max=1000))
     _erreur(client.post("/api/rapprochements", json=_corps()), 413, "CORPS_TROP_GROS")
