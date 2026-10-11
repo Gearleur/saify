@@ -3,7 +3,7 @@
 Rapprochement quotidien des positions titres (besoin 1) et questions sur la base de gestion (besoin 2). Python 3.12 géré par uv ; FastAPI, SDK Anthropic, LangGraph disponibles (aucun framework d'agents n'est imposé).
 
 ## Commandes
-- Tests : `uv run pytest -q` · Lint : `uv run ruff check .` · Format : `uv run ruff format .`
+- Tout vérifier : `make check` (ruff, pyright, pytest) et `make front-check` (eslint, tsc, prettier, vitest)
 - Application : `make run` (`uv run uvicorn middle_office.api:app --reload`) · CLI : `make cli`
 - Front : `make front-install`, `make front-dev` (Vite + proxy), `make front-build` (à commiter), `make front-check`
 - Clé API : `ANTHROPIC_API_KEY` dans `.env` (déjà ignoré par git, ne jamais l'afficher).
