@@ -43,7 +43,7 @@ JOIN portefeuilles f ON f.code = p.portefeuille
 JOIN titres t ON t.isin = p.isin
 WHERE p.date_arrete = :date AND p.quantite > 0
   AND t.date_echeance > :date AND t.date_echeance <= :fin
-  AND (:fonds IS NULL OR p.portefeuille = :fonds)
+  AND (:fonds IS NULL OR p.portefeuille = :fonds) AND (:isin IS NULL OR p.isin = :isin)
 ORDER BY t.date_echeance, p.portefeuille, p.isin
 """.strip()
 
@@ -53,6 +53,7 @@ SELECT m.id, m.date_operation, m.date_denouement, m.portefeuille, m.isin, t.libe
 FROM mouvements m
 LEFT JOIN titres t ON t.isin = m.isin
 WHERE m.statut = 'EN_ATTENTE' AND (:fonds IS NULL OR m.portefeuille = :fonds)
+  AND (:isin IS NULL OR m.isin = :isin)
 ORDER BY m.date_denouement, m.id
 """.strip()
 
@@ -205,20 +206,42 @@ def _ajouter_mois(d: date, mois: int) -> date:
     return date(annee, mois_0 + 1, min(d.day, calendar.monthrange(annee, mois_0 + 1)[1]))
 
 
-def echeances(
-    base: Path, fonds: str | None, date_ref: date, horizon_mois: int | None = None
-) -> Reponse:
-    """Titres détenus arrivant à échéance après la date de référence, dans l'horizon donné."""
-    horizon = horizon_mois or HORIZON_DEFAUT_MOIS
-    fin = _ajouter_mois(date_ref, horizon)
-    parametres = {"date": date_ref.isoformat(), "fin": fin.isoformat(), "fonds": fonds}
+def _perimetre(fonds: str | None, isin: str | None) -> str:
+    return " ".join(
+        filter(
+            None, [f"sur {isin}" if isin else "", f"pour {fonds}" if fonds else "pour les 3 fonds"]
+        )
+    )
+
+
+def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int | None = None,
+              isin: str | None = None, fin: date | None = None) -> Reponse:  # fmt: skip
+    """Titres détenus arrivant à échéance après la date de référence, dans l'horizon donné.
+    Un titre précis sans horizon : pas de borne de fin (« quand tombe EDF 2031 ? » ne doit pas
+    répondre « aucune tombée » parce qu'elle est au-delà de 12 mois)."""
+    horizon_par_defaut = horizon_mois is None and fin is None
+    sans_borne = horizon_par_defaut and isin is not None
+    if sans_borne:
+        fin = date(9999, 12, 31)
+    elif fin is None:
+        fin = _ajouter_mois(date_ref, horizon_mois or HORIZON_DEFAUT_MOIS)
+    parametres = {
+        "date": date_ref.isoformat(),
+        "fin": fin.isoformat(),
+        "fonds": fonds,
+        "isin": isin,
+    }
     with connexion_lecture_seule(base) as db:
         lignes = db.execute(SQL_ECHEANCES, parametres).fetchall()
     avertissements = ["Montant remboursé = nominal détenu (remboursement au pair), hors dernier coupon.", AVERTISSEMENT_PMS]  # fmt: skip
-    if horizon_mois is None:
+    if horizon_par_defaut and not sans_borne:
         avertissements.insert(0, f"Horizon par défaut de {HORIZON_DEFAUT_MOIS} mois (à valider avec le middle office).")  # fmt: skip
-    perimetre = f"pour {fonds}" if fonds else "pour les 3 fonds"
-    borne = f"entre le {_jour(date_ref)} et le {_jour(fin)}"
+    perimetre = _perimetre(fonds, isin)
+    borne = (
+        f"après le {_jour(date_ref)}"
+        if sans_borne
+        else f"entre le {_jour(date_ref)} et le {_jour(fin)}"
+    )
     if not lignes:
         return Reponse(f"Aucune tombée d'échéance {perimetre} {borne}.", [], SQL_ECHEANCES, parametres,
                        [], avertissements=avertissements)  # fmt: skip
@@ -250,12 +273,13 @@ def echeances(
     )
 
 
-def operations_non_denouees(base: Path, fonds: str | None, date_ref: date) -> Reponse:
+def operations_non_denouees(base: Path, fonds: str | None, date_ref: date,
+                            isin: str | None = None) -> Reponse:  # fmt: skip
     """Opérations en attente de dénouement ; une date prévue dépassée est un défaut de règlement (CSDR)."""
-    parametres = {"fonds": fonds}
+    parametres = {"fonds": fonds, "isin": isin}
     with connexion_lecture_seule(base) as db:
         lignes = db.execute(SQL_NON_DENOUEES, parametres).fetchall()
-    perimetre = f"pour {fonds}" if fonds else "pour les 3 fonds"
+    perimetre = _perimetre(fonds, isin)
     avertissements = ["Statut lu dans la base de gestion (opérations de la semaine)."]
     if not lignes:
         return Reponse(f"Aucune opération non dénouée {perimetre}.", [], SQL_NON_DENOUEES, parametres, [],

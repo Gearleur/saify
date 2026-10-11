@@ -205,6 +205,9 @@ class ComprehensionSortie(BaseModel):
     source: str  # llm ou mots_cles
     confiance: float
     detail: str
+    date_demandee: str | None = (
+        None  # date citée dans la question (AAAA-MM-JJ ou expression relative)
+    )
 
 
 class ReponseQuestion(BaseModel):

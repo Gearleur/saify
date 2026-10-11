@@ -93,6 +93,7 @@ Corps `{"question": "Combien pèse le fonds obligataire ?"}` → `200` + **Repon
 Le LLM (Haiku 5.5) ne fait que **classer** la question dans le catalogue (encours, échéances, concentration,
 opérations non dénouées, origine d'un suspens) ; il ne reçoit aucune donnée de la base. Les chiffres viennent
 de requêtes SQL fixes, en lecture seule, calculées en `Decimal` ; la phrase est un gabarit.
+**Jamais de réponse à côté** (un vrai chiffre, mais d'une autre question) : une demande d'écriture formulée comme un ordre, une autre date que la date de référence pour un encours, une concentration ou des opérations (`comprehension.date_demandee`), l'encours d'un titre seul, ou un titre ambigu (« l'OAT » : 4 titres) donnent un « Attention » sans chiffre et des reformulations. Un titre est reconnu par son ISIN, son libellé, son nom court (« SFIL ») ou son émetteur ; les échéances et les opérations non dénouées se filtrent sur lui (paramètre SQL `isin`). « D'ici le 31/12/2026 » borne les échéances à cette date exacte.
 « Origine d'un suspens » répond sur le **dernier rapprochement `OK`**, cité avec sa date d'arrêté. Si un rapprochement plus récent est bloqué, la réponse le signale dans `avertissements` et passe en `confiance: "basse"` (elle ne dit jamais « aucun suspens » sur la foi d'un rapprochement bloqué).
 ```json
 {

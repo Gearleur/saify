@@ -191,6 +191,8 @@ export interface Comprehension {
   source: "llm" | "mots_cles" | string;
   confiance: number;
   detail: string;
+  /** Date citée dans la question (AAAA-MM-JJ ou expression relative) : hors date de référence, pas de chiffre. */
+  date_demandee?: string | null;
 }
 
 export interface ReponseQuestion {
