@@ -74,6 +74,7 @@ def create_app(*, client_llm=DEPUIS_ENVIRONNEMENT, **surcharges) -> FastAPI:
     limiteurs = {
         "POST": Limiteur(reglages.limite_post, reglages.fenetre),
         "GET": Limiteur(reglages.limite_get, reglages.fenetre),
+        "PUT": Limiteur(reglages.limite_put, reglages.fenetre),
         "QUESTIONS": Limiteur(reglages.limite_questions, reglages.fenetre),
     }
     app.add_middleware(Garde, limiteurs=limiteurs, taille_corps_max=reglages.taille_corps_max)

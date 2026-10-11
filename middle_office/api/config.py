@@ -62,6 +62,7 @@ class Reglages:
 
     limite_post: int = 20  # requêtes par fenêtre et par IP
     limite_get: int = 120
+    limite_put: int = 120  # changements de statut de traitement
     limite_questions: int = (
         10  # questions par fenêtre et par IP (chaque question peut coûter un appel LLM)
     )

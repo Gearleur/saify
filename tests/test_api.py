@@ -456,3 +456,16 @@ def test_statut_invalide(client, suspens, corps, statut, code):
     _erreur(
         client.put(f"/api/rapprochements/{id_}/suspens/{suspens}/statut", json=corps), statut, code
     )
+
+
+def test_changer_des_statuts_ne_consomme_pas_le_quota_des_depots():
+    client = TestClient(create_app(fichier_historique=None, client_llm=None, limite_post=2))
+    id_ = client.post("/api/rapprochements/exemple").json()["id"]
+    for statut in ("en_cours", "traite", "en_cours", "traite"):
+        assert (
+            client.put(
+                f"/api/rapprochements/{id_}/suspens/S1/statut", json={"statut": statut}
+            ).status_code
+            == 200
+        )
+    assert client.post("/api/rapprochements/exemple").status_code == 201

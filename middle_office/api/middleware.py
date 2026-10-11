@@ -68,7 +68,8 @@ class Garde:
             )
 
     def _limiter(self, scope) -> JSONResponse | None:
-        famille = "GET" if scope["method"] in ("GET", "HEAD") else "POST"
+        # Quotas séparés : trier ses suspens (PUT) ne doit pas consommer le quota des dépôts (POST).
+        famille = {"GET": "GET", "HEAD": "GET", "PUT": "PUT"}.get(scope["method"], "POST")
         if famille == "POST" and scope["path"].startswith("/api/questions"):
             famille = "QUESTIONS"  # quota à part : une question peut consommer la clé API
         ip = (scope.get("client") or ("inconnue",))[0]

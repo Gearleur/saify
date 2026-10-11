@@ -17,6 +17,7 @@ Lancement : `uv run uvicorn middle_office.api:app --reload` puis http://127.0.0.
 |---|---|---|
 | Rate limit `POST` | 20 requêtes / minute / IP | `429 RATE_LIMIT` + en-tête `Retry-After` (secondes) |
 | Rate limit `GET` | 120 requêtes / minute / IP | idem |
+| Rate limit `PUT` (statuts de traitement) | 120 requêtes / minute / IP, quota à part | idem |
 | Rate limit questions (`POST /api/questions*`) | 10 requêtes / minute / IP, quota à part | idem |
 | Usage du LLM (clé API) | modèle imposé `claude-haiku-5-5`, 300 appels réels / jour, 4 simultanés, timeout 10 s, 1 nouvelle tentative, cache des questions identiques, interrupteur `LLM_ACTIF=0` | **pas d'erreur** : repli par mots-clés, raison dans `comprehension.detail` |
 | Question | 3 à 500 caractères, caractères de contrôle retirés, champs inconnus refusés | `422 VALIDATION` |
