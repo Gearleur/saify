@@ -38,9 +38,13 @@ def executer(depot: dict[str, bytes], reglages: Reglages, historique: Historique
     modele = vers_modele(historique.nouvel_id(), cree_le, depot, resultat)
     # CSV et point de situation figés maintenant : l'historique les relit sans garder `resultat`.
     historique.ajouter(modele, suspens_csv(resultat.suspens), point_de_situation(resultat))
-    log.info("audit rapprochement id=%s statut=%s nb_suspens=%d fichiers=%s", modele.id,
-             modele.statut, modele.synthese.nb_suspens,
-             ",".join(f"{f.nom}:{f.sha256}" for f in modele.fichiers))  # fmt: skip
+    log.info(
+        "audit rapprochement id=%s statut=%s nb_suspens=%d fichiers=%s",
+        modele.id,
+        modele.statut,
+        modele.synthese.nb_suspens,
+        ",".join(f"{f.nom}:{f.sha256}" for f in modele.fichiers),
+    )
     return modele
 
 
@@ -93,7 +97,7 @@ def vers_modele(id_: str, cree_le: str, depot: dict[str, bytes], r: Resultat) ->
                 source=source_de(nom),
                 taille=len(contenu),
                 sha256=hashlib.sha256(contenu).hexdigest(),
-            )  # fmt: skip
+            )
             for nom, contenu in depot.items()
         ],
         synthese=_synthese(r, suspens),

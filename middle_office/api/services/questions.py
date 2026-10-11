@@ -44,8 +44,14 @@ def comprendre_question(
     return comprendre(question, reglages.base, llm, jour)
 
 
-def repondre_question(c: Comprehension, question: str, reglages: Reglages, historique: Historique,
-                      jour: date, rid: str) -> ReponseQuestion:  # fmt: skip
+def repondre_question(
+    c: Comprehension,
+    question: str,
+    reglages: Reglages,
+    historique: Historique,
+    jour: date,
+    rid: str,
+) -> ReponseQuestion:
     """Exécute l'intention comprise et trace la décision : qui a compris quoi (LLM ou mots-clés), avec
     quelle confiance, et ce qui a été répondu. Ni la question ni la réponse en clair : une empreinte
     de la question suffit à rapprocher une plainte de sa ligne d'audit."""
@@ -53,10 +59,19 @@ def repondre_question(c: Comprehension, question: str, reglages: Reglages, histo
     log.info(
         "audit question rid=%s empreinte=%s intention=%s source=%s confiance=%.2f fonds=%s isin=%s "
         "horizon=%s date_demandee=%s reponse=%s chiffres=%d detail=%s",
-        rid, hashlib.sha256(question.encode()).hexdigest()[:12], c.intention, c.source, c.confiance,
-        c.fonds, c.isin, c.horizon_mois, getattr(c, "date_demandee", None), reponse.confiance,
-        len(reponse.chiffres), c.detail or "-",
-    )  # fmt: skip
+        rid,
+        hashlib.sha256(question.encode()).hexdigest()[:12],
+        c.intention,
+        c.source,
+        c.confiance,
+        c.fonds,
+        c.isin,
+        c.horizon_mois,
+        getattr(c, "date_demandee", None),
+        reponse.confiance,
+        len(reponse.chiffres),
+        c.detail or "-",
+    )
     return vers_sortie(reponse)
 
 
@@ -103,7 +118,7 @@ def vers_sortie(r: Reponse) -> ReponseQuestion:
                 code=v.code, message=v.message, emetteurs=v.emetteurs, valeur=str(v.valeur)
             )
             for v in r.vigilances
-        ],  # fmt: skip
+        ],
         reformulations=r.reformulations,
         comprehension=ComprehensionSortie(**r.comprehension),
     )

@@ -186,8 +186,15 @@ def test_base64_invalide(client):
 
 
 @pytest.mark.parametrize(
-    "nom", ["../positions_internes.csv", "dossier/depositaire_B.txt", "a\\b.csv", "positions_internes.exe", ""]
-)  # fmt: skip
+    "nom",
+    [
+        "../positions_internes.csv",
+        "dossier/depositaire_B.txt",
+        "a\\b.csv",
+        "positions_internes.exe",
+        "",
+    ],
+)
 def test_nom_refuse(client, nom):
     corps = _corps({nom: b"x"})
     _erreur(client.post("/api/rapprochements", json=corps), 422, "VALIDATION")
@@ -222,8 +229,10 @@ def test_fichier_non_reconnu(client):
 
 def test_nom_de_fichier_reconnu_quelle_que_soit_la_casse(client):
     """Reproduit en revue : le front acceptait « Depositaire_A… », le back répondait 422."""
-    depot = {nom.replace("depositaire_A", "Depositaire_a").upper() if "_A_" in nom else nom: contenu
-             for nom, contenu in fichiers().items()}  # fmt: skip
+    depot = {
+        nom.replace("depositaire_A", "Depositaire_a").upper() if "_A_" in nom else nom: contenu
+        for nom, contenu in fichiers().items()
+    }
     reponse = client.post("/api/rapprochements", json=_corps(depot))
     assert reponse.status_code == 201 and reponse.json()["statut"] == "OK"
     assert len(reponse.json()["suspens"]) == 7

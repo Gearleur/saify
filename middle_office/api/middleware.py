@@ -58,8 +58,14 @@ class Garde:
             if not etat["demarre"]:
                 await reponse_erreur(*ERREUR_INTERNE)(scope, receive, envoyer)
         finally:
-            log.info("rid=%s %s %s %s %.1fms", rid, scope["method"], scope["path"],
-                     etat["statut"], (time.perf_counter() - debut) * 1000)  # fmt: skip
+            log.info(
+                "rid=%s %s %s %s %.1fms",
+                rid,
+                scope["method"],
+                scope["path"],
+                etat["statut"],
+                (time.perf_counter() - debut) * 1000,
+            )
 
     def _limiter(self, scope) -> JSONResponse | None:
         famille = "GET" if scope["method"] in ("GET", "HEAD") else "POST"
@@ -70,8 +76,13 @@ class Garde:
         if not attente:
             return None
         secondes = max(1, math.ceil(attente))
-        return reponse_erreur(429, "RATE_LIMIT", f"Trop de requêtes {famille} : réessayer dans {secondes} s",
-                              {"retry_after": secondes}, {"Retry-After": str(secondes)})  # fmt: skip
+        return reponse_erreur(
+            429,
+            "RATE_LIMIT",
+            f"Trop de requêtes {famille} : réessayer dans {secondes} s",
+            {"retry_after": secondes},
+            {"Retry-After": str(secondes)},
+        )
 
     def _trop_gros(self) -> JSONResponse:
         limite = self.taille_corps_max

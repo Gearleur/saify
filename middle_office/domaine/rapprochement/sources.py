@@ -28,9 +28,15 @@ TYPES_REQUIS = ("QTE", "ABS_DEP", "ABS_INT", "DEP")
 # Ce qu'un fichier mal formé peut lever à la lecture (vérifié sur des fichiers vides, binaires,
 # tronqués, en UTF-16). Le reste est un bug de l'outil : il doit remonter, pas devenir « fichier illisible ».
 ERREURS_DE_FORMAT = (
-    ValueError, KeyError, IndexError, EOFError, csv.Error, ET.ParseError, zipfile.BadZipFile,
+    ValueError,
+    KeyError,
+    IndexError,
+    EOFError,
+    csv.Error,
+    ET.ParseError,
+    zipfile.BadZipFile,
     InvalidFileException,
-)  # fmt: skip
+)
 
 # Ce que l'opérateur doit faire quand un fichier est refusé : un blocage doit être actionnable.
 REMEDES = {
@@ -80,8 +86,16 @@ class Anomalie:
     remede: str = ""  # renseigné pour tout BLOQUANT : quoi faire pour débloquer
 
 
-def anomalie(fichier: str, ligne: int, niveau: str, regle: str, brut, retenu, motif: str,
-             remede: str | None = None) -> Anomalie:  # fmt: skip
+def anomalie(
+    fichier: str,
+    ligne: int,
+    niveau: str,
+    regle: str,
+    brut,
+    retenu,
+    motif: str,
+    remede: str | None = None,
+) -> Anomalie:
     if remede is None and niveau == "BLOQUANT":
         remede = REMEDES[regle].format(brut=brut)
     return Anomalie(fichier, ligne, niveau, regle, str(brut), str(retenu), motif, remede or "")
@@ -103,18 +117,42 @@ class Lecture:
     journal: list[Anomalie] = field(default_factory=list)
     _vues: set[tuple] = field(default_factory=set)
 
-    def noter(self, niveau: str, regle: str, ligne: int, brut, retenu, motif: str,
-              remede: str | None = None) -> None:  # fmt: skip
+    def noter(
+        self,
+        niveau: str,
+        regle: str,
+        ligne: int,
+        brut,
+        retenu,
+        motif: str,
+        remede: str | None = None,
+    ) -> None:
         self.journal.append(
             anomalie(self.fichier, ligne, niveau, regle, brut, retenu, motif, remede)
         )
 
     def transco_absente(self, ligne: int, valeur: str, table: str) -> None:
-        self.noter("BLOQUANT", "TRANSCO", ligne, valeur, "", f"« {valeur} » absent de {table}",
-                   f"Ajouter « {valeur} » à la table {table} de parametrage.xlsx, puis relancer")  # fmt: skip
+        self.noter(
+            "BLOQUANT",
+            "TRANSCO",
+            ligne,
+            valeur,
+            "",
+            f"« {valeur} » absent de {table}",
+            f"Ajouter « {valeur} » à la table {table} de parametrage.xlsx, puis relancer",
+        )
 
-    def ajouter(self, source: str, entite: str, isin: str, conservateur: str,
-                quantite: Decimal, libelle: str, ligne: int, compte: str) -> None:  # fmt: skip
+    def ajouter(
+        self,
+        source: str,
+        entite: str,
+        isin: str,
+        conservateur: str,
+        quantite: Decimal,
+        libelle: str,
+        ligne: int,
+        compte: str,
+    ) -> None:
         """`compte` : identifiant de ligne côté source (pour C : compte et numéro de lot). Deux lignes
         au même (compte, ISIN) bloquent : additionnées, elles pourraient égaler le PMS et masquer
         un écart ; en garder une, ce serait deviner laquelle est la bonne."""
@@ -131,8 +169,14 @@ class Lecture:
             return
         self._vues.add(cle)
         if quantite < 0 or quantite != quantite.to_integral_value():
-            self.noter("SIGNALE", "QUANTITE_SUSPECTE", ligne, quantite, quantite,
-                       "quantité négative ou non entière : à confirmer")  # fmt: skip
+            self.noter(
+                "SIGNALE",
+                "QUANTITE_SUSPECTE",
+                ligne,
+                quantite,
+                quantite,
+                "quantité négative ou non entière : à confirmer",
+            )
         self.positions.append(
             Position(source, entite, isin, conservateur, quantite, libelle, self.fichier, ligne)
         )
@@ -220,8 +264,14 @@ def _decimal(texte: str) -> Decimal | None:
 def _separateur_ambigu(lecture: Lecture, ligne: int, brut: str) -> None:
     """« 10.000 » se lit 10 mais veut sans doute dire 10 000 : la valeur est gardée, un humain confirme."""
     if re.search(r"\d[.,]\d{3}$", brut.strip()):
-        lecture.noter("SIGNALE", "QUANTITE_SUSPECTE", ligne, brut, brut,
-                      "séparateur suivi de 3 chiffres : séparateur de milliers probable")  # fmt: skip
+        lecture.noter(
+            "SIGNALE",
+            "QUANTITE_SUSPECTE",
+            ligne,
+            brut,
+            brut,
+            "séparateur suivi de 3 chiffres : séparateur de milliers probable",
+        )
 
 
 def _vide(valeur) -> bool:
@@ -241,9 +291,13 @@ def _controler_date(
     """`attendue` None : la date de référence n'a pas pu être établie, ce blocage est déjà tracé."""
     if attendue is not None and lue != attendue:
         lecture.noter(
-            "BLOQUANT", "DATE_ARRETE", ligne, brut, "",
+            "BLOQUANT",
+            "DATE_ARRETE",
+            ligne,
+            brut,
+            "",
             f"date d'arrêté {lue or 'introuvable'} ≠ {attendue:%d/%m/%Y}",
-        )  # fmt: skip
+        )
 
 
 def dates_pms(contenu: bytes) -> set[str]:
@@ -268,8 +322,14 @@ def lire_pms(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) ->
     lignes = csv.DictReader(io.StringIO(_texte(lecture, contenu), newline=""), delimiter=";")
     absentes = [c for c in COLONNES_PMS if c not in (lignes.fieldnames or [])]
     if absentes:
-        lecture.noter("BLOQUANT", "FORMAT", 1, ";".join(lignes.fieldnames or []), "",
-                      f"colonne(s) absente(s) : {', '.join(absentes)}")  # fmt: skip
+        lecture.noter(
+            "BLOQUANT",
+            "FORMAT",
+            1,
+            ";".join(lignes.fieldnames or []),
+            "",
+            f"colonne(s) absente(s) : {', '.join(absentes)}",
+        )
         return lecture
 
     for num, ligne in enumerate(lignes, start=2):
@@ -336,8 +396,16 @@ def lire_pms(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) ->
             continue
 
         isin = _isin(lecture, num, ligne["isin"])
-        lecture.ajouter("PMS", param.sous_comptes[sous_compte], isin, conservateur, quantite,
-                        (ligne["libelle"] or "").strip(), num, compte=sous_compte)  # fmt: skip
+        lecture.ajouter(
+            "PMS",
+            param.sous_comptes[sous_compte],
+            isin,
+            conservateur,
+            quantite,
+            (ligne["libelle"] or "").strip(),
+            num,
+            compte=sous_compte,
+        )
     return lecture
 
 
@@ -379,8 +447,16 @@ def lire_depositaire_a(nom: str, contenu: bytes, param: Parametrage, date_arrete
             lecture.noter(
                 "NORMALISE", "SEPARATEUR_MILLIERS", num, brut, qte, "quantité texte → nombre"
             )
-        lecture.ajouter("A", param.comptes_a[compte], _isin(lecture, num, str(isin)), "A", qte,
-                        str(designation or "").strip(), num, compte=compte)  # fmt: skip
+        lecture.ajouter(
+            "A",
+            param.comptes_a[compte],
+            _isin(lecture, num, str(isin)),
+            "A",
+            qte,
+            str(designation or "").strip(),
+            num,
+            compte=compte,
+        )
     return lecture
 
 
@@ -432,8 +508,14 @@ def lire_depositaire_b(nom: str, contenu: bytes, param: Parametrage, date_arrete
         )
 
     if controle is None or not controle[1:].isdigit() or int(controle[1:]) != details:
-        lecture.noter("BLOQUANT", "TOTAL_CONTROLE", len(lignes), controle, details,
-                      f"total de contrôle {controle!r} ≠ {details} lignes de détail")  # fmt: skip
+        lecture.noter(
+            "BLOQUANT",
+            "TOTAL_CONTROLE",
+            len(lignes),
+            controle,
+            details,
+            f"total de contrôle {controle!r} ≠ {details} lignes de détail",
+        )
     return lecture
 
 
@@ -449,8 +531,14 @@ def lire_depositaire_c(nom: str, contenu: bytes, param: Parametrage, date_arrete
     """XML à namespace ; les lots distincts d'un même (compte, ISIN) sont additionnés, un lot répété bloque."""
     lecture = Lecture(nom)
     if _dtd_present(contenu):  # avant tout parsing : entités externes, « billion laughs »
-        lecture.noter("BLOQUANT", "FORMAT", 0, "", "",
-                      "DOCTYPE ou ENTITY interdit dans le XML conservateur : fichier refusé par sécurité")  # fmt: skip
+        lecture.noter(
+            "BLOQUANT",
+            "FORMAT",
+            0,
+            "",
+            "",
+            "DOCTYPE ou ENTITY interdit dans le XML conservateur : fichier refusé par sécurité",
+        )
         return lecture
     racine = ET.fromstring(contenu)
     brut_date = racine.findtext(".//c:DateArrete", "", NS_C).strip()
@@ -463,8 +551,14 @@ def lire_depositaire_c(nom: str, contenu: bytes, param: Parametrage, date_arrete
     items = racine.findall(".//c:Item", NS_C)
     nb_items = racine.findtext(".//c:NbItems", "", NS_C).strip()
     if nb_items != str(len(items)):  # NbItems compte aussi les annulations
-        lecture.noter("BLOQUANT", "TOTAL_CONTROLE", 0, nb_items, len(items),
-                      f"NbItems {nb_items!r} ≠ {len(items)} Item lus")  # fmt: skip
+        lecture.noter(
+            "BLOQUANT",
+            "TOTAL_CONTROLE",
+            0,
+            nb_items,
+            len(items),
+            f"NbItems {nb_items!r} ≠ {len(items)} Item lus",
+        )
 
     for num, item in enumerate(items, start=1):
         dims = {dim.get("prop"): (dim.text or "").strip() for dim in item.iterfind("c:Dim", NS_C)}

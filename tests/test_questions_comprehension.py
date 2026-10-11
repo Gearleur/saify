@@ -25,12 +25,23 @@ ARRETE = date(2026, 9, 25)
 
 
 def _llm(
-    intention: str, fonds=None, horizon_mois=None, titre=None, confiance=0.95, reformulations=(),
+    intention: str,
+    fonds=None,
+    horizon_mois=None,
+    titre=None,
+    confiance=0.95,
+    reformulations=(),
     date_demandee=None,
-):  # fmt: skip
-    return IntentionLLM(intention=intention, fonds=fonds, horizon_mois=horizon_mois, titre=titre,
-                        confiance=confiance, reformulations=list(reformulations),
-                        date_demandee=date_demandee)  # fmt: skip
+):
+    return IntentionLLM(
+        intention=intention,
+        fonds=fonds,
+        horizon_mois=horizon_mois,
+        titre=titre,
+        confiance=confiance,
+        reformulations=list(reformulations),
+        date_demandee=date_demandee,
+    )
 
 
 # Repli sans LLM : les 5 questions de l'énoncé sont reconnues par mots-clés.
@@ -91,14 +102,18 @@ def test_llm_classe_puis_catalogue_calcule():
 
 
 def test_llm_peu_sur_de_lui_attention():
-    client = FauxClient(_llm("ENCOURS", confiance=0.4, reformulations=["Encours de OBL ?", "Encours de ACT ?"]))  # fmt: skip
+    client = FauxClient(
+        _llm("ENCOURS", confiance=0.4, reformulations=["Encours de OBL ?", "Encours de ACT ?"])
+    )
     reponse = repondre("ça vaut combien ?", BASE, ARRETE, client=client)
     assert reponse.chiffres == [] and reponse.reponse.startswith("Attention")
     assert reponse.reformulations == ["Encours de OBL ?", "Encours de ACT ?"]
 
 
 def test_llm_en_panne_repli_mots_cles():
-    panne = anthropic.APIConnectionError(request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"))  # fmt: skip
+    panne = anthropic.APIConnectionError(
+        request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+    )
     reponse = repondre(
         "Encours valorisé du fonds OBL", BASE, ARRETE, client=FauxClient(erreur=panne)
     )
@@ -118,19 +133,44 @@ def test_question_et_comprehension_tracees_dans_la_reponse():
     reponse = repondre("Échéances à venir dans les 3 mois", BASE, ARRETE, client=None)
     assert reponse.question == "Échéances à venir dans les 3 mois"
     assert reponse.comprehension == {
-        "intention": "ECHEANCES", "fonds": None, "horizon_mois": 3, "isin": None,
-        "source": "mots_cles", "confiance": reponse.comprehension["confiance"], "detail": "",
+        "intention": "ECHEANCES",
+        "fonds": None,
+        "horizon_mois": 3,
+        "isin": None,
+        "source": "mots_cles",
+        "confiance": reponse.comprehension["confiance"],
+        "detail": "",
         "date_demandee": None,
-    }  # fmt: skip
+    }
 
 
 def test_origine_suspens_utilise_le_dernier_rapprochement():
-    suspens = [{"id": "S6", "isin": "FR0000012965", "fonds": "ACT", "entite": "ORSAY ACTIONS EUROPE",
-                "libelle_titre": "SCHNEIDER", "conservateur": "A", "type": "QTE", "libelle_type": "Quantité différente",
-                "qte_pms": "250000", "qte_dep": "225000", "ecart": "25000", "action": "Vérifier",
-                "piste": "", "signalements": [], "sources": ["positions_internes.csv:21"]}]  # fmt: skip
-    reponse = repondre("Pourquoi un suspens sur SCHNEIDER ?", BASE, ARRETE, client=None,
-                       contexte=ContexteRapprochement("r_123abc", "2026-09-25", suspens))  # fmt: skip
+    suspens = [
+        {
+            "id": "S6",
+            "isin": "FR0000012965",
+            "fonds": "ACT",
+            "entite": "ORSAY ACTIONS EUROPE",
+            "libelle_titre": "SCHNEIDER",
+            "conservateur": "A",
+            "type": "QTE",
+            "libelle_type": "Quantité différente",
+            "qte_pms": "250000",
+            "qte_dep": "225000",
+            "ecart": "25000",
+            "action": "Vérifier",
+            "piste": "",
+            "signalements": [],
+            "sources": ["positions_internes.csv:21"],
+        }
+    ]
+    reponse = repondre(
+        "Pourquoi un suspens sur SCHNEIDER ?",
+        BASE,
+        ARRETE,
+        client=None,
+        contexte=ContexteRapprochement("r_123abc", "2026-09-25", suspens),
+    )
     assert "r_123abc" in reponse.reponse and reponse.chiffres[0].valeur == Decimal("25000")
 
 
@@ -143,7 +183,10 @@ def test_date_de_reference_donnee_au_llm():
     assert "25/09/2026" in client.appels[0]["system"]
 
 
-@pytest.mark.parametrize("question", ["Supprime la position LVMH", "Modifie la quantité de SCHNEIDER", "Ajoute 100 titres Kering"])  # fmt: skip
+@pytest.mark.parametrize(
+    "question",
+    ["Supprime la position LVMH", "Modifie la quantité de SCHNEIDER", "Ajoute 100 titres Kering"],
+)
 def test_demande_d_ecriture_refusee_explicitement(question):
     reponse = repondre(
         question, BASE, ARRETE, client=FauxClient(_llm("HORS_CATALOGUE", confiance=0.9))
@@ -152,7 +195,9 @@ def test_demande_d_ecriture_refusee_explicitement(question):
 
 
 def test_hors_catalogue_bien_compris_message_honnete():
-    client = FauxClient(_llm("HORS_CATALOGUE", fonds="PAT", confiance=0.9, reformulations=["Encours du fonds PAT"]))  # fmt: skip
+    client = FauxClient(
+        _llm("HORS_CATALOGUE", fonds="PAT", confiance=0.9, reformulations=["Encours du fonds PAT"])
+    )
     reponse = repondre("Performance YTD du fonds PAT", BASE, ARRETE, client=client)
     assert (
         reponse.reponse.startswith("Attention") and "pas sûr d'avoir compris" not in reponse.reponse
@@ -201,8 +246,11 @@ def test_titre_ambigu_on_demande_de_preciser():
 
 
 def test_mot_courant_n_est_pas_un_titre():
-    for question in ("Encours valorisé du fonds OBL", "Concentration par émetteur de PAT",
-                     "Opérations en attente de règlement-livraison"):  # fmt: skip
+    for question in (
+        "Encours valorisé du fonds OBL",
+        "Concentration par émetteur de PAT",
+        "Opérations en attente de règlement-livraison",
+    ):
         assert comprendre(question, BASE, client=None).titres_candidats == []
         assert comprendre(question, BASE, client=None).isin is None
 

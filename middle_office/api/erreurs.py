@@ -26,8 +26,13 @@ class ErreurApi(Exception):
         self.statut, self.code, self.message, self.details = statut, code, message, details
 
 
-def reponse_erreur(statut: int, code: str, message: str, details: Any = None,
-                   en_tetes: dict[str, str] | None = None) -> JSONResponse:  # fmt: skip
+def reponse_erreur(
+    statut: int,
+    code: str,
+    message: str,
+    details: Any = None,
+    en_tetes: dict[str, str] | None = None,
+) -> JSONResponse:
     corps = {"erreur": {"code": code, "message": message, "details": details}}
     return JSONResponse(corps, status_code=statut, headers=en_tetes)
 

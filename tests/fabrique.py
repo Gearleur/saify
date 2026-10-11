@@ -90,8 +90,9 @@ def parametrage_modifie(dossier: Path, feuille: str, modifier) -> Path:
 class FauxClient:
     """Imite `client.messages.parse(...)` : renvoie une intention fixée, ou lève une erreur."""
 
-    def __init__(self, intention=None, erreur: Exception | None = None,
-                 stop_reason: str = "end_turn"):  # fmt: skip
+    def __init__(
+        self, intention=None, erreur: Exception | None = None, stop_reason: str = "end_turn"
+    ):
         self.appels: list[dict] = []
         self.messages = SimpleNamespace(parse=self._parse)
         self._intention, self._erreur, self._stop = intention, erreur, stop_reason

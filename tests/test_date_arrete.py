@@ -81,7 +81,10 @@ def test_api_dates_venues_des_donnees():
     )  # date de la base de gestion
     import base64
 
-    depot = [{"nom": nom, "contenu_b64": base64.b64encode(contenu).decode()} for nom, contenu in _lendemain().items()]  # fmt: skip
+    depot = [
+        {"nom": nom, "contenu_b64": base64.b64encode(contenu).decode()}
+        for nom, contenu in _lendemain().items()
+    ]
     corps = client.post("/api/rapprochements", json={"fichiers": depot}).json()
     assert (
         corps["date_arrete"] == "2026-09-26" and corps["synthese"]["par_priorite"]["critique"] == 1
@@ -93,7 +96,9 @@ def test_api_dates_venues_des_donnees():
 
 
 def test_api_date_attendue_configurable():
-    client = TestClient(create_app(fichier_historique=None, client_llm=None, date_arrete_attendue=date(2026, 9, 28)))  # fmt: skip
+    client = TestClient(
+        create_app(fichier_historique=None, client_llm=None, date_arrete_attendue=date(2026, 9, 28))
+    )
     corps = client.post("/api/rapprochements/exemple").json()
     assert corps["statut"] == "BLOQUE"
 

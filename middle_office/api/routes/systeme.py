@@ -13,10 +13,19 @@ router = APIRouter(prefix="/api", tags=["système"])
 
 @router.get("/sante")
 def sante(reglages: ReglagesDep, llm: LLMDep) -> Sante:
-    etat = EtatLLM(actif=llm is not None, modele=MODELE, budget_jour=reglages.llm_budget_jour,
-                   appels_aujourdhui=0 if llm is None else llm.appels_aujourdhui)  # fmt: skip
-    return Sante(statut="ok", version=VERSION, date_arrete=referentiel.date_de_la_base(reglages.base),
-                 base_disponible=referentiel.base_disponible(reglages.base), llm=etat)  # fmt: skip
+    etat = EtatLLM(
+        actif=llm is not None,
+        modele=MODELE,
+        budget_jour=reglages.llm_budget_jour,
+        appels_aujourdhui=0 if llm is None else llm.appels_aujourdhui,
+    )
+    return Sante(
+        statut="ok",
+        version=VERSION,
+        date_arrete=referentiel.date_de_la_base(reglages.base),
+        base_disponible=referentiel.base_disponible(reglages.base),
+        llm=etat,
+    )
 
 
 @router.get("/parametrage")

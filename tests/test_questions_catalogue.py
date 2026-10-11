@@ -189,13 +189,23 @@ def test_operation_non_denouee_en_retard_signale_csdr(tmp_path):
 
 
 SUSPENS_SCHNEIDER = {
-    "id": "S6", "priorite": "en_attente", "fonds": "ACT", "entite": "ORSAY ACTIONS EUROPE",
-    "isin": "FR0000012965", "libelle_titre": "SCHNEIDER", "conservateur": "A", "type": "QTE",
-    "libelle_type": "Quantité différente", "qte_pms": "250000", "qte_dep": "225000", "ecart": "25000",
+    "id": "S6",
+    "priorite": "en_attente",
+    "fonds": "ACT",
+    "entite": "ORSAY ACTIONS EUROPE",
+    "isin": "FR0000012965",
+    "libelle_titre": "SCHNEIDER",
+    "conservateur": "A",
+    "type": "QTE",
+    "libelle_type": "Quantité différente",
+    "qte_pms": "250000",
+    "qte_dep": "225000",
+    "ecart": "25000",
     "action": "Vérifier les opérations de la veille non dénouées",
     "piste": "op. n°19 ACHAT 25 000 dén. 26/09/2026 → écart entièrement expliqué",
-    "signalements": [], "sources": ["positions_internes.csv:21", "depositaire_A_20260925.xlsx:7"],
-}  # fmt: skip
+    "signalements": [],
+    "sources": ["positions_internes.csv:21", "depositaire_A_20260925.xlsx:7"],
+}
 
 
 def _contexte(*suspens, bloque=None) -> ContexteRapprochement:
@@ -234,8 +244,11 @@ def test_origine_suspens_seul_rapprochement_bloque():
 
 def test_origine_suspens_cite_les_mouvements_de_chaque_fonds(tmp_path):
     """Un même ISIN en suspens dans deux fonds : les mouvements des deux sont cités, pas du premier seul."""
-    base = db_modifiee(tmp_path, "INSERT INTO mouvements VALUES (99, '2026-09-24', '2026-09-26', 'PAT',"
-                                 " 'FR0000012965', 'VENTE', 100, 400, 'X', 'EN_ATTENTE')")  # fmt: skip
+    base = db_modifiee(
+        tmp_path,
+        "INSERT INTO mouvements VALUES (99, '2026-09-24', '2026-09-26', 'PAT',"
+        " 'FR0000012965', 'VENTE', 100, 400, 'X', 'EN_ATTENTE')",
+    )
     pat = {**SUSPENS_SCHNEIDER, "id": "S7", "fonds": "PAT", "entite": "ORSAY PATRIMOINE"}
     reponse = origine_suspens(base, "FR0000012965", _contexte(SUSPENS_SCHNEIDER, pat))
     lignes = [ligne.valeurs for ligne in reponse.lignes_sources if ligne.table == "mouvements"]

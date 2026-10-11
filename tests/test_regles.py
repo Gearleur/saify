@@ -207,8 +207,17 @@ def test_isin_invalide_alerte():
 
 
 def _qte(**champs) -> Suspens:
-    return Suspens("ORSAY ACTIONS EUROPE", SCHNEIDER, "A", "QTE", Decimal(250000), Decimal(225000),
-                   "SCHNEIDER", [], **champs)  # fmt: skip
+    return Suspens(
+        "ORSAY ACTIONS EUROPE",
+        SCHNEIDER,
+        "A",
+        "QTE",
+        Decimal(250000),
+        Decimal(225000),
+        "SCHNEIDER",
+        [],
+        **champs,
+    )
 
 
 def test_priorite_independante_des_libelles():
@@ -242,7 +251,10 @@ def test_reformuler_les_messages_ne_change_pas_la_priorite(monkeypatch):
 
 def test_achat_de_ligne_nouvelle_non_denoue_en_attente(tmp_path):
     """Reproduit en revue : EDF absent chez A, entièrement expliqué par un achat en attente."""
-    db = db_modifiee(tmp_path, "INSERT INTO mouvements VALUES (99, '2026-09-25', '2026-09-29', 'OBL',"
-                               " 'FR0000011488', 'ACHAT', 40000, 100, 'X', 'EN_ATTENTE')")  # fmt: skip
+    db = db_modifiee(
+        tmp_path,
+        "INSERT INTO mouvements VALUES (99, '2026-09-25', '2026-09-29', 'OBL',"
+        " 'FR0000011488', 'ACHAT', 40000, 100, 'X', 'EN_ATTENTE')",
+    )
     (edf,) = _suspens(lancer(fichiers(), db=db), "FR0000011488")
     assert (edf.type, edf.explication, edf.priorite) == ("ABS_DEP", "totale", "en_attente")

@@ -44,8 +44,13 @@ def create_app(*, client_llm=DEPUIS_ENVIRONNEMENT, **surcharges) -> FastAPI:
     configurer_logs()
 
     # Swagger désactivé : incompatible avec la CSP stricte (scripts et styles externes).
-    app = FastAPI(title="Rapprochement Orsay Gestion", version=VERSION,
-                  docs_url=None, redoc_url=None, openapi_url=None)  # fmt: skip
+    app = FastAPI(
+        title="Rapprochement Orsay Gestion",
+        version=VERSION,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.state.reglages = reglages
     app.state.historique = Historique(reglages.historique_max, fichier)
     if client_llm is DEPUIS_ENVIRONNEMENT:

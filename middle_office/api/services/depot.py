@@ -14,8 +14,12 @@ def source_de(nom: str) -> str:
     source = source_du_fichier(nom)
     if source is None:
         attendus = ", ".join(prefixe for prefixe, _ in LECTEURS.values())
-        raise ErreurApi(422, "FICHIER_NON_RECONNU",
-                        f"« {nom} » : source non reconnue, préfixes attendus : {attendus}", {"nom": nom})  # fmt: skip
+        raise ErreurApi(
+            422,
+            "FICHIER_NON_RECONNU",
+            f"« {nom} » : source non reconnue, préfixes attendus : {attendus}",
+            {"nom": nom},
+        )
     return source
 
 
@@ -25,15 +29,22 @@ def decoder(demande: DemandeRapprochement, taille_fichier_max: int) -> dict[str,
         if fichier.nom in depot:
             raise ErreurApi(422, "VALIDATION", f"« {fichier.nom} » déposé deux fois")
         source_de(fichier.nom)
-        trop_gros = ErreurApi(413, "FICHIER_TROP_GROS",
-                              f"« {fichier.nom} » dépasse {taille_fichier_max} octets une fois décodé")  # fmt: skip
+        trop_gros = ErreurApi(
+            413,
+            "FICHIER_TROP_GROS",
+            f"« {fichier.nom} » dépasse {taille_fichier_max} octets une fois décodé",
+        )
         if len(fichier.contenu_b64) // 4 * 3 > taille_fichier_max + 2:
             raise trop_gros  # inutile de décoder ce qu'on refusera
         try:
             contenu = base64.b64decode(fichier.contenu_b64, validate=True)
         except (binascii.Error, ValueError) as exc:
-            raise ErreurApi(422, "VALIDATION", f"« {fichier.nom} » : base64 invalide",
-                            [{"champ": "fichiers.contenu_b64", "message": "base64 invalide"}]) from exc  # fmt: skip
+            raise ErreurApi(
+                422,
+                "VALIDATION",
+                f"« {fichier.nom} » : base64 invalide",
+                [{"champ": "fichiers.contenu_b64", "message": "base64 invalide"}],
+            ) from exc
         if len(contenu) > taille_fichier_max:
             raise trop_gros
         depot[fichier.nom] = contenu

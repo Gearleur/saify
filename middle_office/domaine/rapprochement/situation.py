@@ -13,9 +13,22 @@ from middle_office.domaine.rapprochement.moteur import (
 )
 
 COLONNES_CSV = (
-    "priorite", "fonds", "entite", "isin", "titre", "conservateur", "type", "libelle_type",
-    "qte_pms", "qte_conservateur", "ecart", "action", "piste", "signalements", "sources",
-)  # fmt: skip
+    "priorite",
+    "fonds",
+    "entite",
+    "isin",
+    "titre",
+    "conservateur",
+    "type",
+    "libelle_type",
+    "qte_pms",
+    "qte_conservateur",
+    "ecart",
+    "action",
+    "piste",
+    "signalements",
+    "sources",
+)
 TITRES_PRIORITES = {"critique": "CRITIQUE", "a_relever": "À RELEVER", "en_attente": "EN ATTENTE"}
 
 
@@ -66,7 +79,10 @@ def point_de_situation(resultat: Resultat) -> str:
     )
     lignes += ["", "Synthèse par fonds"]
     par_fonds = Counter((s.fonds, s.entite) for s in resultat.suspens)
-    lignes += [f"- {code or '?'} · {entite} : {n} suspens" for (code, entite), n in sorted(par_fonds.items())]  # fmt: skip
+    lignes += [
+        f"- {code or '?'} · {entite} : {n} suspens"
+        for (code, entite), n in sorted(par_fonds.items())
+    ]
     par_conservateur = Counter(s.conservateur for s in resultat.suspens)
     lignes += ["", "Synthèse par conservateur"]
     lignes += [f"- {c} : {n} suspens" for c, n in sorted(par_conservateur.items())]
@@ -82,7 +98,9 @@ def point_de_situation(resultat: Resultat) -> str:
     for niveau, titre in (("EXCLU", "Exclusions"), ("SIGNALE", "Signalements du journal")):
         anomalies = [a for a in resultat.journal if a.niveau == niveau]
         lignes += ["", f"{titre} ({len(anomalies)})"]
-        lignes += [f"- {a.fichier}:{a.ligne} · {a.regle} · {a.motif}" for a in anomalies] or ["- aucun"]  # fmt: skip
+        lignes += [f"- {a.fichier}:{a.ligne} · {a.regle} · {a.motif}" for a in anomalies] or [
+            "- aucun"
+        ]
     return "\n".join(lignes) + "\n"
 
 

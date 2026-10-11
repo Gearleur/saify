@@ -21,7 +21,10 @@ from middle_office.domaine.questions.modeles import (
 from middle_office.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
 
 HORIZON_DEFAUT_MOIS = 12  # à valider avec le client (NOTES.md, Q4)
-AVERTISSEMENT_PMS = "Positions de la base de gestion (vue PMS, en date de négociation) : opérations non dénouées incluses."  # fmt: skip
+AVERTISSEMENT_PMS = (
+    "Positions de la base de gestion (vue PMS, en date de négociation) : "
+    "opérations non dénouées incluses."
+)
 
 SQL_ENCOURS = """
 SELECT p.portefeuille, f.nom, p.isin, t.libelle, t.emetteur, t.type_titre, t.mode_cotation,
@@ -109,20 +112,37 @@ def _valoriser_positions(base: Path, fonds: str | None, date_ref: date) -> _Valo
         qte, prix = decimal(quantite), decimal(cours)
         valeur = None
         if prix is None:
-            avertissements.append(f"{isin} {libelle} : pas de cours au {date_fr(date_ref)}, ligne non valorisée")  # fmt: skip
+            avertissements.append(
+                f"{isin} {libelle} : pas de cours au {date_fr(date_ref)}, ligne non valorisée"
+            )
         else:
             valeur = _valoriser(qte, prix, mode)
             if valeur is None:
-                avertissements.append(f"{isin} {libelle} : mode de cotation « {mode} » inconnu, ligne non valorisée")  # fmt: skip
+                avertissements.append(
+                    f"{isin} {libelle} : mode de cotation « {mode} » inconnu, ligne non valorisée"
+                )
         valeurs.append(valeur)
-        sources.append(LigneSource("positions × titres × cours", {
-            "portefeuille": code, "isin": isin, "libelle": libelle, "emetteur": emetteur or "",
-            "type_titre": type_titre, "mode_cotation": mode or "", "quantite": str(qte),
-            "cours": "" if prix is None else str(prix), "date_cours": date_cours or "",
-            "valorisation": "" if valeur is None else str(valeur.quantize(CENTIME)),
-        }))  # fmt: skip
+        sources.append(
+            LigneSource(
+                "positions × titres × cours",
+                {
+                    "portefeuille": code,
+                    "isin": isin,
+                    "libelle": libelle,
+                    "emetteur": emetteur or "",
+                    "type_titre": type_titre,
+                    "mode_cotation": mode or "",
+                    "quantite": str(qte),
+                    "cours": "" if prix is None else str(prix),
+                    "date_cours": date_cours or "",
+                    "valorisation": "" if valeur is None else str(valeur.quantize(CENTIME)),
+                },
+            )
+        )
     if any(ligne[6] == "POURCENTAGE" for ligne in lignes):
-        avertissements.append("Obligations valorisées au pied de coupon (cours en % du nominal), sans coupon couru.")  # fmt: skip
+        avertissements.append(
+            "Obligations valorisées au pied de coupon (cours en % du nominal), sans coupon couru."
+        )
     avertissements.append(AVERTISSEMENT_PMS)
     return _Valorisation(parametres, lignes, valeurs, sources, avertissements)
 
@@ -131,34 +151,56 @@ def encours_valorise(base: Path, fonds: str | None, date_ref: date) -> Reponse:
     v = _valoriser_positions(base, fonds, date_ref)
     jour = date_fr(date_ref)
     if not v.lignes:
-        return Reponse(f"Aucune position pour {fonds or 'les fonds'} au {jour} dans la base de gestion.",
-                       [], SQL_ENCOURS, v.parametres, [], confiance="basse")  # fmt: skip
+        return Reponse(
+            f"Aucune position pour {fonds or 'les fonds'} au {jour} dans la base de gestion.",
+            [],
+            SQL_ENCOURS,
+            v.parametres,
+            [],
+            confiance="basse",
+        )
 
     totaux: dict[str, Decimal] = defaultdict(Decimal)
     for ligne, valeur in zip(v.lignes, v.valeurs, strict=True):
         if valeur is not None:
             totaux[ligne[1]] += valeur
     partiel = " partiel" if v.exclues else ""
-    chiffres = [Chiffre(f"Encours valorisé{partiel}" if fonds else nom, total.quantize(CENTIME), "EUR")
-                for nom, total in sorted(totaux.items())]  # fmt: skip
+    chiffres = [
+        Chiffre(f"Encours valorisé{partiel}" if fonds else nom, total.quantize(CENTIME), "EUR")
+        for nom, total in sorted(totaux.items())
+    ]
     if fonds is None:
         total = sum(totaux.values(), Decimal(0)).quantize(CENTIME)
         chiffres.append(Chiffre(f"Total des {len(totaux)} fonds{partiel}", total, "EUR"))
         phrase = f"L'encours valorisé{partiel} des {len(totaux)} fonds au {jour} est de {montant(total)} EUR"
     else:
-        phrase = f"L'encours valorisé{partiel} d'{v.lignes[0][1]} au {jour} est de {montant(chiffres[0].valeur)} EUR"  # fmt: skip
+        phrase = f"L'encours valorisé{partiel} d'{v.lignes[0][1]} au {jour} est de {montant(chiffres[0].valeur)} EUR"
     phrase += f" ({len(v.lignes) - v.exclues} lignes valorisées au cours de clôture du {jour}"
     phrase += f", {v.exclues} non valorisées)." if v.exclues else ")."
-    return Reponse(phrase, chiffres, SQL_ENCOURS, v.parametres, v.sources,
-                   confiance="basse" if v.exclues else "haute", avertissements=v.avertissements)  # fmt: skip
+    return Reponse(
+        phrase,
+        chiffres,
+        SQL_ENCOURS,
+        v.parametres,
+        v.sources,
+        confiance="basse" if v.exclues else "haute",
+        avertissements=v.avertissements,
+    )
 
 
-def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date,
-                            regles: ReglesVigilance = REGLES_PAR_DEFAUT) -> Reponse:  # fmt: skip
+def concentration_emetteurs(
+    base: Path, fonds: str | None, date_ref: date, regles: ReglesVigilance = REGLES_PAR_DEFAUT
+) -> Reponse:
     """Part de chaque émetteur dans l'encours valorisé d'un fonds. Chiffres bruts, sans jugement réglementaire."""
     if fonds is None:
-        return Reponse("Précisez le fonds : la concentration par émetteur se lit fonds par fonds (PAT, OBL ou ACT).",
-                       [], SQL_ENCOURS, {"date": date_ref.isoformat(), "fonds": None}, [], confiance="basse")  # fmt: skip
+        return Reponse(
+            "Précisez le fonds : la concentration par émetteur se lit fonds par fonds (PAT, OBL ou ACT).",
+            [],
+            SQL_ENCOURS,
+            {"date": date_ref.isoformat(), "fonds": None},
+            [],
+            confiance="basse",
+        )
     v = _valoriser_positions(base, fonds, date_ref)
     jour = date_fr(date_ref)
     par_emetteur: dict[str, Decimal] = defaultdict(Decimal)
@@ -167,12 +209,21 @@ def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date,
             par_emetteur[ligne[4] or "Émetteur non renseigné"] += valeur
     total = sum(par_emetteur.values(), Decimal(0))
     if not total:
-        return Reponse(f"Aucune position valorisée pour {fonds} au {jour} dans la base de gestion.",
-                       [], SQL_ENCOURS, v.parametres, v.sources, confiance="basse",
-                       avertissements=v.avertissements)  # fmt: skip
+        return Reponse(
+            f"Aucune position valorisée pour {fonds} au {jour} dans la base de gestion.",
+            [],
+            SQL_ENCOURS,
+            v.parametres,
+            v.sources,
+            confiance="basse",
+            avertissements=v.avertissements,
+        )
 
     classement = sorted(par_emetteur.items(), key=lambda e: (-e[1], e[0]))
-    chiffres = [Chiffre(emetteur, (valeur / total * 100).quantize(CENTIME), "%") for emetteur, valeur in classement]  # fmt: skip
+    chiffres = [
+        Chiffre(emetteur, (valeur / total * 100).quantize(CENTIME), "%")
+        for emetteur, valeur in classement
+    ]
     premier, valeur_premier = classement[0]
     partiel = " partiel" if v.exclues else ""
     phrase = (
@@ -185,9 +236,16 @@ def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date,
         "chiffres bruts, à interpréter par le gérant ou le RCCI.",
         *v.avertissements,
     ]
-    return Reponse(phrase, chiffres, SQL_ENCOURS, v.parametres, v.sources,
-                   confiance="basse" if v.exclues else "haute", avertissements=avertissements,
-                   vigilances=regles.evaluer(classement, total))  # fmt: skip
+    return Reponse(
+        phrase,
+        chiffres,
+        SQL_ENCOURS,
+        v.parametres,
+        v.sources,
+        confiance="basse" if v.exclues else "haute",
+        avertissements=avertissements,
+        vigilances=regles.evaluer(classement, total),
+    )
 
 
 def _ajouter_mois(d: date, mois: int) -> date:
@@ -204,8 +262,14 @@ def _perimetre(fonds: str | None, isin: str | None) -> str:
     )
 
 
-def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int | None = None,
-              isin: str | None = None, fin: date | None = None) -> Reponse:  # fmt: skip
+def echeances(
+    base: Path,
+    fonds: str | None,
+    date_ref: date,
+    horizon_mois: int | None = None,
+    isin: str | None = None,
+    fin: date | None = None,
+) -> Reponse:
     """Titres détenus arrivant à échéance après la date de référence, dans l'horizon donné.
     Un titre précis sans horizon : pas de borne de fin (« quand tombe EDF 2031 ? » ne doit pas
     répondre « aucune tombée » parce qu'elle est au-delà de 12 mois)."""
@@ -223,9 +287,15 @@ def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int |
     }
     with connexion_lecture_seule(base) as db:
         lignes = db.execute(SQL_ECHEANCES, parametres).fetchall()
-    avertissements = ["Montant remboursé = nominal détenu (remboursement au pair), hors dernier coupon.", AVERTISSEMENT_PMS]  # fmt: skip
+    avertissements = [
+        "Montant remboursé = nominal détenu (remboursement au pair), hors dernier coupon.",
+        AVERTISSEMENT_PMS,
+    ]
     if horizon_par_defaut and not sans_borne:
-        avertissements.insert(0, f"Horizon par défaut de {HORIZON_DEFAUT_MOIS} mois (à valider avec le middle office).")  # fmt: skip
+        avertissements.insert(
+            0,
+            f"Horizon par défaut de {HORIZON_DEFAUT_MOIS} mois (à valider avec le middle office).",
+        )
     perimetre = _perimetre(fonds, isin)
     borne = (
         f"après le {date_fr(date_ref)}"
@@ -233,8 +303,14 @@ def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int |
         else f"entre le {date_fr(date_ref)} et le {date_fr(fin)}"
     )
     if not lignes:
-        return Reponse(f"Aucune tombée d'échéance {perimetre} {borne}.", [], SQL_ECHEANCES, parametres,
-                       [], avertissements=avertissements)  # fmt: skip
+        return Reponse(
+            f"Aucune tombée d'échéance {perimetre} {borne}.",
+            [],
+            SQL_ECHEANCES,
+            parametres,
+            [],
+            avertissements=avertissements,
+        )
 
     sources = [
         LigneSource(
@@ -247,7 +323,7 @@ def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int |
                 "date_echeance": echeance,
                 "nominal": str(decimal(quantite)),
             },
-        )  # fmt: skip
+        )
         for code, _nom, isin, libelle, type_titre, echeance, quantite in lignes
     ]
     nominal = sum((decimal(ligne[6]) for ligne in lignes), Decimal(0))
@@ -255,16 +331,22 @@ def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int |
         f"{libelle} ({code}) le {date_fr(date.fromisoformat(echeance))} pour {formater_quantite(decimal(qte))}"
         for code, _n, _i, libelle, _t, echeance, qte in lignes
     )
-    phrase = f"{len(lignes)} tombée(s) d'échéance {perimetre} {borne} : {detail}. Nominal remboursé : {montant(nominal)} EUR."  # fmt: skip
-    chiffres = [Chiffre("Tombées d'échéance", Decimal(len(lignes)), "lignes"),
-                Chiffre("Nominal remboursé", nominal, "EUR")]  # fmt: skip
+    phrase = (
+        f"{len(lignes)} tombée(s) d'échéance {perimetre} {borne} : {detail}. "
+        f"Nominal remboursé : {montant(nominal)} EUR."
+    )
+    chiffres = [
+        Chiffre("Tombées d'échéance", Decimal(len(lignes)), "lignes"),
+        Chiffre("Nominal remboursé", nominal, "EUR"),
+    ]
     return Reponse(
         phrase, chiffres, SQL_ECHEANCES, parametres, sources, avertissements=avertissements
     )
 
 
-def operations_non_denouees(base: Path, fonds: str | None, date_ref: date,
-                            isin: str | None = None) -> Reponse:  # fmt: skip
+def operations_non_denouees(
+    base: Path, fonds: str | None, date_ref: date, isin: str | None = None
+) -> Reponse:
     """Opérations en attente de dénouement ; une date prévue dépassée est un défaut de règlement (CSDR)."""
     parametres = {"fonds": fonds, "isin": isin}
     with connexion_lecture_seule(base) as db:
@@ -272,8 +354,14 @@ def operations_non_denouees(base: Path, fonds: str | None, date_ref: date,
     perimetre = _perimetre(fonds, isin)
     avertissements = ["Statut lu dans la base de gestion (opérations de la semaine)."]
     if not lignes:
-        return Reponse(f"Aucune opération non dénouée {perimetre}.", [], SQL_NON_DENOUEES, parametres, [],
-                       avertissements=avertissements)  # fmt: skip
+        return Reponse(
+            f"Aucune opération non dénouée {perimetre}.",
+            [],
+            SQL_NON_DENOUEES,
+            parametres,
+            [],
+            avertissements=avertissements,
+        )
 
     sources, details, en_retard = [], [], 0
     for (
@@ -294,21 +382,42 @@ def operations_non_denouees(base: Path, fonds: str | None, date_ref: date,
         prevue = date.fromisoformat(date_den)
         if prevue <= date_ref:
             en_retard += 1
-            avertissements.insert(0, f"Op. n°{id_} ({libelle or isin}) devait être dénouée le {date_fr(prevue)} : "
-                                     "défaut de règlement-livraison, risque CSDR.")  # fmt: skip
-        details.append(f"n°{id_} {sens} {formater_quantite(qte)} {libelle or isin} ({code}, dén. prévu {date_fr(prevue)})")  # fmt: skip
-        sources.append(LigneSource("mouvements", {
-            "id": str(id_), "date_operation": date_op, "date_denouement": date_den, "portefeuille": code,
-            "isin": isin, "sens": sens, "quantite": str(qte), "prix": "" if cours is None else str(cours),
-            "montant": "" if valeur is None else str(valeur.quantize(CENTIME)), "contrepartie": contrepartie or "",
-        }))  # fmt: skip
+            avertissements.insert(
+                0,
+                f"Op. n°{id_} ({libelle or isin}) devait être dénouée le {date_fr(prevue)} : "
+                "défaut de règlement-livraison, risque CSDR.",
+            )
+        details.append(
+            f"n°{id_} {sens} {formater_quantite(qte)} {libelle or isin} ({code}, dén. prévu {date_fr(prevue)})"
+        )
+        sources.append(
+            LigneSource(
+                "mouvements",
+                {
+                    "id": str(id_),
+                    "date_operation": date_op,
+                    "date_denouement": date_den,
+                    "portefeuille": code,
+                    "isin": isin,
+                    "sens": sens,
+                    "quantite": str(qte),
+                    "prix": "" if cours is None else str(cours),
+                    "montant": "" if valeur is None else str(valeur.quantize(CENTIME)),
+                    "contrepartie": contrepartie or "",
+                },
+            )
+        )
     retard = f", dont {en_retard} en retard (risque CSDR)" if en_retard else ""
-    phrase = f"{len(lignes)} opération(s) non dénouée(s) {perimetre} au {date_fr(date_ref)}{retard} : {', '.join(details)}."  # fmt: skip
+    phrase = (
+        f"{len(lignes)} opération(s) non dénouée(s) {perimetre} au {date_fr(date_ref)}{retard} : "
+        f"{', '.join(details)}."
+    )
     chiffres = [Chiffre("Opérations non dénouées", Decimal(len(lignes)), "opérations")]
     if en_retard:
         chiffres.append(Chiffre("En retard (risque CSDR)", Decimal(en_retard), "opérations"))
-    return Reponse(phrase, chiffres, SQL_NON_DENOUEES, parametres, sources,
-                   avertissements=avertissements)  # fmt: skip
+    return Reponse(
+        phrase, chiffres, SQL_NON_DENOUEES, parametres, sources, avertissements=avertissements
+    )
 
 
 def origine_suspens(base: Path, isin: str, contexte: ContexteRapprochement | None) -> Reponse:
@@ -340,8 +449,15 @@ def origine_suspens(base: Path, isin: str, contexte: ContexteRapprochement | Non
     confiance = "basse" if contexte.bloque_plus_recent else "haute"
     trouves = [s for s in contexte.suspens if s["isin"] == isin]
     if not trouves:
-        return Reponse(f"Aucun suspens sur {isin} dans {reference}.", [], SQL_MOUVEMENTS_TITRE,
-                       parametres, [], confiance=confiance, avertissements=avertissements)  # fmt: skip
+        return Reponse(
+            f"Aucun suspens sur {isin} dans {reference}.",
+            [],
+            SQL_MOUVEMENTS_TITRE,
+            parametres,
+            [],
+            confiance=confiance,
+            avertissements=avertissements,
+        )
 
     fonds = {s["fonds"] for s in trouves}
     with connexion_lecture_seule(base) as db:
@@ -373,10 +489,22 @@ def origine_suspens(base: Path, isin: str, contexte: ContexteRapprochement | Non
                 "quantite": str(decimal(q)),
                 "statut": statut,
             },
-        )  # fmt: skip
+        )
         for id_, pf, d_op, d_den, sens, q, statut in mouvements
     ]
-    chiffres = [Chiffre(f"Écart {s['type']} ({s['conservateur']})", Decimal(s["ecart"]), "titres ou nominal") for s in trouves]  # fmt: skip
+    chiffres = [
+        Chiffre(
+            f"Écart {s['type']} ({s['conservateur']})", Decimal(s["ecart"]), "titres ou nominal"
+        )
+        for s in trouves
+    ]
     avertissements += [g["message"] for s in trouves for g in s["signalements"]]
-    return Reponse(" ".join(phrases), chiffres, SQL_MOUVEMENTS_TITRE, parametres, sources,
-                   confiance=confiance, avertissements=avertissements)  # fmt: skip
+    return Reponse(
+        " ".join(phrases),
+        chiffres,
+        SQL_MOUVEMENTS_TITRE,
+        parametres,
+        sources,
+        confiance=confiance,
+        avertissements=avertissements,
+    )

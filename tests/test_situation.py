@@ -24,9 +24,18 @@ ISINS = {
 
 
 def _suspens(type_="QTE", explication="aucune", alertes=None) -> Suspens:
-    return Suspens("ORSAY OBLIGATIONS", "FR0000051641", "C", type_, Decimal(10), Decimal(5), "SFIL",
-                   [], explication=explication,
-                   signalements=[Signalement(code, code) for code in alertes or ()])  # fmt: skip
+    return Suspens(
+        "ORSAY OBLIGATIONS",
+        "FR0000051641",
+        "C",
+        type_,
+        Decimal(10),
+        Decimal(5),
+        "SFIL",
+        [],
+        explication=explication,
+        signalements=[Signalement(code, code) for code in alertes or ()],
+    )
 
 
 def test_priorite_critique_si_risque_csdr():

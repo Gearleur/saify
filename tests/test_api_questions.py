@@ -20,8 +20,14 @@ def _client(**surcharges) -> TestClient:
 
 
 def _intention(intention="ENCOURS", fonds="OBL", confiance=0.95) -> IntentionLLM:
-    return IntentionLLM(intention=intention, fonds=fonds, horizon_mois=None, titre=None,
-                        confiance=confiance, reformulations=[])  # fmt: skip
+    return IntentionLLM(
+        intention=intention,
+        fonds=fonds,
+        horizon_mois=None,
+        titre=None,
+        confiance=confiance,
+        reformulations=[],
+    )
 
 
 def _poser(client: TestClient, question: str):
@@ -67,8 +73,11 @@ def test_origine_suspens_apres_un_rapprochement_bloque():
     """Reproduit en revue : le dernier rapprochement bloqué faisait répondre « aucun suspens »."""
     client = _client()
     id_ok = client.post("/api/rapprochements/exemple").json()["id"]
-    sans_c = [{"nom": n, "contenu_b64": base64.b64encode(b).decode()}
-              for n, b in fichiers().items() if not n.startswith("depositaire_C")]  # fmt: skip
+    sans_c = [
+        {"nom": n, "contenu_b64": base64.b64encode(b).decode()}
+        for n, b in fichiers().items()
+        if not n.startswith("depositaire_C")
+    ]
     id_bloque = client.post("/api/rapprochements", json={"fichiers": sans_c}).json()["id"]
     corps = _poser(client, "D'où vient le suspens sur FR0000051641 ?").json()
     assert "aucun suspens" not in corps["reponse"].lower()
@@ -160,7 +169,13 @@ def test_concurrence_bornee():
     occupe = threading.Event()
     encadre._places.acquire()  # une question déjà en cours
     with pytest.raises(LLMIndisponible, match="simultanées"):
-        encadre.messages.parse(model=MODELE, max_tokens=1024, system="s", messages=[{"role": "user", "content": "q"}], output_format=IntentionLLM)  # fmt: skip
+        encadre.messages.parse(
+            model=MODELE,
+            max_tokens=1024,
+            system="s",
+            messages=[{"role": "user", "content": "q"}],
+            output_format=IntentionLLM,
+        )
     encadre._places.release()
     assert not occupe.is_set()
 
@@ -168,7 +183,13 @@ def test_concurrence_bornee():
 def test_modele_impose():
     encadre = ClientEncadre(FauxClient(_intention()), budget_jour=10, concurrence=1)
     with pytest.raises(LLMIndisponible, match="modèle"):
-        encadre.messages.parse(model="claude-opus-5-5", max_tokens=1024, system="s", messages=[], output_format=IntentionLLM)  # fmt: skip
+        encadre.messages.parse(
+            model="claude-opus-5-5",
+            max_tokens=1024,
+            system="s",
+            messages=[],
+            output_format=IntentionLLM,
+        )
 
 
 def test_sante_expose_l_etat_du_llm_jamais_la_cle(monkeypatch):

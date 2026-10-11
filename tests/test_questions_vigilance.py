@@ -1,4 +1,4 @@
-"""Règles de vigilance sur la concentration : seuils internes simples et modifiables, jamais un verdict réglementaire."""
+"""Règles de vigilance sur la concentration : seuils internes, modifiables, jamais un verdict réglementaire."""
 
 from datetime import date
 from decimal import Decimal
@@ -25,8 +25,11 @@ def test_regles_par_defaut_lisibles():
 def test_obl_emetteurs_au_dessus_de_10_pourcent():
     reponse = concentration_emetteurs(BASE, "OBL", ARRETE)
     assert _alertes(reponse)["EMETTEUR_AU_DESSUS_DU_SEUIL"] == [
-        "Agence française de développement", "Caisse des dépôts", "SFIL", "BPCE",
-    ]  # fmt: skip
+        "Agence française de développement",
+        "Caisse des dépôts",
+        "SFIL",
+        "BPCE",
+    ]
 
 
 def test_obl_cumul_calcule_sur_valeurs_exactes():
@@ -51,7 +54,11 @@ def test_jamais_un_verdict_reglementaire():
 
 
 def test_seuils_modifiables():
-    regles = ReglesVigilance(seuil_emetteur=Decimal("30"), seuil_cumul_individuel=Decimal("5"), plafond_cumul=Decimal("95"))  # fmt: skip
+    regles = ReglesVigilance(
+        seuil_emetteur=Decimal("30"),
+        seuil_cumul_individuel=Decimal("5"),
+        plafond_cumul=Decimal("95"),
+    )
     reponse = concentration_emetteurs(BASE, "OBL", ARRETE, regles)
     assert _alertes(reponse) == {
         "EMETTEUR_AU_DESSUS_DU_SEUIL": ["Agence française de développement"]
@@ -59,5 +66,9 @@ def test_seuils_modifiables():
 
 
 def test_aucune_alerte_sous_les_seuils():
-    regles = ReglesVigilance(seuil_emetteur=Decimal("90"), seuil_cumul_individuel=Decimal("5"), plafond_cumul=Decimal("100"))  # fmt: skip
+    regles = ReglesVigilance(
+        seuil_emetteur=Decimal("90"),
+        seuil_cumul_individuel=Decimal("5"),
+        plafond_cumul=Decimal("100"),
+    )
     assert concentration_emetteurs(BASE, "PAT", ARRETE, regles).vigilances == []

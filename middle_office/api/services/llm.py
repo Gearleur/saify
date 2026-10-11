@@ -71,9 +71,15 @@ class ClientEncadre:
             reponse = self._client.messages.parse(**requete)
             usage = getattr(reponse, "usage", None)
             # Consommation tracée (jetons, durée, compteur du jour) ; jamais la clé ni le texte de la question.
-            log.info("llm appel modele=%s entree=%s sortie=%s duree=%.0fms appels_jour=%d/%d", MODELE,
-                     getattr(usage, "input_tokens", "?"), getattr(usage, "output_tokens", "?"),
-                     (time.perf_counter() - debut) * 1000, self.appels_aujourdhui, self.budget_jour)  # fmt: skip
+            log.info(
+                "llm appel modele=%s entree=%s sortie=%s duree=%.0fms appels_jour=%d/%d",
+                MODELE,
+                getattr(usage, "input_tokens", "?"),
+                getattr(usage, "output_tokens", "?"),
+                (time.perf_counter() - debut) * 1000,
+                self.appels_aujourdhui,
+                self.budget_jour,
+            )
         finally:
             self._places.release()
         if getattr(reponse, "parsed_output", None) is not None:

@@ -37,20 +37,28 @@ class ReglesVigilance:
         au_dessus = [e for e, _ in parts if part[e] > self.seuil_emetteur]
         if au_dessus:
             detail = ", ".join(f"{e} ({pourcentage(part[e])})" for e in au_dessus)
-            vigilances.append(Vigilance(
-                "EMETTEUR_AU_DESSUS_DU_SEUIL",
-                f"Au-dessus du seuil de vigilance interne de {_seuil(self.seuil_emetteur)} par émetteur : {detail}.",
-                au_dessus, part[au_dessus[0]].quantize(CENTIME),
-            ))  # fmt: skip
+            vigilances.append(
+                Vigilance(
+                    "EMETTEUR_AU_DESSUS_DU_SEUIL",
+                    f"Au-dessus du seuil de vigilance interne de {_seuil(self.seuil_emetteur)} "
+                    f"par émetteur : {detail}.",
+                    au_dessus,
+                    part[au_dessus[0]].quantize(CENTIME),
+                )
+            )
         comptes = [e for e, _ in parts if part[e] > self.seuil_cumul_individuel]
         cumul = sum((montant for e, montant in parts if e in comptes), Decimal(0)) / total * 100
         if cumul > self.plafond_cumul:
-            vigilances.append(Vigilance(
-                "CUMUL_AU_DESSUS_DU_PLAFOND",
-                f"Les {len(comptes)} émetteurs de plus de {_seuil(self.seuil_cumul_individuel)} cumulent "
-                f"{pourcentage(cumul)} de l'encours, au-delà du seuil de vigilance interne de {_seuil(self.plafond_cumul)}.",
-                comptes, cumul.quantize(CENTIME),
-            ))  # fmt: skip
+            vigilances.append(
+                Vigilance(
+                    "CUMUL_AU_DESSUS_DU_PLAFOND",
+                    f"Les {len(comptes)} émetteurs de plus de {_seuil(self.seuil_cumul_individuel)} cumulent "
+                    f"{pourcentage(cumul)} de l'encours, au-delà du seuil de vigilance interne "
+                    f"de {_seuil(self.plafond_cumul)}.",
+                    comptes,
+                    cumul.quantize(CENTIME),
+                )
+            )
         return vigilances
 
 

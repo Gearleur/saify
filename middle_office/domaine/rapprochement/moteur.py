@@ -166,7 +166,7 @@ def _lire_base(db_path: Path | None, journal: list[Anomalie]) -> Base:
                 str(db_path),
                 "",
                 f"orsay.db illisible ({erreur}) : suspens sans code fonds ni piste",
-            )  # fmt: skip
+            )
         )
         return Base()
 
@@ -180,11 +180,29 @@ def _signaler(positions: list[Position], base: Base) -> list[Anomalie]:
             continue
         vus.add(p.isin)
         if not isin_valide(p.isin):
-            anomalies.append(Anomalie(p.fichier, p.ligne, "SIGNALE", "ISIN_CLE_INVALIDE", p.isin, p.isin,
-                                      "clé de contrôle ISIN invalide : probable erreur de saisie"))  # fmt: skip
+            anomalies.append(
+                Anomalie(
+                    p.fichier,
+                    p.ligne,
+                    "SIGNALE",
+                    "ISIN_CLE_INVALIDE",
+                    p.isin,
+                    p.isin,
+                    "clé de contrôle ISIN invalide : probable erreur de saisie",
+                )
+            )
         if base.referentiel is not None and p.isin not in base.referentiel:
-            anomalies.append(Anomalie(p.fichier, p.ligne, "SIGNALE", "ISIN_HORS_REFERENTIEL", p.isin, p.isin,
-                                      "ISIN absent du référentiel titres"))  # fmt: skip
+            anomalies.append(
+                Anomalie(
+                    p.fichier,
+                    p.ligne,
+                    "SIGNALE",
+                    "ISIN_HORS_REFERENTIEL",
+                    p.isin,
+                    p.isin,
+                    "ISIN absent du référentiel titres",
+                )
+            )
     libelles: dict[str, dict[str, Position]] = defaultdict(dict)
     for p in positions:
         if p.libelle:
@@ -195,8 +213,17 @@ def _signaler(positions: list[Position], base: Base) -> list[Anomalie]:
             and par_cote["PMS"].libelle.upper() != par_cote["DEP"].libelle.upper()
         ):
             p, d = par_cote["PMS"], par_cote["DEP"]
-            anomalies.append(Anomalie(d.fichier, d.ligne, "SIGNALE", "LIBELLE_DIFFERENT", d.libelle, p.libelle,
-                                      f"{isin} : libellé PMS « {p.libelle} » ≠ conservateur « {d.libelle} »"))  # fmt: skip
+            anomalies.append(
+                Anomalie(
+                    d.fichier,
+                    d.ligne,
+                    "SIGNALE",
+                    "LIBELLE_DIFFERENT",
+                    d.libelle,
+                    p.libelle,
+                    f"{isin} : libellé PMS « {p.libelle} » ≠ conservateur « {d.libelle} »",
+                )
+            )
     return anomalies
 
 
@@ -253,7 +280,7 @@ def _fusionner_dep(suspens: list[Suspens]) -> list[Suspens]:
                     y.qte_dep,
                     x.libelle_titre or y.libelle_titre,
                     x.sources + y.sources,
-                )  # fmt: skip
+                )
             )
         else:
             message = (
@@ -265,8 +292,9 @@ def _fusionner_dep(suspens: list[Suspens]) -> list[Suspens]:
     return suspens
 
 
-def _piste(mouvements: list[Mouvement], ecart: Decimal,
-           plusieurs_conservateurs: bool) -> tuple[str, str]:  # fmt: skip
+def _piste(
+    mouvements: list[Mouvement], ecart: Decimal, plusieurs_conservateurs: bool
+) -> tuple[str, str]:
     """Cite les opérations en attente et dit, calcul signé à l'appui, si elles expliquent l'écart.
 
     Renvoie (libellé pour l'opérateur, explication parmi EXPLICATIONS).
@@ -290,8 +318,13 @@ def _piste(mouvements: list[Mouvement], ecart: Decimal,
     return f"{operations} → {verdict}", explication
 
 
-def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arrete: date,
-               conservateurs: dict[tuple[str, str], set[str]]) -> None:  # fmt: skip
+def _completer(
+    suspens: list[Suspens],
+    param: Parametrage,
+    base: Base,
+    date_arrete: date,
+    conservateurs: dict[tuple[str, str], set[str]],
+) -> None:
     for s in suspens:
         s.fonds = base.codes_fonds.get(s.entite, "")
         s.libelle_type, s.action = param.types_ecarts[s.type]
@@ -321,7 +354,9 @@ def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arre
             s.signaler("ISIN_INVALIDE", "ISIN à clé invalide, probable erreur de saisie")
 
 
-def _date_du_depot(fichiers: dict[str, bytes], date_attendue: date | None) -> tuple[date | None, Anomalie | None]:  # fmt: skip
+def _date_du_depot(
+    fichiers: dict[str, bytes], date_attendue: date | None
+) -> tuple[date | None, Anomalie | None]:
     """Date d'arrêté du PMS (source de référence) : une seule date, et l'attendue si elle est fixée."""
     noms = [n for n in fichiers if source_du_fichier(n) == "PMS"]
     if len(noms) != 1:
@@ -332,17 +367,31 @@ def _date_du_depot(fichiers: dict[str, bytes], date_attendue: date | None) -> tu
     except (ValueError, KeyError, csv.Error):
         dates, lue = set(), None
     if lue is None:
-        motif = (f"plusieurs dates d'arrêté dans le PMS ({', '.join(sorted(dates))})"
-                 if dates else "date d'arrêté du PMS illisible")  # fmt: skip
+        motif = (
+            f"plusieurs dates d'arrêté dans le PMS ({', '.join(sorted(dates))})"
+            if dates
+            else "date d'arrêté du PMS illisible"
+        )
         return None, anomalie(noms[0], 0, "BLOQUANT", "DATE_ARRETE", "", "", motif)
     if date_attendue is not None and lue != date_attendue:
-        return None, anomalie(noms[0], 0, "BLOQUANT", "DATE_ARRETE", lue.isoformat(), "",
-                              f"fichiers arrêtés au {date_fr(lue)}, attendu le {date_fr(date_attendue)}")  # fmt: skip
+        return None, anomalie(
+            noms[0],
+            0,
+            "BLOQUANT",
+            "DATE_ARRETE",
+            lue.isoformat(),
+            "",
+            f"fichiers arrêtés au {date_fr(lue)}, attendu le {date_fr(date_attendue)}",
+        )
     return lue, None
 
 
-def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | None,
-               date_attendue: date | None = None) -> Resultat:  # fmt: skip
+def rapprocher(
+    fichiers: dict[str, bytes],
+    parametrage: Path,
+    db_path: Path | None,
+    date_attendue: date | None = None,
+) -> Resultat:
     """`fichiers` : nom de fichier -> contenu brut, un fichier par source (PMS, A, B, C).
 
     Une seule anomalie BLOQUANT suffit à refuser le rapprochement : un rapprochement partiel
@@ -357,8 +406,17 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
         *ERREURS_DE_FORMAT,
         OSError,
     ) as erreur:  # sans paramétrage fiable, aucun fonds n'est identifiable
-        resultat.journal.append(anomalie(Path(parametrage).name, 0, "BLOQUANT", "PARAMETRAGE", "", "",
-                                         f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
+        resultat.journal.append(
+            anomalie(
+                Path(parametrage).name,
+                0,
+                "BLOQUANT",
+                "PARAMETRAGE",
+                "",
+                "",
+                f"{type(erreur).__name__} : {erreur}",
+            )
+        )
         resultat.statut = "BLOQUE"
         return resultat
     date_arrete, refus = _date_du_depot(fichiers, date_attendue)
@@ -385,8 +443,17 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
         except (
             ERREURS_DE_FORMAT
         ) as erreur:  # fichier corrompu ou format inattendu : refusé, pas deviné
-            resultat.journal.append(anomalie(nom, 0, "BLOQUANT", "FORMAT_ILLISIBLE", "", "",
-                                             f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
+            resultat.journal.append(
+                anomalie(
+                    nom,
+                    0,
+                    "BLOQUANT",
+                    "FORMAT_ILLISIBLE",
+                    "",
+                    "",
+                    f"{type(erreur).__name__} : {erreur}",
+                )
+            )
             continue
         # Un lecteur qui a déjà bloqué a dit pourquoi : « 0 position » en plus serait du bruit.
         if not lecture.positions and not any(a.niveau == "BLOQUANT" for a in lecture.journal):
@@ -412,7 +479,7 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
                     "",
                     f"{m.portefeuille} {m.isin} {m.sens} {formater_quantite(m.quantite)} non dénoué "
                     f"au {date_fr(m.date_denouement)} : risque CSDR",
-                )  # fmt: skip
+                )
             )
 
     conservateurs: dict[tuple[str, str], set[str]] = defaultdict(set)

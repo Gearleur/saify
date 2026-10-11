@@ -25,7 +25,9 @@ log = logging.getLogger("middle_office.questions")
 MODELE = "claude-haiku-5-5"
 SEUIL_CONFIANCE = 0.7
 FONDS = {"PAT": "ORSAY PATRIMOINE", "OBL": "ORSAY OBLIGATIONS", "ACT": "ORSAY ACTIONS EUROPE"}
-Intention = Literal["ENCOURS", "ECHEANCES", "CONCENTRATION", "NON_DENOUEES", "ORIGINE_SUSPENS", "HORS_CATALOGUE"]  # fmt: skip
+Intention = Literal[
+    "ENCOURS", "ECHEANCES", "CONCENTRATION", "NON_DENOUEES", "ORIGINE_SUSPENS", "HORS_CATALOGUE"
+]
 
 SYSTEME = """Tu classes les questions des gérants et du contrôle d'Orsay Gestion (société de gestion) \
 pour un outil qui interroge leur base de gestion. Tu ne réponds jamais à la question et tu ne \
@@ -84,9 +86,16 @@ class Comprehension:
     )  # (isin, libellé), si ambigu
 
     def trace(self) -> dict:
-        return {"intention": self.intention, "fonds": self.fonds, "horizon_mois": self.horizon_mois,
-                "isin": self.isin, "source": self.source, "confiance": self.confiance, "detail": self.detail,
-                "date_demandee": self.date_demandee}  # fmt: skip
+        return {
+            "intention": self.intention,
+            "fonds": self.fonds,
+            "horizon_mois": self.horizon_mois,
+            "isin": self.isin,
+            "source": self.source,
+            "confiance": self.confiance,
+            "detail": self.detail,
+            "date_demandee": self.date_demandee,
+        }
 
 
 def _normaliser(texte: str) -> str:
@@ -133,9 +142,32 @@ def resoudre_titre(base: Path, texte: str | None) -> str | None:
     return cites[0][0] if len(cites) == 1 else None
 
 
-MOIS = ("janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre",
-        "octobre", "novembre", "decembre")  # fmt: skip
-RELATIVES = r"avant.hier|\bhier\b|la veille|semaine (derniere|passee)|mois (dernier|passe)|trimestre (dernier|passe)|annee (derniere|passee)|an (dernier|passe)"
+MOIS = (
+    "janvier",
+    "fevrier",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "aout",
+    "septembre",
+    "octobre",
+    "novembre",
+    "decembre",
+)
+RELATIVES = "|".join(
+    [
+        r"avant.hier",
+        r"\bhier\b",
+        r"la veille",
+        r"semaine (derniere|passee)",
+        r"mois (dernier|passe)",
+        r"trimestre (dernier|passe)",
+        r"annee (derniere|passee)",
+        r"an (dernier|passe)",
+    ]
+)
 
 
 def date_citee(question: str) -> str | None:
@@ -212,9 +244,11 @@ def _systeme(date_ref: date | None) -> str:
     if date_ref is None:
         return SYSTEME
     # Une date, pas une donnée client : sans elle, « d'ici la fin de l'année » ne se convertit pas en mois.
-    return (f"{SYSTEME}\n\nDate de référence : {date_ref:%d/%m/%Y}. Convertis toute échéance relative "
-            "(« d'ici la fin de l'année », « au prochain trimestre ») en `horizon_mois` entier compté depuis "
-            "cette date, arrondi au mois supérieur.")  # fmt: skip
+    return (
+        f"{SYSTEME}\n\nDate de référence : {date_ref:%d/%m/%Y}. Convertis toute échéance relative "
+        "(« d'ici la fin de l'année », « au prochain trimestre ») en `horizon_mois` entier compté depuis "
+        "cette date, arrondi au mois supérieur."
+    )
 
 
 def _par_llm(
@@ -278,16 +312,21 @@ def comprendre(
 ECRITURE = r"\b(supprim|modifi|ajout|effac|corrig|insere|annul|change|mets? a jour|mettre a jour)"
 # Une demande d'écriture formulée comme un ordre, quel que soit le sujet (« corrige l'encours d'OBL ») ;
 # « opérations annulées ? » reste une lecture.
-ORDRE_ECRITURE = (r"^(peux.tu |pouvez.vous |merci de |il faut |je veux )?"
-                  r"(supprim|modifi|ajout|efface|corrig|insere|annule|change|mets? a jour|mettre a jour|remplac)")  # fmt: skip
+ORDRE_ECRITURE = (
+    r"^(peux.tu |pouvez.vous |merci de |il faut |je veux )?"
+    r"(supprim|modifi|ajout|efface|corrig|insere|annule|change|mets? a jour|mettre a jour|remplac)"
+)
 DATE_UNIQUE = ("ENCOURS", "CONCENTRATION", "NON_DENOUEES")  # chiffres à la seule date de référence
 PAR_TITRE = (
     "ECHEANCES",
     "NON_DENOUEES",
     "ORIGINE_SUSPENS",
 )  # intentions qui savent filtrer un titre
-CATALOGUE_PAR_DEFAUT = ["Encours valorisé du fonds OBL", "Tombées d'échéances à venir dans les 12 mois",
-                        "Opérations non dénouées"]  # fmt: skip
+CATALOGUE_PAR_DEFAUT = [
+    "Encours valorisé du fonds OBL",
+    "Tombées d'échéances à venir dans les 12 mois",
+    "Opérations non dénouées",
+]
 
 
 def _question_type(intention: str, fonds: str | None, titre: str | None = None) -> str:
@@ -308,41 +347,68 @@ def _blocage(c: Comprehension, question: str, date_ref: date) -> tuple[str, list
     if re.search(ORDRE_ECRITURE, texte) or (
         c.intention == "HORS_CATALOGUE" and re.search(ECRITURE, texte)
     ):
-        return ("cet outil est en lecture seule : il ne modifie jamais l'inventaire (ni positions, ni "
-                "opérations). Une correction se saisit dans le PMS.", CATALOGUE_PAR_DEFAUT)  # fmt: skip
+        return (
+            "cet outil est en lecture seule : il ne modifie jamais l'inventaire (ni positions, ni "
+            "opérations). Une correction se saisit dans le PMS.",
+            CATALOGUE_PAR_DEFAUT,
+        )
     if c.intention == "CONCENTRATION" and c.fonds is None:
-        return ("la concentration par émetteur se lit fonds par fonds : précisez le fonds.",
-                [f"Concentration par émetteur du fonds {code}" for code in ("OBL", "PAT", "ACT")])  # fmt: skip
+        return (
+            "la concentration par émetteur se lit fonds par fonds : précisez le fonds.",
+            [f"Concentration par émetteur du fonds {code}" for code in ("OBL", "PAT", "ACT")],
+        )
     if c.intention in DATE_UNIQUE and c.date_demandee and c.date_demandee != date_ref.isoformat():
         try:
             visee = f"le {date.fromisoformat(c.date_demandee):%d/%m/%Y}"
         except ValueError:
             visee = f"« {c.date_demandee} »"
-        return (f"la base de gestion ne contient que les positions au {date_ref:%d/%m/%Y}, et la question "
-                f"vise {visee}. Je ne donne pas le chiffre d'une autre date à la place.",
-                [_question_type(c.intention, c.fonds)])  # fmt: skip
+        return (
+            f"la base de gestion ne contient que les positions au {date_ref:%d/%m/%Y}, et la question "
+            f"vise {visee}. Je ne donne pas le chiffre d'une autre date à la place.",
+            [_question_type(c.intention, c.fonds)],
+        )
     if c.intention == "ENCOURS" and (c.isin or c.titres_candidats):
-        return ("l'encours valorisé se calcule par fonds, pas pour un titre seul : je ne réponds pas "
-                "à côté de la question.", [f"Encours valorisé du fonds {code}" for code in FONDS])  # fmt: skip
+        return (
+            "l'encours valorisé se calcule par fonds, pas pour un titre seul : je ne réponds pas "
+            "à côté de la question.",
+            [f"Encours valorisé du fonds {code}" for code in FONDS],
+        )
     if c.intention in PAR_TITRE and c.titres_candidats:
         noms = ", ".join(libelle for _, libelle in c.titres_candidats)
-        return (f"plusieurs titres correspondent ({noms}) : précisez lequel.",
-                [_question_type(c.intention, c.fonds, libelle) for _, libelle in c.titres_candidats[:3]])  # fmt: skip
+        return (
+            f"plusieurs titres correspondent ({noms}) : précisez lequel.",
+            [
+                _question_type(c.intention, c.fonds, libelle)
+                for _, libelle in c.titres_candidats[:3]
+            ],
+        )
     if c.intention == "ORIGINE_SUSPENS" and c.isin is None:
-        return ("je n'ai pas reconnu le titre : précisez son nom ou son ISIN.",
-                ["D'où vient le suspens sur SCHNEIDER ?", "D'où vient le suspens sur FR0000051641 ?"])  # fmt: skip
+        return (
+            "je n'ai pas reconnu le titre : précisez son nom ou son ISIN.",
+            ["D'où vient le suspens sur SCHNEIDER ?", "D'où vient le suspens sur FR0000051641 ?"],
+        )
     if c.intention == "HORS_CATALOGUE":
-        return ("je ne sais pas répondre à cette question de façon fiable. Je sais calculer : encours "
-                "valorisé, tombées d'échéances, concentration par émetteur, opérations non dénouées, "
-                "origine d'un suspens.", CATALOGUE_PAR_DEFAUT)  # fmt: skip
+        return (
+            "je ne sais pas répondre à cette question de façon fiable. Je sais calculer : encours "
+            "valorisé, tombées d'échéances, concentration par émetteur, opérations non dénouées, "
+            "origine d'un suspens.",
+            CATALOGUE_PAR_DEFAUT,
+        )
     if c.confiance < SEUIL_CONFIANCE:
-        return ("je ne suis pas sûr d'avoir compris la question, et je ne donne pas de chiffre sans en être sûr.",
-                CATALOGUE_PAR_DEFAUT)  # fmt: skip
+        return (
+            "je ne suis pas sûr d'avoir compris la question, et je ne donne pas de chiffre sans en être sûr.",
+            CATALOGUE_PAR_DEFAUT,
+        )
     return None
 
 
-def executer(c: Comprehension, question: str, base: Path, date_ref: date,
-             contexte: ContexteRapprochement | None = None) -> Reponse:  # fmt: skip
+def executer(
+    c: Comprehension,
+    question: str,
+    base: Path,
+    date_ref: date,
+    contexte: ContexteRapprochement | None = None,
+) -> Reponse:
     """Second temps : à partir de l'intention comprise, la requête du catalogue (ou un refus motivé)."""
     if blocage := _blocage(c, question, date_ref):
         motif, par_defaut = blocage
@@ -350,8 +416,15 @@ def executer(c: Comprehension, question: str, base: Path, date_ref: date,
         sures = [
             r for r in c.reformulations if _par_mots_cles(r, base).intention != "HORS_CATALOGUE"
         ]
-        reponse = Reponse(f"Attention : {motif}", [], "", {}, [], confiance="basse",
-                          reformulations=(sures or par_defaut)[:3])  # fmt: skip
+        reponse = Reponse(
+            f"Attention : {motif}",
+            [],
+            "",
+            {},
+            [],
+            confiance="basse",
+            reformulations=(sures or par_defaut)[:3],
+        )
     elif c.intention == "ENCOURS":
         reponse = catalogue.encours_valorise(base, c.fonds, date_ref)
     elif c.intention == "ECHEANCES":
@@ -368,7 +441,12 @@ def executer(c: Comprehension, question: str, base: Path, date_ref: date,
     return reponse
 
 
-def repondre(question: str, base: Path, date_ref: date, client=None,
-             contexte: ContexteRapprochement | None = None) -> Reponse:  # fmt: skip
+def repondre(
+    question: str,
+    base: Path,
+    date_ref: date,
+    client=None,
+    contexte: ContexteRapprochement | None = None,
+) -> Reponse:
     c = comprendre(question, base, client, date_ref)
     return executer(c, question, base, date_ref, contexte)

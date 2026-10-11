@@ -74,8 +74,15 @@ class Historique:
             db.execute(
                 "INSERT INTO rapprochements (id, cree_le, statut, reponse, csv, situation)"
                 " VALUES (?, ?, ?, ?, ?, ?)",
-                (modele.id, modele.cree_le, modele.statut, modele.model_dump_json(), csv, situation),
-            )  # fmt: skip
+                (
+                    modele.id,
+                    modele.cree_le,
+                    modele.statut,
+                    modele.model_dump_json(),
+                    csv,
+                    situation,
+                ),
+            )
             if self.fichier is None:
                 db.execute(
                     "DELETE FROM rapprochements WHERE rang NOT IN"

@@ -12,7 +12,12 @@ from middle_office.domaine.rapprochement.sources import ERREURS_DE_FORMAT, lire_
 
 log = logging.getLogger("middle_office.api.referentiel")
 
-TRANSCOS = ("TRANSCO_SOUS_COMPTES", "TRANSCO_DEPOSITAIRE_A", "TRANSCO_DEPOSITAIRE_B", "TRANSCO_DEPOSITAIRE_C")  # fmt: skip
+TRANSCOS = (
+    "TRANSCO_SOUS_COMPTES",
+    "TRANSCO_DEPOSITAIRE_A",
+    "TRANSCO_DEPOSITAIRE_B",
+    "TRANSCO_DEPOSITAIRE_C",
+)
 # Ni le paramétrage ni la base ne les portent : repris de l'énoncé (limite connue).
 CONSERVATEURS = [
     Conservateur(code="A", nom="CACEIS"),
@@ -60,8 +65,16 @@ def parametrage(reglages: Reglages) -> ParametrageSortie:
         param = lire_parametrage(reglages.parametrage)
     except (*ERREURS_DE_FORMAT, OSError) as exc:
         log.warning("parametrage illisible : %s", exc)
-        raise ErreurApi(503, "PARAMETRAGE_INDISPONIBLE", f"parametrage.xlsx illisible : {exc}") from exc  # fmt: skip
-    tables = dict(zip(TRANSCOS, (param.sous_comptes, param.comptes_a, param.desks_b, param.comptes_c), strict=True))  # fmt: skip
+        raise ErreurApi(
+            503, "PARAMETRAGE_INDISPONIBLE", f"parametrage.xlsx illisible : {exc}"
+        ) from exc
+    tables = dict(
+        zip(
+            TRANSCOS,
+            (param.sous_comptes, param.comptes_a, param.desks_b, param.comptes_c),
+            strict=True,
+        )
+    )
     entites = list(dict.fromkeys(e for table in tables.values() for e in table.values()))
     codes = codes_fonds(reglages.base)
     return ParametrageSortie(

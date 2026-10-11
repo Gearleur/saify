@@ -17,8 +17,11 @@ router = APIRouter(include_in_schema=False)
 def page(reglages: ReglagesDep) -> Response:
     index = reglages.dossier_web / "index.html"
     if not index.is_file():
-        return reponse_erreur(503, "PAGE_INDISPONIBLE",
-                              "Interface pas encore installée (middle_office/web/index.html absent) ; l'API répond sous /api")  # fmt: skip
+        return reponse_erreur(
+            503,
+            "PAGE_INDISPONIBLE",
+            "Interface pas encore installée (middle_office/web/index.html absent) ; l'API répond sous /api",
+        )
     return FileResponse(index, media_type="text/html; charset=utf-8")
 
 

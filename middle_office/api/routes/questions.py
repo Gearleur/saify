@@ -25,8 +25,13 @@ log = logging.getLogger("middle_office.api.questions")
 
 
 @router.post("")
-def poser(question: Question, request: Request, reglages: ReglagesDep, historique: HistoriqueDep,
-          llm: LLMDep) -> ReponseQuestion:  # fmt: skip
+def poser(
+    question: Question,
+    request: Request,
+    reglages: ReglagesDep,
+    historique: HistoriqueDep,
+    llm: LLMDep,
+) -> ReponseQuestion:
     jour = date_de_reference(reglages.base)
     c = comprendre_question(question.question, reglages, llm, jour)
     return repondre_question(
@@ -39,8 +44,13 @@ def _evenement(nom: str, donnees: dict) -> str:
 
 
 @router.post("/flux")
-def poser_en_flux(question: Question, request: Request, reglages: ReglagesDep,
-                  historique: HistoriqueDep, llm: LLMDep) -> StreamingResponse:  # fmt: skip
+def poser_en_flux(
+    question: Question,
+    request: Request,
+    reglages: ReglagesDep,
+    historique: HistoriqueDep,
+    llm: LLMDep,
+) -> StreamingResponse:
     """L'entrée et la base sont vérifiées avant d'ouvrir le flux : on reçoit un vrai 422 ou 503."""
     jour = date_de_reference(reglages.base)
     rid = request.state.request_id
@@ -52,7 +62,10 @@ def poser_en_flux(question: Question, request: Request, reglages: ReglagesDep,
             )
             c = comprendre_question(question.question, reglages, llm, jour)
             yield _evenement("comprehension", c.trace())
-            yield _evenement("etape", {"etape": "calcul", "message": "Requête en lecture seule sur la base de gestion…"})  # fmt: skip
+            yield _evenement(
+                "etape",
+                {"etape": "calcul", "message": "Requête en lecture seule sur la base de gestion…"},
+            )
             reponse = repondre_question(c, question.question, reglages, historique, jour, rid)
             yield _evenement("reponse", reponse.model_dump(mode="json"))
         except Exception:
@@ -61,5 +74,8 @@ def poser_en_flux(question: Question, request: Request, reglages: ReglagesDep,
             yield _evenement("erreur", {"code": code, "message": message})
         yield _evenement("fin", {})
 
-    return StreamingResponse(flux(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})  # fmt: skip
+    return StreamingResponse(
+        flux(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

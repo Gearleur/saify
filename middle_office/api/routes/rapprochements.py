@@ -21,8 +21,12 @@ def _statut_http(modele: Rapprochement, response: Response) -> Rapprochement:
 
 
 @router.post("", status_code=201)
-def creer(demande: DemandeRapprochement, response: Response,
-          reglages: ReglagesDep, historique: HistoriqueDep) -> Rapprochement:  # fmt: skip
+def creer(
+    demande: DemandeRapprochement,
+    response: Response,
+    reglages: ReglagesDep,
+    historique: HistoriqueDep,
+) -> Rapprochement:
     fichiers = depot.decoder(demande, reglages.taille_fichier_max)
     return _statut_http(rapprochements.executer(fichiers, reglages, historique), response)
 

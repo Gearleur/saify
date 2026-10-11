@@ -19,7 +19,9 @@ class FichierEntree(Entree):
     @classmethod
     def nom_de_base(cls, nom: str) -> str:
         if "/" in nom or "\\" in nom or ".." in nom or any(ord(c) < 32 for c in nom):
-            raise ValueError("nom de base seul attendu (ni chemin, ni « .. », ni caractère de contrôle)")  # fmt: skip
+            raise ValueError(
+                "nom de base seul attendu (ni chemin, ni « .. », ni caractère de contrôle)"
+            )
         if not nom.lower().endswith(EXTENSIONS):
             raise ValueError(f"extension non autorisée (attendu : {', '.join(EXTENSIONS)})")
         return nom
