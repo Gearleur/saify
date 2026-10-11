@@ -53,16 +53,16 @@ export function Sidebar({
             <ul className="space-y-px">
               {ROUTE_DEFS.filter((r) => r.section === section).map(({ id, title, icon: Icon }) => {
                 const badge = badges[id];
-                const actif = route.id === id;
+                const enabled = route.id === id;
                 return (
                   <li key={id}>
                     <a
                       href={routeHref(id)}
                       onClick={onNavigate}
-                      aria-current={actif ? "page" : undefined}
+                      aria-current={enabled ? "page" : undefined}
                       className={cn(
                         "flex h-control items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors duration-150 hover:bg-hover hover:text-foreground",
-                        actif && "bg-hover font-medium text-foreground",
+                        enabled && "bg-hover font-medium text-foreground",
                       )}
                     >
                       <Icon className="size-[15px] shrink-0" strokeWidth={1.75} />

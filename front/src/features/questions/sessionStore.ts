@@ -4,39 +4,39 @@ import type { QuestionRun } from "./types";
 /** Historique des questions de la session (mémoire de l'onglet, perdu au rechargement, comme une session). */
 let runs: QuestionRun[] = [];
 let selectedId: number | null = null;
-const abonnes = new Set<() => void>();
-let instantane: { runs: QuestionRun[]; selectedId: number | null } = { runs, selectedId };
+const listeners = new Set<() => void>();
+let currentSnapshot: { runs: QuestionRun[]; selectedId: number | null } = { runs, selectedId };
 
-function emettre() {
-  instantane = { runs, selectedId };
-  abonnes.forEach((r) => r());
+function emit() {
+  currentSnapshot = { runs, selectedId };
+  listeners.forEach((r) => r());
 }
 
 export const sessionStore = {
-  subscribe(rappel: () => void) {
-    abonnes.add(rappel);
-    return () => abonnes.delete(rappel);
+  subscribe(callback: () => void) {
+    listeners.add(callback);
+    return () => listeners.delete(callback);
   },
-  snapshot: () => instantane,
+  snapshot: () => currentSnapshot,
   add(run: QuestionRun) {
     runs = [run, ...runs].slice(0, 30);
     selectedId = run.id;
-    emettre();
+    emit();
   },
   update(id: number, patch: Partial<QuestionRun>) {
     runs = runs.map((r) => (r.id === id ? { ...r, ...patch } : r));
-    emettre();
+    emit();
   },
   select(id: number) {
     selectedId = id;
-    emettre();
+    emit();
   },
 };
 
 export function useQuestionSession() {
-  const { runs: liste, selectedId: id } = useSyncExternalStore(
+  const { runs: list, selectedId: id } = useSyncExternalStore(
     sessionStore.subscribe,
     sessionStore.snapshot,
   );
-  return { runs: liste, selected: liste.find((r) => r.id === id) ?? null };
+  return { runs: list, selected: list.find((r) => r.id === id) ?? null };
 }

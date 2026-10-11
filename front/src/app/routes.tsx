@@ -12,7 +12,7 @@ import { JournalView } from "@/features/journal/JournalView";
 import { QuestionsView } from "@/features/questions/QuestionsView";
 import { SettingsView } from "@/features/settings/SettingsView";
 import { SituationView } from "@/features/situation/SituationView";
-import { SuspensView } from "@/features/suspens/SuspensView";
+import { BreaksView } from "@/features/breaks/BreaksView";
 import { MorningView } from "@/features/triage/MorningView";
 import type { RouteId } from "@/hooks/useHashRoute";
 
@@ -33,7 +33,7 @@ export const ROUTE_DEFS: RouteDef[] = [
     icon: Inbox,
     View: MorningView,
   },
-  { id: "suspens", title: "Suspens", section: "Rapprochement", icon: Rows3, View: SuspensView },
+  { id: "suspens", title: "Suspens", section: "Rapprochement", icon: Rows3, View: BreaksView },
   {
     id: "point",
     title: "Point de situation",

@@ -1,7 +1,7 @@
 import { ToastProvider } from "@/components/ToastProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FileStagingProvider } from "@/features/files/FileStagingProvider";
-import { SuspensSheetProvider } from "@/features/suspens/SuspensSheetProvider";
+import { BreakSheetProvider } from "@/features/breaks/BreakSheetProvider";
 import { ReconciliationProvider } from "./providers/ReconciliationProvider";
 import { Shell } from "./Shell";
 
@@ -10,11 +10,11 @@ export function App() {
     <ToastProvider>
       <TooltipProvider delayDuration={400}>
         <ReconciliationProvider>
-          <SuspensSheetProvider>
+          <BreakSheetProvider>
             <FileStagingProvider>
               <Shell />
             </FileStagingProvider>
-          </SuspensSheetProvider>
+          </BreakSheetProvider>
         </ReconciliationProvider>
       </TooltipProvider>
     </ToastProvider>

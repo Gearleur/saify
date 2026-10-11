@@ -7,119 +7,111 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from middle_office.api.config import Reglages
-from middle_office.api.erreurs import ErreurApi
+from middle_office.api.config import Settings
+from middle_office.api.errors import ApiError
 from middle_office.api.schemas import (
-    ChiffreSortie,
-    ComprehensionSortie,
-    LigneSourceSortie,
-    ReponseQuestion,
-    VigilanceSortie,
+    FigureOut,
+    QuestionAnswer,
+    SourceRowOut,
+    UnderstandingOut,
+    VigilanceOut,
 )
-from middle_office.api.services.historique import Historique
-from middle_office.api.services.llm import ClientEncadre
-from middle_office.domaine.base_gestion import date_reference
-from middle_office.domaine.questions.comprehension import comprendre, executer
-from middle_office.domaine.questions.intention import Comprehension
-from middle_office.domaine.questions.modeles import ContexteRapprochement, Reponse
+from middle_office.api.services.history import History
+from middle_office.api.services.llm import GuardedClient
+from middle_office.domain.management_db import latest_position_date
+from middle_office.domain.questions.intent import Understanding
+from middle_office.domain.questions.models import Answer, ReconciliationContext
+from middle_office.domain.questions.understanding import execute, understand
 
 log = logging.getLogger("middle_office.api.audit")
 
 
-def date_de_reference(base: Path) -> date:
+def reference_date(db_path: Path) -> date:
     """Les questions portent sur la date des dernières positions de la base, affichée dans chaque réponse."""
     try:
-        jour = date_reference(base)
+        day = latest_position_date(db_path)
     except sqlite3.Error as exc:
-        raise ErreurApi(
+        raise ApiError(
             503, "BASE_INDISPONIBLE", "Base de gestion illisible : réessayer plus tard"
         ) from exc
-    if jour is None:
-        raise ErreurApi(503, "BASE_INDISPONIBLE", "Aucune position dans la base de gestion")
-    return jour
+    if day is None:
+        raise ApiError(503, "BASE_INDISPONIBLE", "Aucune position dans la base de gestion")
+    return day
 
 
-def comprendre_question(
-    question: str, reglages: Reglages, llm: ClientEncadre | None, jour: date
-) -> Comprehension:
-    return comprendre(question, reglages.base, llm, jour)
+def understand_question(
+    question: str, settings: Settings, llm: GuardedClient | None, day: date
+) -> Understanding:
+    return understand(question, settings.db_path, llm, day)
 
 
-def repondre_question(
-    c: Comprehension,
+def answer_and_audit(
+    c: Understanding,
     question: str,
-    reglages: Reglages,
-    historique: Historique,
-    jour: date,
+    settings: Settings,
+    history: History,
+    day: date,
     rid: str,
-) -> ReponseQuestion:
+) -> QuestionAnswer:
     """Exécute l'intention comprise et trace la décision : qui a compris quoi (LLM ou mots-clés), avec
     quelle confiance, et ce qui a été répondu. Ni la question ni la réponse en clair : une empreinte
     de la question suffit à rapprocher une plainte de sa ligne d'audit."""
-    reponse = executer(c, question, reglages.base, jour, contexte_suspens(historique))
+    answer = execute(c, question, settings.db_path, day, break_context(history))
     log.info(
         "audit question rid=%s empreinte=%s intention=%s source=%s confiance=%.2f fonds=%s isin=%s "
         "horizon=%s date_demandee=%s reponse=%s chiffres=%d detail=%s",
         rid,
         hashlib.sha256(question.encode()).hexdigest()[:12],
-        c.intention,
+        c.intent,
         c.source,
-        c.confiance,
-        c.fonds,
+        c.confidence,
+        c.fund,
         c.isin,
-        c.horizon_mois,
+        c.horizon_months,
         getattr(c, "date_demandee", None),
-        reponse.confiance,
-        len(reponse.chiffres),
+        answer.confidence,
+        len(answer.figures),
         c.detail or "-",
     )
-    return vers_sortie(reponse)
+    return to_output(answer)
 
 
-def contexte_suspens(historique: Historique) -> ContexteRapprochement | None:
+def break_context(history: History) -> ReconciliationContext | None:
     """Dernier rapprochement exploitable (OK), pour « d'où vient le suspens sur X ? ».
 
     Le plus récent n'est pas forcément le bon : bloqué, il n'a aucun suspens, et répondre « aucun
     suspens sur X » rassurerait à tort. On répond sur le dernier OK en signalant le blocage.
     """
-    dernier = historique.dernier()
-    if dernier is None:
+    latest = history.latest()
+    if latest is None:
         return None
-    bloque = dernier.id if dernier.statut != "OK" else None
-    ok = dernier if bloque is None else historique.dernier("OK")
+    blocked = latest.id if latest.status != "OK" else None
+    ok = latest if blocked is None else history.latest("OK")
     if ok is None:
-        return ContexteRapprochement(id=None, bloque_plus_recent=bloque)
-    return ContexteRapprochement(
+        return ReconciliationContext(id=None, newer_blocked=blocked)
+    return ReconciliationContext(
         id=ok.id,
-        date_arrete=ok.date_arrete,
-        suspens=[s.model_dump() for s in ok.suspens],
-        bloque_plus_recent=bloque,
+        as_of_date=ok.as_of_date,
+        breaks=[s.model_dump() for s in ok.breaks],
+        newer_blocked=blocked,
     )
 
 
-def vers_sortie(r: Reponse) -> ReponseQuestion:
+def to_output(r: Answer) -> QuestionAnswer:
     """Décimaux en texte (jamais de float), comme le reste de l'API."""
-    return ReponseQuestion(
+    return QuestionAnswer(
         question=r.question,
-        reponse=r.reponse,
-        chiffres=[
-            ChiffreSortie(libelle=c.libelle, valeur=str(c.valeur), unite=c.unite)
-            for c in r.chiffres
-        ],
-        requete_sql=r.requete_sql,
-        parametres_sql=r.parametres_sql,
-        lignes_sources=[
-            LigneSourceSortie(table=ligne.table, valeurs=ligne.valeurs)
-            for ligne in r.lignes_sources
-        ],
-        confiance=r.confiance,
-        avertissements=r.avertissements,
+        answer=r.answer,
+        figures=[FigureOut(label=c.label, value=str(c.value), unit=c.unit) for c in r.figures],
+        sql_query=r.sql_query,
+        sql_params=r.sql_params,
+        source_rows=[SourceRowOut(table=line.table, values=line.values) for line in r.source_rows],
+        confidence=r.confidence,
+        warnings=r.warnings,
         vigilances=[
-            VigilanceSortie(
-                code=v.code, message=v.message, emetteurs=v.emetteurs, valeur=str(v.valeur)
-            )
+            VigilanceOut(code=v.code, message=v.message, issuers=v.issuers, value=str(v.value))
             for v in r.vigilances
         ],
-        reformulations=r.reformulations,
-        comprehension=ComprehensionSortie(**r.comprehension),
+        suggestions=r.suggestions,
+        understanding=UnderstandingOut(**r.understanding),
     )

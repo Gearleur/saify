@@ -8,10 +8,10 @@ export function useErrorToast() {
   return useCallback(
     (e: unknown) => {
       const err = e instanceof ApiError ? e : null;
-      const attente = err?.retryAfter ? ` Réessayez dans ${err.retryAfter} s.` : "";
+      const waitText = err?.retryAfter ? ` Réessayez dans ${err.retryAfter} s.` : "";
       toast({
         title: err?.message ?? "Erreur inattendue.",
-        description: attente || undefined,
+        description: waitText || undefined,
         tone: "amber",
       });
     },

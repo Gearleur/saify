@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useHashRoute } from "@/hooks/useHashRoute";
 import { useFileStaging } from "./useFileStaging";
 
-function porteDesFichiers(e: DragEvent): boolean {
+function carriesFiles(e: DragEvent): boolean {
   return Array.from(e.dataTransfer?.types ?? []).includes("Files");
 }
 
@@ -12,39 +12,39 @@ export function DropOverlay() {
   const { add } = useFileStaging();
   const { navigate } = useHashRoute();
   const [visible, setVisible] = useState(false);
-  const profondeur = useRef(0);
+  const depth = useRef(0);
 
   useEffect(() => {
-    const entrer = (e: DragEvent) => {
-      if (!porteDesFichiers(e)) return;
+    const enter = (e: DragEvent) => {
+      if (!carriesFiles(e)) return;
       e.preventDefault();
-      profondeur.current += 1;
+      depth.current += 1;
       setVisible(true);
     };
-    const survoler = (e: DragEvent) => porteDesFichiers(e) && e.preventDefault();
-    const sortir = () => {
-      profondeur.current = Math.max(0, profondeur.current - 1);
-      if (profondeur.current === 0) setVisible(false);
+    const hover = (e: DragEvent) => carriesFiles(e) && e.preventDefault();
+    const leave = () => {
+      depth.current = Math.max(0, depth.current - 1);
+      if (depth.current === 0) setVisible(false);
     };
-    const deposer = (e: DragEvent) => {
-      if (!porteDesFichiers(e)) return;
+    const drop = (e: DragEvent) => {
+      if (!carriesFiles(e)) return;
       e.preventDefault();
-      profondeur.current = 0;
+      depth.current = 0;
       setVisible(false);
       if (e.dataTransfer?.files.length) {
         add(e.dataTransfer.files);
         navigate("a-traiter");
       }
     };
-    window.addEventListener("dragenter", entrer);
-    window.addEventListener("dragover", survoler);
-    window.addEventListener("dragleave", sortir);
-    window.addEventListener("drop", deposer);
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", hover);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
     return () => {
-      window.removeEventListener("dragenter", entrer);
-      window.removeEventListener("dragover", survoler);
-      window.removeEventListener("dragleave", sortir);
-      window.removeEventListener("drop", deposer);
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", hover);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
     };
   }, [add, navigate]);
 

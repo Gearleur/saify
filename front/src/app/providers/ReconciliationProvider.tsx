@@ -1,126 +1,126 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ReconciliationContext, type Chargement } from "@/hooks/useReconciliation";
-import { ApiError, rapprochementsApi, systemeApi } from "@/lib/api";
+import { ReconciliationContext, type LoadingState } from "@/hooks/useReconciliation";
+import { ApiError, reconciliationsApi, systemApi } from "@/lib/api";
 import { readJson, writeJson } from "@/lib/storage";
 import type {
-  FichierEnvoye,
-  Parametrage,
-  Rapprochement,
-  RapprochementResume,
-  Sante,
+  UploadedFile,
+  ClientConfig,
+  Reconciliation,
+  ReconciliationSummary,
+  Health,
 } from "@/types/api";
 
-const CLE_DERNIER = "mo.rapprochement";
+const LAST_KEY = "mo.rapprochement";
 
-function enApiError(e: unknown): ApiError {
+function asApiError(e: unknown): ApiError {
   return e instanceof ApiError ? e : new ApiError(0, "INCONNU", "Erreur inattendue.");
 }
 
 export function ReconciliationProvider({ children }: { children: ReactNode }) {
-  const [sante, setSante] = useState<Sante | null>(null);
-  const [santeError, setSanteError] = useState<ApiError | null>(null);
-  const [parametrage, setParametrage] = useState<Parametrage | null>(null);
-  const [parametrageError, setParametrageError] = useState<ApiError | null>(null);
-  const [historique, setHistorique] = useState<RapprochementResume[]>([]);
-  const [courant, setCourant] = useState<Rapprochement | null>(null);
-  const [chargement, setChargement] = useState<Chargement>("demarrage");
+  const [health, setHealth] = useState<Health | null>(null);
+  const [healthError, setHealthError] = useState<ApiError | null>(null);
+  const [clientConfig, setClientConfig] = useState<ClientConfig | null>(null);
+  const [clientConfigError, setClientConfigError] = useState<ApiError | null>(null);
+  const [history, setHistory] = useState<ReconciliationSummary[]>([]);
+  const [current, setCurrent] = useState<Reconciliation | null>(null);
+  const [loading, setLoading] = useState<LoadingState>("startup");
 
-  const rafraichirSante = useCallback(() => {
-    systemeApi
-      .sante()
-      .then((s) => (setSante(s), setSanteError(null)))
-      .catch((e: unknown) => setSanteError(enApiError(e)));
+  const refreshHealth = useCallback(() => {
+    systemApi
+      .health()
+      .then((s) => (setHealth(s), setHealthError(null)))
+      .catch((e: unknown) => setHealthError(asApiError(e)));
   }, []);
 
-  const rafraichirHistorique = useCallback(async () => {
-    const liste = await rapprochementsApi.liste();
-    setHistorique(liste);
-    return liste;
+  const refreshHistory = useCallback(async () => {
+    const list = await reconciliationsApi.list();
+    setHistory(list);
+    return list;
   }, []);
 
-  const afficher = useCallback((r: Rapprochement) => {
-    setCourant(r);
-    writeJson(CLE_DERNIER, r.id);
+  const show = useCallback((r: Reconciliation) => {
+    setCurrent(r);
+    writeJson(LAST_KEY, r.id);
   }, []);
 
   useEffect(() => {
-    rafraichirSante();
-    systemeApi
-      .parametrage()
-      .then(setParametrage)
-      .catch((e: unknown) => setParametrageError(enApiError(e)));
-    const dernier = readJson<string | null>(CLE_DERNIER, null);
-    rapprochementsApi
-      .liste()
-      .then((liste) => (setHistorique(liste), liste))
-      .then((liste) =>
-        dernier && liste.some((r) => r.id === dernier) ? rapprochementsApi.lire(dernier) : null,
+    refreshHealth();
+    systemApi
+      .clientConfig()
+      .then(setClientConfig)
+      .catch((e: unknown) => setClientConfigError(asApiError(e)));
+    const latest = readJson<string | null>(LAST_KEY, null);
+    reconciliationsApi
+      .list()
+      .then((list) => (setHistory(list), list))
+      .then((list) =>
+        latest && list.some((r) => r.id === latest) ? reconciliationsApi.read(latest) : null,
       )
-      .then((r) => r && setCourant(r))
+      .then((r) => r && setCurrent(r))
       .catch(() => undefined)
-      .finally(() => setChargement(null));
-  }, [rafraichirSante]);
+      .finally(() => setLoading(null));
+  }, [refreshHealth]);
 
-  const executer = useCallback(
-    async (etat: Chargement, appel: () => Promise<Rapprochement>) => {
-      setChargement(etat);
+  const runReconciliation = useCallback(
+    async (state: LoadingState, call: () => Promise<Reconciliation>) => {
+      setLoading(state);
       try {
-        const r = await appel();
-        afficher(r);
-        void rafraichirHistorique().catch(() => undefined);
+        const r = await call();
+        show(r);
+        void refreshHistory().catch(() => undefined);
         return r;
       } catch (e) {
-        throw enApiError(e);
+        throw asApiError(e);
       } finally {
-        setChargement(null);
+        setLoading(null);
       }
     },
-    [afficher, rafraichirHistorique],
+    [show, refreshHistory],
   );
 
-  const lancerExemple = useCallback(
-    () => executer("exemple", rapprochementsApi.exemple),
-    [executer],
+  const runSample = useCallback(
+    () => runReconciliation("sample", reconciliationsApi.sample),
+    [runReconciliation],
   );
-  const envoyer = useCallback(
-    (fichiers: FichierEnvoye[]) => executer("envoi", () => rapprochementsApi.creer(fichiers)),
-    [executer],
+  const upload = useCallback(
+    (files: UploadedFile[]) => runReconciliation("upload", () => reconciliationsApi.create(files)),
+    [runReconciliation],
   );
-  const ouvrir = useCallback(
+  const openReconciliation = useCallback(
     async (id: string) => {
-      await executer("lecture", () => rapprochementsApi.lire(id));
+      await runReconciliation("read", () => reconciliationsApi.read(id));
     },
-    [executer],
+    [runReconciliation],
   );
 
-  const valeur = useMemo(
+  const value = useMemo(
     () => ({
-      sante,
-      santeError,
-      parametrage,
-      parametrageError,
-      historique,
-      courant,
-      chargement,
-      lancerExemple,
-      envoyer,
-      ouvrir,
-      rafraichirSante,
+      health,
+      healthError,
+      clientConfig,
+      clientConfigError,
+      history,
+      current,
+      loading,
+      runSample,
+      upload,
+      openReconciliation,
+      refreshHealth,
     }),
     [
-      sante,
-      santeError,
-      parametrage,
-      parametrageError,
-      historique,
-      courant,
-      chargement,
-      lancerExemple,
-      envoyer,
-      ouvrir,
-      rafraichirSante,
+      health,
+      healthError,
+      clientConfig,
+      clientConfigError,
+      history,
+      current,
+      loading,
+      runSample,
+      upload,
+      openReconciliation,
+      refreshHealth,
     ],
   );
 
-  return <ReconciliationContext.Provider value={valeur}>{children}</ReconciliationContext.Provider>;
+  return <ReconciliationContext.Provider value={value}>{children}</ReconciliationContext.Provider>;
 }

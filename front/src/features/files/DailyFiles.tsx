@@ -12,20 +12,20 @@ import { useFileStaging } from "./useFileStaging";
 /** Fichiers du jour : la bande des 4 sources, en réception ou en cours de dépôt. */
 export function DailyFiles() {
   const { staged, error, sending, submit, clear, pick } = useFileStaging();
-  const depot = staged.length > 0;
-  const nonReconnus = staged.filter((s) => !sourceOf(s.file.name));
-  const pret = depot && staged.every((s) => !s.probleme);
+  const upload = staged.length > 0;
+  const unrecognized = staged.filter((s) => !sourceOf(s.file.name));
+  const ready = upload && staged.every((s) => !s.problem);
 
   return (
     <Section
       title="Fichiers du jour"
       aside={
-        depot ? (
+        upload ? (
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={clear} disabled={sending}>
               Annuler
             </Button>
-            <Button size="sm" onClick={submit} disabled={!pret || sending}>
+            <Button size="sm" onClick={submit} disabled={!ready || sending}>
               {sending ? "Envoi…" : `Rapprocher ces fichiers (${staged.length})`}
             </Button>
           </div>
@@ -38,21 +38,21 @@ export function DailyFiles() {
       }
     >
       <div className="grid grid-cols-2 divide-border overflow-hidden rounded-lg border border-border lg:grid-cols-4 lg:divide-x [&>*:nth-child(-n+2)]:border-b [&>*:nth-child(-n+2)]:border-border lg:[&>*:nth-child(-n+2)]:border-b-0 [&>*:nth-child(odd)]:border-r [&>*:nth-child(odd)]:border-border">
-        {depot ? <StagedStrip /> : <ReceivedStrip />}
+        {upload ? <StagedStrip /> : <ReceivedStrip />}
       </div>
-      {nonReconnus.length > 0 && (
+      {unrecognized.length > 0 && (
         <ul className="mt-2 space-y-1 text-xs">
-          {nonReconnus.map((s) => (
+          {unrecognized.map((s) => (
             <li key={s.file.name} className="flex items-center gap-2">
               <StatusLabel tone="amber">
                 <Mono>{s.file.name}</Mono>
               </StatusLabel>
-              <span className="text-muted-foreground">{s.probleme}</span>
+              <span className="text-muted-foreground">{s.problem}</span>
             </li>
           ))}
         </ul>
       )}
-      {!depot && (
+      {!upload && (
         <p className="mt-2 text-xs text-subtle">
           Glissez les fichiers n'importe où dans la page, ou utilisez « Déposer des fichiers ».
         </p>

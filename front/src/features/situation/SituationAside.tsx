@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { Section } from "@/components/Section";
 import { StatusLabel } from "@/components/StatusDot";
 import { useReconciliation } from "@/hooks/useReconciliation";
-import { NIVEAUX, ORDRE_NIVEAUX, ORDRE_TYPES, TYPES_COURTS } from "@/lib/metier";
-import type { Rapprochement } from "@/types/api";
+import { LEVELS, LEVEL_ORDER, TYPE_ORDER, SHORT_TYPES } from "@/lib/domain";
+import type { Reconciliation } from "@/types/api";
 import { FundCustodianMatrix } from "./FundCustodianMatrix";
 import { buildMatrix } from "./situationMatrix";
 
@@ -17,9 +17,9 @@ function Ligne({ label, value }: { label: ReactNode; value: number }) {
 }
 
 /** En appui du texte : où sont les suspens, de quel type, et ce qu'a fait le nettoyage. */
-export function SituationAside({ r }: { r: Rapprochement }) {
-  const { parametrage } = useReconciliation();
-  const matrix = buildMatrix(r.suspens, parametrage?.fonds ?? r.synthese.par_fonds);
+export function SituationAside({ r }: { r: Reconciliation }) {
+  const { clientConfig } = useReconciliation();
+  const matrix = buildMatrix(r.breaks, clientConfig?.fund ?? r.summary.by_fund);
   return (
     <div className="space-y-7">
       <Section title="Fonds × conservateur">
@@ -27,18 +27,18 @@ export function SituationAside({ r }: { r: Rapprochement }) {
       </Section>
       <Section title="Par type d'écart">
         <ul>
-          {ORDRE_TYPES.map((t) => (
-            <Ligne key={t} label={TYPES_COURTS[t]} value={r.synthese.par_type[t] ?? 0} />
+          {TYPE_ORDER.map((t) => (
+            <Ligne key={t} label={SHORT_TYPES[t]} value={r.summary.by_type[t] ?? 0} />
           ))}
         </ul>
       </Section>
       <Section title="Journal de nettoyage">
         <ul>
-          {ORDRE_NIVEAUX.map((n) => (
+          {LEVEL_ORDER.map((n) => (
             <Ligne
               key={n}
-              label={<StatusLabel tone={NIVEAUX[n].tone}>{NIVEAUX[n].label}</StatusLabel>}
-              value={r.synthese.journal[n] ?? 0}
+              label={<StatusLabel tone={LEVELS[n].tone}>{LEVELS[n].label}</StatusLabel>}
+              value={r.summary.cleaning_log[n] ?? 0}
             />
           ))}
         </ul>

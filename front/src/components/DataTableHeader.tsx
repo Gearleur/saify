@@ -17,7 +17,7 @@ export function DataTableHeader<T>({ columns, sort, onSort, inset }: DataTableHe
     <thead>
       <tr className="border-b border-border">
         {columns.map((c) => {
-          const actif = sort?.columnId === c.id;
+          const enabled = sort?.columnId === c.id;
           const classes = cn(
             "h-8 whitespace-nowrap px-3 text-xs font-medium text-muted-foreground",
             inset ? "first:pl-3 last:pr-3" : "first:pl-1 last:pr-1",
@@ -35,17 +35,17 @@ export function DataTableHeader<T>({ columns, sort, onSort, inset }: DataTableHe
             <th
               key={c.id}
               className={classes}
-              aria-sort={actif ? (sort?.direction === 1 ? "ascending" : "descending") : "none"}
+              aria-sort={enabled ? (sort?.direction === 1 ? "ascending" : "descending") : "none"}
             >
               <button
                 onClick={() => onSort(c.id)}
                 className={cn(
                   "inline-flex items-center gap-1 rounded-sm hover:text-foreground",
-                  actif && "text-foreground",
+                  enabled && "text-foreground",
                 )}
               >
                 {c.header}
-                {actif &&
+                {enabled &&
                   (sort?.direction === 1 ? (
                     <ArrowUp className="size-3" />
                   ) : (

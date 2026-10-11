@@ -1,38 +1,38 @@
 import { useMemo, useState } from "react";
 import type { FilterOption } from "@/components/FilterMenu";
-import { NIVEAUX, ORDRE_NIVEAUX } from "@/lib/metier";
-import type { Anomalie, Niveau } from "@/types/api";
+import { LEVELS, LEVEL_ORDER } from "@/lib/domain";
+import type { Anomaly, Level } from "@/types/api";
 
 /** NORMALISE est masqué par défaut : c'est de l'audit, pas de l'action. */
-const PAR_DEFAUT: Niveau[] = ["BLOQUANT", "SIGNALE", "EXCLU"];
+const DEFAULTS: Level[] = ["BLOQUANT", "SIGNALE", "EXCLU"];
 
-export function useJournalFilters(journal: Anomalie[]) {
-  const [niveaux, setNiveaux] = useState<string[]>(PAR_DEFAUT);
+export function useJournalFilters(cleaning_log: Anomaly[]) {
+  const [levels, setLevels] = useState<string[]>(DEFAULTS);
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return journal.filter(
+    return cleaning_log.filter(
       (a) =>
-        niveaux.includes(a.niveau) &&
+        levels.includes(a.level) &&
         (!q ||
-          [a.fichier, a.regle, a.motif, a.brut, a.retenu, a.remede].some((t) =>
+          [a.file, a.rule, a.reason, a.raw, a.kept, a.remedy].some((t) =>
             t.toLowerCase().includes(q),
           )),
     );
-  }, [journal, niveaux, query]);
+  }, [cleaning_log, levels, query]);
 
-  const options: FilterOption[] = ORDRE_NIVEAUX.map((n) => ({
+  const options: FilterOption[] = LEVEL_ORDER.map((n) => ({
     value: n,
-    label: NIVEAUX[n].label,
-    hint: NIVEAUX[n].description,
-    tone: NIVEAUX[n].tone,
-    count: journal.filter((a) => a.niveau === n).length,
+    label: LEVELS[n].label,
+    hint: LEVELS[n].description,
+    tone: LEVELS[n].tone,
+    count: cleaning_log.filter((a) => a.level === n).length,
   }));
 
-  const normalisationsMasquees = niveaux.includes("NORMALISE")
+  const normalizationsHidden = levels.includes("NORMALISE")
     ? 0
-    : journal.filter((a) => a.niveau === "NORMALISE").length;
+    : cleaning_log.filter((a) => a.level === "NORMALISE").length;
 
-  return { niveaux, setNiveaux, query, setQuery, filtered, options, normalisationsMasquees };
+  return { levels, setLevels, query, setQuery, filtered, options, normalizationsHidden };
 }

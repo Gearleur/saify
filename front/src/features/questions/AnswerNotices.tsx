@@ -5,12 +5,12 @@ import type { Vigilance } from "@/types/api";
 /** Vigilances (seuils internes, jamais un verdict réglementaire) puis avertissements de méthode. */
 export function AnswerNotices({
   vigilances,
-  avertissements,
+  warnings,
 }: {
   vigilances: Vigilance[];
-  avertissements: string[];
+  warnings: string[];
 }) {
-  if (vigilances.length === 0 && avertissements.length === 0) return null;
+  if (vigilances.length === 0 && warnings.length === 0) return null;
   return (
     <div className="space-y-3">
       {vigilances.map((v) => (
@@ -20,16 +20,16 @@ export function AnswerNotices({
             <p className="font-medium">{v.message}</p>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               Seuil de vigilance interne, pas un verdict réglementaire.
-              {v.emetteurs.map((e) => (
+              {v.issuers.map((e) => (
                 <Tag key={e}>{e}</Tag>
               ))}
             </p>
           </div>
         </div>
       ))}
-      {avertissements.length > 0 && (
+      {warnings.length > 0 && (
         <ul className="space-y-1 text-sm text-muted-foreground">
-          {avertissements.map((a) => (
+          {warnings.map((a) => (
             <li key={a} className="flex gap-2.5">
               <StatusDot tone="gray" className="mt-[7px]" />
               {a}

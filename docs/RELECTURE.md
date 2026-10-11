@@ -40,7 +40,7 @@ Chaque défaut a été **reproduit par un script avant d'être corrigé** (un te
 | Le front redétectait le CSDR **par regex** sur les messages | un message reformulé fait perdre le rouge | codes `alertes` et `explication` exposés par l'API |
 | Un achat de ligne nouvelle non dénoué (ABS_DEP expliqué à 100 %) restait « à relever » | du bruit dans la file du matin | absences entièrement expliquées → en attente |
 | Un libellé `=1+2` ressortait tel quel dans le CSV | Excel l'exécute à l'ouverture | cellules texte neutralisées |
-| Le contrôle des fichiers périmés existait mais **rien ne l'activait** | les fichiers d'avant-hier passaient | `DATE_ARRETE_ATTENDUE=auto` (J-1 ouvré TARGET2) |
+| Le contrôle des fichiers périmés existait mais **rien ne l'activait** | les fichiers d'avant-hier passaient | `EXPECTED_AS_OF_DATE=auto` (J-1 ouvré TARGET2) |
 | La décision du LLM n'était tracée nulle part côté serveur | règle « sortie tracée » non tenue | une ligne d'audit par question |
 | Le statut de traitement ne vivait que dans le navigateur | invisible pour le responsable, non auditable | statut partagé côté serveur, journal des changements |
 | `except Exception` : nos bugs devenaient « fichier illisible, redéposez-le » | l'opérateur redépose en boucle | seules les erreurs de format bloquent le fichier |

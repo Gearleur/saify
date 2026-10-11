@@ -59,11 +59,11 @@ export function DataTable<T>(props: DataTableProps<T>) {
     onSort,
     empty,
   } = props;
-  const sections: RowGroup<T>[] = groups ?? [{ id: "lignes", header: null, rows: rows ?? [] }];
+  const sections: RowGroup<T>[] = groups ?? [{ id: "rows", header: null, rows: rows ?? [] }];
   const total = sections.reduce((n, s) => n + s.rows.length, 0);
-  const retrait = groups ? "first:pl-3 last:pr-3" : "first:pl-1 last:pr-1";
+  const indent = groups ? "first:pl-3 last:pr-3" : "first:pl-1 last:pr-1";
 
-  const ligne = (row: T) => {
+  const line = (row: T) => {
     const id = getRowId(row);
     return (
       <tr
@@ -81,7 +81,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
         {columns.map((c) => (
           <td
             key={c.id}
-            className={cn("px-3 py-1.5", retrait, c.align === "right" && "text-right", c.className)}
+            className={cn("px-3 py-1.5", indent, c.align === "right" && "text-right", c.className)}
           >
             {c.cell(row)}
           </td>
@@ -110,12 +110,12 @@ export function DataTable<T>(props: DataTableProps<T>) {
             )}
             {s.rows.length === 0 && s.empty ? (
               <tr className="h-row border-b border-border">
-                <td colSpan={columns.length} className={cn("text-subtle", retrait)}>
+                <td colSpan={columns.length} className={cn("text-subtle", indent)}>
                   {s.empty}
                 </td>
               </tr>
             ) : (
-              s.rows.map(ligne)
+              s.rows.map(line)
             )}
           </tbody>
         ))}

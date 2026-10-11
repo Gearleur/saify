@@ -12,42 +12,42 @@ import {
 } from "@/components/ui/command";
 import { useFileStaging } from "@/features/files/useFileStaging";
 import { useRunExample } from "@/features/files/useRunExample";
-import { useSuspensSheet } from "@/features/suspens/useSuspensSheet";
+import { useBreakSheet } from "@/features/breaks/useBreakSheet";
 import { useHashRoute } from "@/hooks/useHashRoute";
 import { useReconciliation } from "@/hooks/useReconciliation";
-import { rapprochementsApi } from "@/lib/api";
-import { PRIORITES } from "@/lib/metier";
+import { reconciliationsApi } from "@/lib/api";
+import { PRIORITIES } from "@/lib/domain";
 import { ROUTE_DEFS } from "./routes";
 import { ThemeCommands } from "./ThemeCommands";
 
 /** « Poser la question » passe toujours après les vues, actions et suspens qui correspondent. */
-function filtrer(valeur: string, recherche: string): number {
-  if (valeur.startsWith("question ")) return 0.01;
-  const mots = recherche.toLowerCase().split(/\s+/).filter(Boolean);
-  const texte = valeur.toLowerCase();
-  return mots.every((m) => texte.includes(m)) ? 1 : 0;
+function applyFilter(value: string, search: string): number {
+  if (value.startsWith("question ")) return 0.01;
+  const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+  const text = value.toLowerCase();
+  return words.every((m) => text.includes(m)) ? 1 : 0;
 }
 
 /** Palette ⌘K : aller à une vue, lancer, déposer, exporter, chercher un suspens, poser une question. */
 export function CommandPalette({ onClose }: { onClose: () => void }) {
-  const [recherche, setRecherche] = useState("");
+  const [search, setSearch] = useState("");
   const { navigate } = useHashRoute();
-  const { courant } = useReconciliation();
-  const exemple = useRunExample();
+  const { current } = useReconciliation();
+  const sample = useRunExample();
   const { pick } = useFileStaging();
-  const sheet = useSuspensSheet();
-  const precedent = useRef<Element | null>(document.activeElement);
+  const sheet = useBreakSheet();
+  const previous = useRef<Element | null>(document.activeElement);
 
   useEffect(() => {
-    const focus = precedent.current;
+    const focus = previous.current;
     return () => (focus instanceof HTMLElement ? focus.focus() : undefined);
   }, []);
 
-  const faire = (action: () => void) => () => {
+  const act = (action: () => void) => () => {
     onClose();
     action();
   };
-  const question = recherche.trim();
+  const question = search.trim();
 
   return (
     <div
@@ -64,39 +64,39 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         <Command
           data-open
           loop
-          filter={filtrer}
+          filter={applyFilter}
           onKeyDown={(e) => e.key === "Escape" && (e.preventDefault(), onClose())}
         >
           <CommandInput
             autoFocus
-            value={recherche}
-            onValueChange={setRecherche}
+            value={search}
+            onValueChange={setSearch}
             placeholder="Aller à une vue, chercher un suspens, poser une question…"
           />
           <CommandList>
             <CommandEmpty>Aucun résultat.</CommandEmpty>
             <CommandGroup heading="Vues">
               {ROUTE_DEFS.map(({ id, title, icon: Icon }) => (
-                <CommandItem key={id} value={`vue ${title}`} onSelect={faire(() => navigate(id))}>
+                <CommandItem key={id} value={`vue ${title}`} onSelect={act(() => navigate(id))}>
                   <Icon />
                   {title}
                 </CommandItem>
               ))}
             </CommandGroup>
             <CommandGroup heading="Actions">
-              <CommandItem value={`action ${exemple.label}`} onSelect={faire(exemple.run)}>
+              <CommandItem value={`action ${sample.label}`} onSelect={act(sample.run)}>
                 <Play />
-                {exemple.label}
+                {sample.label}
               </CommandItem>
-              <CommandItem value="action déposer des fichiers" onSelect={faire(pick)}>
+              <CommandItem value="action déposer des fichiers" onSelect={act(pick)}>
                 <Upload />
                 Déposer des fichiers
               </CommandItem>
-              {courant && (
+              {current && (
                 <CommandItem
                   value="action exporter csv suspens"
-                  onSelect={faire(() =>
-                    window.location.assign(rapprochementsApi.csvUrl(courant.id)),
+                  onSelect={act(() =>
+                    window.location.assign(reconciliationsApi.csvUrl(current.id)),
                   )}
                 >
                   <Download />
@@ -105,26 +105,26 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               )}
             </CommandGroup>
             <ThemeCommands onDone={onClose} />
-            {courant && courant.suspens.length > 0 && (
+            {current && current.breaks.length > 0 && (
               <CommandGroup heading="Suspens">
-                {courant.suspens.map((s) => (
+                {current.breaks.map((s) => (
                   <CommandItem
                     key={s.id}
-                    value={`suspens ${s.libelle_titre} ${s.isin} ${s.fonds}`}
-                    onSelect={faire(
+                    value={`suspens ${s.security_name} ${s.isin} ${s.fund}`}
+                    onSelect={act(
                       () => (
                         navigate("suspens"),
                         sheet.open(
                           s.id,
-                          courant.suspens.map((x) => x.id),
+                          current.breaks.map((x) => x.id),
                         )
                       ),
                     )}
                   >
-                    <StatusDot tone={PRIORITES[s.priorite].tone} />
-                    <span className="truncate">{s.libelle_titre}</span>
+                    <StatusDot tone={PRIORITIES[s.priority].tone} />
+                    <span className="truncate">{s.security_name}</span>
                     <Mono className="text-subtle">{s.isin}</Mono>
-                    <span className="ml-auto text-xs text-subtle">{s.fonds}</span>
+                    <span className="ml-auto text-xs text-subtle">{s.fund}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -133,7 +133,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               <CommandGroup heading="Base de gestion">
                 <CommandItem
                   value={`question ${question}`}
-                  onSelect={faire(() => navigate("questions", { q: question }))}
+                  onSelect={act(() => navigate("questions", { q: question }))}
                 >
                   <MessageSquareText />
                   Poser la question :{" "}

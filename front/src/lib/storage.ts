@@ -1,17 +1,17 @@
 /** `localStorage` sûr : navigation privée, quota ou accès refusé ne cassent jamais l'interface. */
 
-export function readJson<T>(cle: string, defaut: T): T {
+export function readJson<T>(key: string, fallback: T): T {
   try {
-    const brut = window.localStorage.getItem(cle);
-    return brut === null ? defaut : (JSON.parse(brut) as T);
+    const raw = window.localStorage.getItem(key);
+    return raw === null ? fallback : (JSON.parse(raw) as T);
   } catch {
-    return defaut;
+    return fallback;
   }
 }
 
-export function writeJson(cle: string, valeur: unknown): void {
+export function writeJson(key: string, value: unknown): void {
   try {
-    window.localStorage.setItem(cle, JSON.stringify(valeur));
+    window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
     /* stockage indisponible : l'état reste en mémoire pour la session */
   }

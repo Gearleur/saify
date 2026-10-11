@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { DotTone } from "@/lib/metier";
+import type { DotTone } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 const TONES: Record<DotTone, string> = {

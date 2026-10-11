@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { compareDecimal, formatDecimal, isDecimal, isNegative, isZero } from "./decimal";
 
-const FINE = "\u202f";
+const THIN_SPACE = "\u202f";
 
 describe("formatDecimal", () => {
   it("groupe les milliers par une espace fine et garde la virgule décimale", () => {
-    expect(formatDecimal("250000")).toBe(`250${FINE}000`);
-    expect(formatDecimal("724836.00")).toBe(`724${FINE}836,00`);
+    expect(formatDecimal("250000")).toBe(`250${THIN_SPACE}000`);
+    expect(formatDecimal("724836.00")).toBe(`724${THIN_SPACE}836,00`);
   });
 
   it("écrit un vrai signe moins, et + seulement si demandé", () => {
-    expect(formatDecimal("-30000")).toBe(`\u221230${FINE}000`);
-    expect(formatDecimal("25000", true)).toBe(`+25${FINE}000`);
+    expect(formatDecimal("-30000")).toBe(`\u221230${THIN_SPACE}000`);
+    expect(formatDecimal("25000", true)).toBe(`+25${THIN_SPACE}000`);
     expect(formatDecimal("0", true)).toBe("0");
   });
 
@@ -22,7 +22,7 @@ describe("formatDecimal", () => {
 
   it("garde tous les chiffres d'un grand nombre (aucun passage par un flottant)", () => {
     expect(formatDecimal("12345678901234567.89")).toBe(
-      `12${FINE}345${FINE}678${FINE}901${FINE}234${FINE}567,89`,
+      `12${THIN_SPACE}345${THIN_SPACE}678${THIN_SPACE}901${THIN_SPACE}234${THIN_SPACE}567,89`,
     );
   });
 
@@ -36,8 +36,8 @@ describe("formatDecimal", () => {
 
 describe("compareDecimal", () => {
   it("trie exactement, négatifs d'abord, valeurs absentes en dernier", () => {
-    const valeurs = ["10", "-30000", "9.99", null, "0.1", "-2", "100"];
-    expect([...valeurs].sort(compareDecimal)).toEqual([
+    const values = ["10", "-30000", "9.99", null, "0.1", "-2", "100"];
+    expect([...values].sort(compareDecimal)).toEqual([
       "-30000",
       "-2",
       "0.1",

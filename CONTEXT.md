@@ -22,9 +22,30 @@
 - **Alerte** : code d'un signalement porté par un suspens (`CSDR`, `DEP_AMBIGU`, `ISIN_INVALIDE`, `PISTE_MULTI_CONSERVATEURS`). Le front et la priorité lisent les codes, jamais les messages.
 - **Doublon** : deux lignes d'une même source au même compte et ISIN (pour C : même compte, ISIN et lot). BLOQUANT, car additionnées elles pourraient égaler le PMS et masquer un écart (ADR 0003).
 - **Statut de traitement** : `à traiter`, `en cours`, `traité`. Il est partagé entre les postes et journalisé, avec une clé stable d'un rapprochement à l'autre du même arrêté.
-- **Date d'arrêté attendue** : J-1 ouvré (calendrier TARGET2) quand `DATE_ARRETE_ATTENDUE=auto` ; des fichiers d'une autre date sont refusés.
+- **Date d'arrêté attendue** : J-1 ouvré (calendrier TARGET2) quand `EXPECTED_AS_OF_DATE=auto` ; des fichiers d'une autre date sont refusés.
 - **Encours valorisé** : quantité × cours pour les actions ; nominal × cours / 100 pour les obligations (cours en % du nominal, pied de coupon, sans coupon couru).
 - **Règle de vigilance** : seuil interne de concentration (un émetteur au-delà de 10 % ; émetteurs au-delà de 5 % cumulant plus de 40 %). Attire l'attention, ne juge jamais la conformité réglementaire.
 - **Intention** : l'entrée du catalogue de questions que le LLM a reconnue (encours, échéances, concentration, opérations non dénouées, origine d'un suspens, hors catalogue).
 - **Réponse à côté** : un vrai chiffre, mais pour une autre question (autre date, titre ignoré). L'outil refuse d'en donner : « Attention » et reformulations (ADR 0003).
 - **Pièges des données** : formats FR (`1 234,56`, `dd/mm/yyyy`), séparateur `;`, décimales implicites, virgule décimale, ISIN en minuscules avec espaces, libellés de conservateur hétérogènes, namespace XML, lots multiples et annulations chez C.
+
+## Noms dans le code (ADR 0004)
+Le code est en anglais ; chaque terme métier a une seule traduction.
+
+| Métier (français) | Code (anglais) | | Métier (français) | Code (anglais) |
+|---|---|---|---|---|
+| rapprochement, rapprocher | `reconciliation`, `reconcile` | | date d'arrêté | `as_of_date` |
+| suspens | `break` (pluriel `breaks`) | | écart | `difference` |
+| conservateur, dépositaire | `custodian` | | type d'écart | `break_type` |
+| fonds | `fund` | | piste | `lead` |
+| entité | `entity` | | explication | `explanation` |
+| sous-compte | `sub_account` | | signalement, alerte | `flag`, `alerts` |
+| quantité PMS / conservateur | `pms_qty` / `custodian_qty` | | journal de nettoyage | `cleaning_log` |
+| point de situation | `status_report` | | remède | `remedy` |
+| paramétrage (client) | `client_config` | | transcodification | `mapping` |
+| statut de traitement | `work_status` | | dénouement | `settlement` |
+| encours valorisé | `fund_valuation` | | tombées d'échéances | `maturities` |
+| opérations non dénouées | `unsettled_trades` | | origine d'un suspens | `break_origin` |
+| intention | `intent` | | compréhension | `understanding` |
+| titre (valeur) | `security` | | émetteur | `issuer` |
+| reformulations | `suggestions` | | refus | `refusal` |

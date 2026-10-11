@@ -1,7 +1,7 @@
-import type { Comprehension, ReponseQuestion } from "@/types/api";
+import type { Understanding, QuestionAnswer } from "@/types/api";
 
 /** Ce que l'outil sait calculer (le catalogue du back), en mots de gérant. */
-export const INTENTIONS: Record<string, string> = {
+export const INTENTS: Record<string, string> = {
   ENCOURS: "Encours valorisé",
   ECHEANCES: "Tombées d'échéances",
   CONCENTRATION: "Concentration par émetteur",
@@ -10,7 +10,7 @@ export const INTENTIONS: Record<string, string> = {
   HORS_CATALOGUE: "Hors catalogue",
 };
 
-export const EXEMPLES = [
+export const EXAMPLES = [
   "Quel est l'encours du fonds OBL ?",
   "Quelles tombées d'échéances dans les 3 mois ?",
   "Quelle est la concentration par émetteur du fonds PAT ?",
@@ -27,12 +27,12 @@ export function formatConfidence(c: number): string {
 }
 
 /** « Encours valorisé, fonds OBL » : l'intention comprise et ses paramètres. */
-export function describeIntent(c: Comprehension): string {
-  const morceaux = [INTENTIONS[c.intention] ?? c.intention];
-  if (c.fonds) morceaux.push(`fonds ${c.fonds}`);
-  if (c.horizon_mois) morceaux.push(`${c.horizon_mois} mois`);
-  if (c.isin) morceaux.push(c.isin);
-  return morceaux.join(", ");
+export function describeIntent(c: Understanding): string {
+  const chunks = [INTENTS[c.intent] ?? c.intent];
+  if (c.fund) chunks.push(`fonds ${c.fund}`);
+  if (c.horizon_months) chunks.push(`${c.horizon_months} mois`);
+  if (c.isin) chunks.push(c.isin);
+  return chunks.join(", ");
 }
 
 /** Durée navigateur entre deux événements du flux. */
@@ -43,6 +43,6 @@ export function formatDuration(ms: number): string {
 }
 
 /** Réponse sans chiffre sûr (le back commence alors par « Attention : »). */
-export function isAttention(r: ReponseQuestion): boolean {
-  return r.chiffres.length === 0 || r.reponse.startsWith("Attention");
+export function isAttention(r: QuestionAnswer): boolean {
+  return r.figures.length === 0 || r.answer.startsWith("Attention");
 }

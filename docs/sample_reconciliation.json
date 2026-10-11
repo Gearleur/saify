@@ -1,0 +1,980 @@
+{
+  "id": "r_8f3a2c",
+  "created_at": "2026-10-10T14:03:22Z",
+  "as_of_date": "2026-09-25",
+  "status": "OK",
+  "files": [
+    {
+      "name": "positions_internes.csv",
+      "source": "PMS",
+      "size": 2597,
+      "sha256": "b0381ec158ad1d2f4eb2d446c305dd02593caeb4f00efd6b268b991871d47b6a"
+    },
+    {
+      "name": "depositaire_A_20260925.xlsx",
+      "source": "A",
+      "size": 15322,
+      "sha256": "832c80d69d297c5473447b33de623356d0670f7bc19a321094f798707836017f"
+    },
+    {
+      "name": "depositaire_B_20260925.txt",
+      "source": "B",
+      "size": 479,
+      "sha256": "a5040f9574958ed483eabf24ead547a0b02b007b65732888c936895384a99a3b"
+    },
+    {
+      "name": "depositaire_C_20260925.xml",
+      "source": "C",
+      "size": 2256,
+      "sha256": "91e1ed44e421233a6386baf215496d8400be6b5649be488fbfd4f76889f4f38a"
+    }
+  ],
+  "summary": {
+    "break_count": 7,
+    "by_priority": {
+      "critique": 0,
+      "a_relever": 5,
+      "en_attente": 2
+    },
+    "by_type": {
+      "QTE": 3,
+      "ABS_DEP": 2,
+      "ABS_INT": 1,
+      "DEP": 1
+    },
+    "by_fund": [
+      {
+        "code": "ACT",
+        "entity": "ORSAY ACTIONS EUROPE",
+        "break_count": 2
+      },
+      {
+        "code": "OBL",
+        "entity": "ORSAY OBLIGATIONS",
+        "break_count": 5
+      }
+    ],
+    "by_custodian": {
+      "A": 3,
+      "B": 2,
+      "A→B": 1,
+      "C": 1
+    },
+    "cleaning_log": {
+      "BLOQUANT": 0,
+      "SIGNALE": 2,
+      "EXCLU": 3,
+      "NORMALISE": 69
+    }
+  },
+  "breaks": [
+    {
+      "id": "S1",
+      "priority": "a_relever",
+      "fund": "OBL",
+      "entity": "ORSAY OBLIGATIONS",
+      "isin": "FR0000011488",
+      "security_name": "EDF 4% 2031",
+      "custodian": "A",
+      "type": "ABS_DEP",
+      "break_type_label": "Position interne absente chez le dépositaire",
+      "pms_qty": "40000",
+      "custodian_qty": null,
+      "difference": "40000",
+      "action": "Contacter le dépositaire",
+      "lead": "",
+      "explanation": "aucune",
+      "alerts": [],
+      "flags": [],
+      "sources": [
+        "positions_internes.csv:20"
+      ]
+    },
+    {
+      "id": "S2",
+      "priority": "a_relever",
+      "fund": "OBL",
+      "entity": "ORSAY OBLIGATIONS",
+      "isin": "FR0000012966",
+      "security_name": "ISIN SAISI A LA MAIN",
+      "custodian": "A",
+      "type": "ABS_DEP",
+      "break_type_label": "Position interne absente chez le dépositaire",
+      "pms_qty": "7000",
+      "custodian_qty": null,
+      "difference": "7000",
+      "action": "Contacter le dépositaire",
+      "lead": "",
+      "explanation": "aucune",
+      "alerts": [
+        "ISIN_INVALIDE"
+      ],
+      "flags": [
+        {
+          "code": "ISIN_INVALIDE",
+          "message": "ISIN à clé invalide, probable erreur de saisie"
+        }
+      ],
+      "sources": [
+        "positions_internes.csv:17"
+      ]
+    },
+    {
+      "id": "S3",
+      "priority": "a_relever",
+      "fund": "OBL",
+      "entity": "ORSAY OBLIGATIONS",
+      "isin": "FR0000999914",
+      "security_name": "LVMH 3.25% 2029",
+      "custodian": "B",
+      "type": "ABS_INT",
+      "break_type_label": "Position dépositaire absente du livre interne",
+      "pms_qty": null,
+      "custodian_qty": "30000",
+      "difference": "-30000",
+      "action": "Vérifier une saisie manquante",
+      "lead": "",
+      "explanation": "aucune",
+      "alerts": [],
+      "flags": [],
+      "sources": [
+        "depositaire_B_20260925.txt:14"
+      ]
+    },
+    {
+      "id": "S4",
+      "priority": "a_relever",
+      "fund": "OBL",
+      "entity": "ORSAY OBLIGATIONS",
+      "isin": "FR0000015927",
+      "security_name": "AFD 3.5% 2035",
+      "custodian": "A→B",
+      "type": "DEP",
+      "break_type_label": "Titre détenu chez un autre dépositaire que prévu",
+      "pms_qty": "250000",
+      "custodian_qty": "250000",
+      "difference": "0",
+      "action": "Corriger le référentiel dépositaire",
+      "lead": "",
+      "explanation": "aucune",
+      "alerts": [],
+      "flags": [],
+      "sources": [
+        "positions_internes.csv:36",
+        "depositaire_B_20260925.txt:10"
+      ]
+    },
+    {
+      "id": "S5",
+      "priority": "a_relever",
+      "fund": "OBL",
+      "entity": "ORSAY OBLIGATIONS",
+      "isin": "FR0000051641",
+      "security_name": "SFIL 3% 2033",
+      "custodian": "C",
+      "type": "QTE",
+      "break_type_label": "Quantité différente",
+      "pms_qty": "100000",
+      "custodian_qty": "50000",
+      "difference": "50000",
+      "action": "Vérifier les opérations de la veille non dénouées",
+      "lead": "",
+      "explanation": "aucune",
+      "alerts": [],
+      "flags": [],
+      "sources": [
+        "positions_internes.csv:21",
+        "depositaire_C_20260925.xml:6"
+      ]
+    },
+    {
+      "id": "S6",
+      "priority": "en_attente",
+      "fund": "ACT",
+      "entity": "ORSAY ACTIONS EUROPE",
+      "isin": "FR0000012965",
+      "security_name": "SCHNEIDER",
+      "custodian": "A",
+      "type": "QTE",
+      "break_type_label": "Quantité différente",
+      "pms_qty": "250000",
+      "custodian_qty": "225000",
+      "difference": "25000",
+      "action": "Vérifier les opérations de la veille non dénouées",
+      "lead": "op. n°19 ACHAT 25 000 dén. 26/09/2026 → écart entièrement expliqué",
+      "explanation": "totale",
+      "alerts": [],
+      "flags": [],
+      "sources": [
+        "positions_internes.csv:22",
+        "positions_internes.csv:29",
+        "depositaire_A_20260925.xlsx:7"
+      ]
+    },
+    {
+      "id": "S7",
+      "priority": "en_attente",
+      "fund": "ACT",
+      "entity": "ORSAY ACTIONS EUROPE",
+      "isin": "FR0000016297",
+      "security_name": "SAFRAN",
+      "custodian": "B",
+      "type": "QTE",
+      "break_type_label": "Quantité différente",
+      "pms_qty": "40000",
+      "custodian_qty": "41000",
+      "difference": "-1000",
+      "action": "Vérifier les opérations de la veille non dénouées",
+      "lead": "op. n°20 VENTE 1 000 dén. 29/09/2026 → écart entièrement expliqué",
+      "explanation": "totale",
+      "alerts": [],
+      "flags": [],
+      "sources": [
+        "positions_internes.csv:38",
+        "depositaire_B_20260925.txt:11"
+      ]
+    }
+  ],
+  "cleaning_log": [
+    {
+      "file": "positions_internes.csv",
+      "line": 2,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "EUROCLEAR FR",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 2,
+      "level": "NORMALISE",
+      "rule": "ISIN_FORMAT",
+      "raw": " fr0000014078 ",
+      "kept": "FR0000014078",
+      "reason": "espaces et casse retirés",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 3,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Caceis Bank France",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 3,
+      "level": "NORMALISE",
+      "rule": "ISIN_FORMAT",
+      "raw": " fr0000014441 ",
+      "kept": "FR0000014441",
+      "reason": "espaces et casse retirés",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 4,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "EUROCLEAR FR",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 4,
+      "level": "NORMALISE",
+      "rule": "ISIN_FORMAT",
+      "raw": " fr0000017774 ",
+      "kept": "FR0000017774",
+      "reason": "espaces et casse retirés",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 5,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS BANK",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 5,
+      "level": "NORMALISE",
+      "rule": "ISIN_FORMAT",
+      "raw": " fr0000016669 ",
+      "kept": "FR0000016669",
+      "reason": "espaces et casse retirés",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 6,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 7,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "BNP PARIBAS SECURITIES SERVICES",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 8,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Bnp Paribas SS",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 9,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Bnp Paribas SS",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 10,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "EUROCLEAR FRANCE",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 11,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Bnp Paribas SS",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 12,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "BP2S",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 13,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "BNP PARIBAS SECURITIES SERVICES",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 14,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "EUROCLEAR FRANCE",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 15,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 16,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "BP2S",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 17,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 18,
+      "level": "EXCLU",
+      "rule": "SANS_SOUS_COMPTE",
+      "raw": "2026-09-25;;FR0000011850;SANOFI;12345;EUROCLEAR FRANCE",
+      "kept": "",
+      "reason": "ligne sans sous-compte : anomalie de saisie",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 19,
+      "level": "EXCLU",
+      "rule": "P3G",
+      "raw": "2026-09-25;P3G;FR0000011116;BTF 3M;999999;CACEIS BANK",
+      "kept": "",
+      "reason": "compte technique de passage exclu",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 20,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS BANK",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 21,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "BNP PARIBAS SECURITIES SERVICES",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 22,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS BANK",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 23,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Euroclear",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 24,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "EUROCLEAR FRANCE",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 25,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Caceis Bank France",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 26,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Caceis Bank France",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 27,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Caceis Bank France",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 28,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Caceis Bank France",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 29,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Caceis Bank France",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 30,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS BANK",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 31,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Euroclear",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 32,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Caceis Bank France",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 33,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "EUROCLEAR FR",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 34,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "BNP PARIBAS SECURITIES SERVICES",
+      "kept": "C",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 35,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Euroclear",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 36,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "CACEIS",
+      "kept": "A",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 37,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "Euroclear",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 38,
+      "level": "NORMALISE",
+      "rule": "LIBELLE_CONSERVATEUR",
+      "raw": "EUROCLEAR FRANCE",
+      "kept": "B",
+      "reason": "libellé → code conservateur",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 4,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "10 000",
+      "kept": "10000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 5,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "100 000",
+      "kept": "100000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 6,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "10 000",
+      "kept": "10000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 7,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "225 000",
+      "kept": "225000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 8,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "5 000",
+      "kept": "5000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 9,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "40 000",
+      "kept": "40000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 10,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "5 000",
+      "kept": "5000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 11,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "500 000",
+      "kept": "500000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_A_20260925.xlsx",
+      "line": 12,
+      "level": "NORMALISE",
+      "rule": "SEPARATEUR_MILLIERS",
+      "raw": "5 000",
+      "kept": "5000",
+      "reason": "quantité texte → nombre",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 2,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000000500000",
+      "kept": "5000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 3,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000004000000",
+      "kept": "40000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 4,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000002500000",
+      "kept": "25000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 5,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000001000000",
+      "kept": "10000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 6,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000000500000",
+      "kept": "5000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 7,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000001000000",
+      "kept": "10000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 8,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000004000000",
+      "kept": "40000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 9,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000004000000",
+      "kept": "40000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 10,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000025000000",
+      "kept": "250000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 11,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000004100000",
+      "kept": "41000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 12,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000010000000",
+      "kept": "100000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 13,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000002500000",
+      "kept": "25000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_B_20260925.txt",
+      "line": 14,
+      "level": "NORMALISE",
+      "rule": "DECIMALES_IMPLICITES",
+      "raw": "000000003000000",
+      "kept": "30000.00",
+      "reason": "2 décimales implicites",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 1,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "50000,00",
+      "kept": "50000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 2,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "10000,00",
+      "kept": "10000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 3,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "150000,00",
+      "kept": "150000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 4,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "25000,00",
+      "kept": "25000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 5,
+      "level": "EXCLU",
+      "rule": "ANNULATION_S",
+      "raw": "{'ACTION': 'S', 'COMPTE': 'ORS-OBL', 'CODE_ISIN': 'FR0000051237', 'LIBELLE_TITRE': 'RTE 3.75% 2036', 'QUANTITE': '10000,00', 'LOT': '2'}",
+      "kept": "",
+      "reason": "item annulé (ACTION=S), ni ajouté ni soustrait",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 6,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "50000,00",
+      "kept": "50000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 7,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "10000,00",
+      "kept": "10000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 8,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "15000,00",
+      "kept": "15000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "depositaire_C_20260925.xml",
+      "line": 9,
+      "level": "NORMALISE",
+      "rule": "VIRGULE_DECIMALE",
+      "raw": "150000,00",
+      "kept": "150000.00",
+      "reason": "virgule décimale",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 17,
+      "level": "SIGNALE",
+      "rule": "ISIN_CLE_INVALIDE",
+      "raw": "FR0000012966",
+      "kept": "FR0000012966",
+      "reason": "clé de contrôle ISIN invalide : probable erreur de saisie",
+      "remedy": ""
+    },
+    {
+      "file": "positions_internes.csv",
+      "line": 17,
+      "level": "SIGNALE",
+      "rule": "ISIN_HORS_REFERENTIEL",
+      "raw": "FR0000012966",
+      "kept": "FR0000012966",
+      "reason": "ISIN absent du référentiel titres",
+      "remedy": ""
+    }
+  ]
+}

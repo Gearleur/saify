@@ -1,25 +1,25 @@
-import type { EvenementFlux, ReponseQuestion } from "@/types/api";
+import type { StreamEvent, QuestionAnswer } from "@/types/api";
 import { readSse } from "@/lib/sse";
 import { postJson, send } from "./http";
 
 const BASE = "/api/questions";
-const TYPES = new Set(["etape", "comprehension", "reponse", "erreur", "fin"]);
+const TYPES = new Set(["step", "understanding", "answer", "error", "end"]);
 
-function versEvenement(event: string, data: string): EvenementFlux | null {
+function toEvent(event: string, data: string): StreamEvent | null {
   if (!TYPES.has(event)) return null;
   try {
-    return { type: event, data: JSON.parse(data) } as EvenementFlux;
+    return { type: event, data: JSON.parse(data) } as StreamEvent;
   } catch {
     return null;
   }
 }
 
 export const questionsApi = {
-  poser: (question: string) => postJson<ReponseQuestion>(BASE, { question }),
+  ask: (question: string) => postJson<QuestionAnswer>(BASE, { question }),
 
   /** Flux SSE : la validation (422) et le rate limit (429) arrivent avant l'ouverture du flux. */
-  async *flux(question: string, signal?: AbortSignal): AsyncGenerator<EvenementFlux> {
-    const res = await send(`${BASE}/flux`, {
+  async *stream(question: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+    const res = await send(`${BASE}/stream`, {
       method: "POST",
       json: { question },
       headers: { Accept: "text/event-stream" },
@@ -27,9 +27,9 @@ export const questionsApi = {
     });
     if (!res.body) return;
     for await (const message of readSse(res.body, signal)) {
-      const evenement = versEvenement(message.event, message.data);
-      if (evenement) yield evenement;
-      if (evenement?.type === "fin") return;
+      const event = toEvent(message.event, message.data);
+      if (event) yield event;
+      if (event?.type === "end") return;
     }
   },
 };

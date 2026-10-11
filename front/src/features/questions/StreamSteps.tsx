@@ -4,18 +4,18 @@ import { cn } from "@/lib/utils";
 import { describeIntent, formatConfidence, formatDuration, sourceLabel } from "./catalogue";
 import type { QuestionRun } from "./types";
 
-type StepState = "fait" | "actif" | "attente";
+type StepState = "done" | "active" | "waiting";
 
 function Step({ state, title, detail }: { state: StepState; title: string; detail?: ReactNode }) {
   return (
     <li className="flex gap-2.5">
       <span className="mt-[3px] flex size-4 shrink-0 items-center justify-center">
-        {state === "fait" && <Check className="size-3.5 text-dot-green" strokeWidth={2.5} />}
-        {state === "actif" && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
-        {state === "attente" && <Circle className="size-2.5 text-border-strong" />}
+        {state === "done" && <Check className="size-3.5 text-dot-green" strokeWidth={2.5} />}
+        {state === "active" && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
+        {state === "waiting" && <Circle className="size-2.5 text-border-strong" />}
       </span>
-      <div className={cn("min-w-0 text-sm", state === "attente" && "text-subtle")}>
-        <p className={cn(state === "actif" && "font-medium")}>{title}</p>
+      <div className={cn("min-w-0 text-sm", state === "waiting" && "text-subtle")}>
+        <p className={cn(state === "active" && "font-medium")}>{title}</p>
         {detail && <p className="text-xs text-muted-foreground animate-fade-in">{detail}</p>}
       </div>
     </li>
@@ -24,29 +24,33 @@ function Step({ state, title, detail }: { state: StepState; title: string; detai
 
 /** Les étapes du flux, au fil de l'eau : analyse, intention comprise, requête, réponse. */
 export function StreamSteps({ run }: { run: QuestionRun }) {
-  const { comprehension: c, phase, t0, tComprehension, tReponse } = run;
-  if (phase === "erreur" && !c) return null;
-  if ((phase === "termine" || phase === "erreur") && c) {
+  const { understanding: c, phase, t0, tUnderstanding, tAnswer } = run;
+  if (phase === "error" && !c) return null;
+  if ((phase === "done" || phase === "error") && c) {
     return (
       <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Check className="size-3.5 text-dot-green" strokeWidth={2.5} />
           Comprise par {sourceLabel(c.source)}
-          {tComprehension ? ` en ${formatDuration(tComprehension - t0)}` : ""}
+          {tUnderstanding ? ` en ${formatDuration(tUnderstanding - t0)}` : ""}
         </span>
-        {run.reponse && (
+        {run.answer && (
           <span className="flex items-center gap-1.5">
             <Check className="size-3.5 text-dot-green" strokeWidth={2.5} />
             Requête en lecture seule
-            {tReponse && tComprehension ? ` en ${formatDuration(tReponse - tComprehension)}` : ""}
+            {tAnswer && tUnderstanding ? ` en ${formatDuration(tAnswer - tUnderstanding)}` : ""}
           </span>
         )}
       </p>
     );
   }
-  const analyse: StepState = c ? "fait" : "actif";
-  const calcul: StepState = run.reponse ? "fait" : phase === "calcul" ? "actif" : "attente";
-  const reponse: StepState = run.reponse ? "fait" : "attente";
+  const analyse: StepState = c ? "done" : "active";
+  const computeState: StepState = run.answer
+    ? "done"
+    : phase === "computing"
+      ? "active"
+      : "waiting";
+  const answer: StepState = run.answer ? "done" : "waiting";
   return (
     <ol className="space-y-2.5" aria-live="polite">
       <Step
@@ -54,23 +58,23 @@ export function StreamSteps({ run }: { run: QuestionRun }) {
         title={c ? "Question analysée" : "Analyse de la question…"}
         detail={
           c &&
-          `${describeIntent(c)}, par ${sourceLabel(c.source)}, confiance ${formatConfidence(c.confiance)}${tComprehension ? `, en ${formatDuration(tComprehension - t0)}` : ""}`
+          `${describeIntent(c)}, par ${sourceLabel(c.source)}, confiance ${formatConfidence(c.confidence)}${tUnderstanding ? `, en ${formatDuration(tUnderstanding - t0)}` : ""}`
         }
       />
       <Step
-        state={calcul}
+        state={computeState}
         title={
-          calcul === "fait"
+          computeState === "done"
             ? "Requête en lecture seule exécutée"
             : "Requête en lecture seule sur la base de gestion…"
         }
         detail={
-          calcul === "fait" && tReponse && tComprehension
-            ? `en ${formatDuration(tReponse - tComprehension)}`
+          computeState === "done" && tAnswer && tUnderstanding
+            ? `en ${formatDuration(tAnswer - tUnderstanding)}`
             : undefined
         }
       />
-      <Step state={reponse} title="Réponse" />
+      <Step state={answer} title="Réponse" />
     </ol>
   );
 }

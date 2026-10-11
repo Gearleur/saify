@@ -9,239 +9,239 @@ from middle_office.api.config import EXTENSIONS
 # Entrées : champs inconnus refusés
 
 
-class Entree(BaseModel):
+class Input(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class FichierEntree(Entree):
-    nom: str = Field(min_length=1, max_length=255)
-    contenu_b64: str
+class FileIn(Input):
+    name: str = Field(min_length=1, max_length=255)
+    content_b64: str
 
-    @field_validator("nom")
+    @field_validator("name")
     @classmethod
-    def nom_de_base(cls, nom: str) -> str:
-        if "/" in nom or "\\" in nom or ".." in nom or any(ord(c) < 32 for c in nom):
+    def base_name_only(cls, name: str) -> str:
+        if "/" in name or "\\" in name or ".." in name or any(ord(c) < 32 for c in name):
             raise ValueError(
                 "nom de base seul attendu (ni chemin, ni « .. », ni caractère de contrôle)"
             )
-        if not nom.lower().endswith(EXTENSIONS):
+        if not name.lower().endswith(EXTENSIONS):
             raise ValueError(f"extension non autorisée (attendu : {', '.join(EXTENSIONS)})")
-        return nom
+        return name
 
 
-class DemandeRapprochement(Entree):
-    fichiers: list[FichierEntree] = Field(min_length=1, max_length=8)
+class ReconciliationRequest(Input):
+    files: list[FileIn] = Field(min_length=1, max_length=8)
 
 
-StatutTraitement = Literal["a_traiter", "en_cours", "traite"]
+WorkStatus = Literal["a_traiter", "en_cours", "traite"]
 
 
-class ChangementStatut(Entree):
-    statut: StatutTraitement
+class WorkStatusChange(Input):
+    status: WorkStatus
 
 
-class Question(Entree):
+class Question(Input):
     question: str = Field(min_length=3, max_length=500)
 
     @field_validator("question")
     @classmethod
-    def texte_propre(cls, question: str) -> str:
+    def clean_text(cls, question: str) -> str:
         """Caractères de contrôle retirés, espaces normalisés : ce qui part au LLM et aux logs reste propre."""
-        nettoyee = " ".join("".join(c if c.isprintable() else " " for c in question).split())
-        if len(nettoyee) < 3:
+        cleaned = " ".join("".join(c if c.isprintable() else " " for c in question).split())
+        if len(cleaned) < 3:
             raise ValueError("question trop courte")
-        return nettoyee
+        return cleaned
 
 
 # Sorties : rapprochement
 
 
-class FichierSortie(BaseModel):
-    nom: str
+class FileOut(BaseModel):
+    name: str
     source: str
-    taille: int
+    size: int
     sha256: str
 
 
-class FondsSynthese(BaseModel):
+class FundSummary(BaseModel):
     code: str
-    entite: str
-    nb_suspens: int
+    entity: str
+    break_count: int
 
 
-class Synthese(BaseModel):
-    nb_suspens: int
-    par_priorite: dict[str, int]
-    par_type: dict[str, int]
-    par_fonds: list[FondsSynthese]
-    par_conservateur: dict[str, int]
-    journal: dict[str, int]
+class Summary(BaseModel):
+    break_count: int
+    by_priority: dict[str, int]
+    by_type: dict[str, int]
+    by_fund: list[FundSummary]
+    by_custodian: dict[str, int]
+    cleaning_log: dict[str, int]
 
 
-class SignalementSortie(BaseModel):
+class FlagOut(BaseModel):
     code: str  # CSDR, DEP_AMBIGU, ISIN_INVALIDE, PISTE_MULTI_CONSERVATEURS
     message: str
 
 
-class SuspensSortie(BaseModel):
+class BreakOut(BaseModel):
     id: str
-    priorite: str
-    fonds: str
-    entite: str
+    priority: str
+    fund: str
+    entity: str
     isin: str
-    libelle_titre: str
-    conservateur: str
+    security_name: str
+    custodian: str
     type: str
-    libelle_type: str
-    qte_pms: str | None
-    qte_dep: str | None
-    ecart: str
+    break_type_label: str
+    pms_qty: str | None
+    custodian_qty: str | None
+    difference: str
     action: str
-    piste: str
-    explication: str  # aucune, totale, partielle, contraire (par les opérations en attente)
-    alertes: list[str]  # codes des signalements, triés : ce que lit l'interface, jamais le texte
-    signalements: list[SignalementSortie]
+    lead: str
+    explanation: str  # aucune, totale, partielle, contraire (par les opérations en attente)
+    alerts: list[str]  # codes des signalements, triés : ce que lit l'interface, jamais le texte
+    flags: list[FlagOut]
     sources: list[str]
 
 
-class AnomalieSortie(BaseModel):
-    fichier: str
-    ligne: int
-    niveau: str
-    regle: str
-    brut: str
-    retenu: str
-    motif: str
-    remede: str
+class AnomalyOut(BaseModel):
+    file: str
+    line: int
+    level: str
+    rule: str
+    raw: str
+    kept: str
+    reason: str
+    remedy: str
 
 
-class Rapprochement(BaseModel):
+class Reconciliation(BaseModel):
     id: str
-    cree_le: str
-    date_arrete: str | None  # lue dans le PMS ; None si absente ou ambiguë (rapprochement BLOQUE)
-    statut: str
-    fichiers: list[FichierSortie]
-    synthese: Synthese
-    suspens: list[SuspensSortie]
-    journal: list[AnomalieSortie]
+    created_at: str
+    as_of_date: str | None  # lue dans le PMS ; None si absente ou ambiguë (rapprochement BLOQUE)
+    status: str
+    files: list[FileOut]
+    summary: Summary
+    breaks: list[BreakOut]
+    cleaning_log: list[AnomalyOut]
 
 
-class RapprochementResume(BaseModel):
+class ReconciliationSummary(BaseModel):
     id: str
-    cree_le: str
-    date_arrete: str | None  # lue dans le PMS ; None si absente ou ambiguë (rapprochement BLOQUE)
-    statut: str
-    nb_suspens: int
-    nb_a_traiter: int
+    created_at: str
+    as_of_date: str | None  # lue dans le PMS ; None si absente ou ambiguë (rapprochement BLOQUE)
+    status: str
+    break_count: int
+    open_count: int
 
 
-class StatutsTraitement(BaseModel):
+class WorkStatuses(BaseModel):
     """Statut de chaque suspens du rapprochement (id S1…Sn) ; absent = « a_traiter »."""
 
-    statuts: dict[str, StatutTraitement]
+    statuses: dict[str, WorkStatus]
 
 
-class StatutSuspens(BaseModel):
-    suspens: str
-    statut: StatutTraitement
-    modifie_le: str
+class BreakWorkStatus(BaseModel):
+    break_id: str
+    status: WorkStatus
+    updated_at: str
 
 
-class PointDeSituation(BaseModel):
-    texte: str
+class StatusReport(BaseModel):
+    text: str
 
 
 # Sorties : santé et référentiel
 
 
-class EtatLLM(BaseModel):
-    actif: bool
-    modele: str
-    appels_aujourdhui: int
-    budget_jour: int
+class LlmState(BaseModel):
+    enabled: bool
+    model: str
+    calls_today: int
+    daily_budget: int
 
 
-class Sante(BaseModel):
-    statut: str
+class Health(BaseModel):
+    status: str
     version: str
-    date_arrete: str | None  # date de référence de la base de gestion (dernières positions)
-    base_disponible: bool
-    llm: EtatLLM
+    as_of_date: str | None  # date de référence de la base de gestion (dernières positions)
+    db_available: bool
+    llm: LlmState
 
 
-class Fonds(BaseModel):
-    entite: str
+class Fund(BaseModel):
+    entity: str
     code: str
 
 
-class Conservateur(BaseModel):
+class Custodian(BaseModel):
     code: str
-    nom: str
+    name: str
 
 
-class TypeEcart(BaseModel):
+class BreakType(BaseModel):
     code: str
-    libelle: str
-    action_attendue: str
+    label: str
+    expected_action: str
 
 
-class Transco(BaseModel):
-    cle: str
-    entite: str
+class Mapping(BaseModel):
+    key: str
+    entity: str
 
 
-class ParametrageSortie(BaseModel):
-    date_arrete: str | None
-    fonds: list[Fonds]
-    conservateurs: list[Conservateur]
-    types_ecarts: list[TypeEcart]
-    transcos: dict[str, list[Transco]]
+class ClientConfigOut(BaseModel):
+    as_of_date: str | None
+    fund: list[Fund]
+    custodians: list[Custodian]
+    break_types: list[BreakType]
+    mappings: dict[str, list[Mapping]]
     exclusions: list[str]
 
 
 # Sorties : questions sur la base (besoin 2)
 
 
-class ChiffreSortie(BaseModel):
-    libelle: str
-    valeur: str  # décimal en texte
-    unite: str
+class FigureOut(BaseModel):
+    label: str
+    value: str  # décimal en texte
+    unit: str
 
 
-class LigneSourceSortie(BaseModel):
+class SourceRowOut(BaseModel):
     table: str
-    valeurs: dict[str, str]
+    values: dict[str, str]
 
 
-class VigilanceSortie(BaseModel):
+class VigilanceOut(BaseModel):
     code: str
     message: str
-    emetteurs: list[str]
-    valeur: str  # en %
+    issuers: list[str]
+    value: str  # en %
 
 
-class ComprehensionSortie(BaseModel):
-    intention: str
-    fonds: str | None
-    horizon_mois: int | None
+class UnderstandingOut(BaseModel):
+    intent: str
+    fund: str | None
+    horizon_months: int | None
     isin: str | None
     source: str  # llm ou mots_cles
-    confiance: float
+    confidence: float
     detail: str
-    date_demandee: str | None = (
+    requested_date: str | None = (
         None  # date citée dans la question (AAAA-MM-JJ ou expression relative)
     )
 
 
-class ReponseQuestion(BaseModel):
+class QuestionAnswer(BaseModel):
     question: str
-    reponse: str
-    chiffres: list[ChiffreSortie]
-    requete_sql: str
-    parametres_sql: dict[str, str | None]
-    lignes_sources: list[LigneSourceSortie]
-    confiance: str
-    avertissements: list[str]
-    vigilances: list[VigilanceSortie]
-    reformulations: list[str]
-    comprehension: ComprehensionSortie
+    answer: str
+    figures: list[FigureOut]
+    sql_query: str
+    sql_params: dict[str, str | None]
+    source_rows: list[SourceRowOut]
+    confidence: str
+    warnings: list[str]
+    vigilances: list[VigilanceOut]
+    suggestions: list[str]
+    understanding: UnderstandingOut

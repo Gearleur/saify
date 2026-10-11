@@ -1,28 +1,28 @@
 import { useMemo } from "react";
-import { useStatuts } from "@/features/suspens/statutsTraitement";
-import { ORDRE_PRIORITES } from "@/lib/metier";
-import type { Priorite, Rapprochement, Suspens } from "@/types/api";
+import { useWorkStatuses } from "@/features/breaks/workStatuses";
+import { PRIORITY_ORDER } from "@/lib/domain";
+import type { Priority, Reconciliation, Break } from "@/types/api";
 
 export interface TriageGroup {
-  priorite: Priorite;
-  rows: Suspens[];
+  priority: Priority;
+  rows: Break[];
 }
 
 /** File du matin : suspens groupés par priorité (ordre du back), anomalies hors suspens, avancement local. */
-export function useTriage(r: Rapprochement | null) {
-  const { get } = useStatuts(r);
+export function useTriage(r: Reconciliation | null) {
+  const { get } = useWorkStatuses(r);
   return useMemo(() => {
-    const suspens = r?.suspens ?? [];
-    const groups: TriageGroup[] = ORDRE_PRIORITES.map((priorite) => ({
-      priorite,
-      rows: suspens.filter((s) => s.priorite === priorite),
+    const breaks = r?.breaks ?? [];
+    const groups: TriageGroup[] = PRIORITY_ORDER.map((priority) => ({
+      priority,
+      rows: breaks.filter((s) => s.priority === priority),
     }));
-    const horsSuspens = (r?.journal ?? []).filter(
-      (a) => a.niveau === "EXCLU" || a.niveau === "SIGNALE",
+    const offQueue = (r?.cleaning_log ?? []).filter(
+      (a) => a.level === "EXCLU" || a.level === "SIGNALE",
     );
-    const blocages = (r?.journal ?? []).filter((a) => a.niveau === "BLOQUANT");
-    const traites = suspens.filter((s) => get(s) === "traite").length;
+    const blockers = (r?.cleaning_log ?? []).filter((a) => a.level === "BLOQUANT");
+    const treated = breaks.filter((s) => get(s) === "traite").length;
     const ids = groups.flatMap((g) => g.rows.map((s) => s.id));
-    return { groups, horsSuspens, blocages, traites, ids, total: suspens.length };
+    return { groups, offQueue, blockers, treated, ids, total: breaks.length };
   }, [r, get]);
 }

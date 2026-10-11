@@ -24,7 +24,7 @@ Ouvrez http://127.0.0.1:8000, puis cliquez sur **« Lancer sur les fichiers d'ex
 
 **La clé Anthropic est facultative.** Sans clé, l'outil fonctionne entièrement : les questions sont comprises par mots-clés au lieu du LLM. Pour activer le LLM : `cp .env.example .env`, puis renseignez `ANTHROPIC_API_KEY`. Le fichier `.env` est ignoré par git.
 
-**En production**, `DATE_ARRETE_ATTENDUE=auto` refuse des fichiers qui ne sont pas arrêtés à J-1 ouvré (calendrier TARGET2). Laissée vide (par défaut), la démo sur les fichiers du 25/09 fonctionne.
+**En production**, `EXPECTED_AS_OF_DATE=auto` refuse des fichiers qui ne sont pas arrêtés à J-1 ouvré (calendrier TARGET2). Laissée vide (par défaut), la démo sur les fichiers du 25/09 fonctionne.
 
 ### Front et back sur deux serveurs séparés (développement)
 
@@ -122,28 +122,28 @@ question ─► LLM (Claude Haiku 5.5) ─► intention typée, validée par pyd
 
 ```
 middle_office/
-├── domaine/                  métier pur, sans HTTP ni framework
-│   ├── rapprochement/        besoin 1
-│   │   ├── sources/          un lecteur par source (pms, depositaire_a/b/c), paramétrage, journal commun
-│   │   └── moteur.py         orchestration ; suspens, comparaison, informations (orsay.db), controles, situation
-│   ├── questions/            besoin 2 : comprehension (LLM, mots-clés), titres, dates, refus, vigilance
-│   │   └── catalogue/        une requête par intention : valorisation, echeances, operations, origine
-│   └── base_gestion.py · formats.py   orsay.db en lecture seule (3 verrous) · écritures françaises en Decimal
+├── domain/                   métier pur, sans HTTP ni framework
+│   ├── reconciliation/       besoin 1
+│   │   ├── sources/          un lecteur par source (pms, custodian_a/b/c), client_config, journal commun
+│   │   └── engine.py         orchestration ; breaks, comparison, db_context (orsay.db), checks, status_report
+│   ├── questions/            besoin 2 : understanding (LLM, mots-clés), securities, dates, refusal, vigilance
+│   │   └── catalog/          une requête par intention : valuation, maturities, trades, break_origin
+│   └── management_db.py · formats.py   orsay.db en lecture seule (3 verrous) · écritures françaises en Decimal
 ├── api/                      FastAPI (contrat : docs/API.md)
-│   ├── routes/               systeme · rapprochements · questions (JSON et flux SSE) · web
-│   ├── services/             dépôt, exécution, historique et statuts (SQLite), questions et audit, référentiel, encadrement du LLM
+│   ├── routes/               system · reconciliations · questions (JSON et flux SSE) · web
+│   ├── services/             upload, reconciliations, history et statuses (SQLite), questions (audit), reference_data, llm
 │   ├── middleware.py         request id, rate limit, taille des requêtes, en-têtes de sécurité, logs
-│   └── config.py · schemas.py · erreurs.py · limiteur.py · dependances.py · app.py
+│   └── config.py · schemas.py · errors.py · rate_limit.py · dependencies.py · app.py
 └── web/                      build du front (généré)
 front/src/                    React + TypeScript + Tailwind + shadcn/ui (architecture : docs/FRONT.md)
 ├── types/ · lib/api/         contrat d'API typé, client HTTP et SSE, formatage décimal sans float
 ├── components/ · components/ui/   composants partagés, primitives shadcn
-├── features/                 triage · files · suspens · situation · journal · questions · settings
+├── features/                 triage · files · breaks · situation · journal · questions · settings
 └── app/                      coquille, barre latérale, routes, palette ⌘K
 tests/                        245 tests Python, oracles calculés à la main (front : 21 tests vitest)
 ```
 
-Le domaine ne sait rien du HTTP, et l'API ne connaît aucun format de fichier : ajouter un quatrième conservateur, c'est écrire un lecteur. Sécurité : CSP stricte sans aucun tiers (`'self'` partout, polices servies par l'application), en-têtes de sécurité, erreurs sans trace interne, validation de chaque entrée, refus des XML piégés (`DOCTYPE`/`ENTITY`).
+Le code est en anglais, l'interface et la documentation en français ([ADR 0004](docs/adr/0004-code-en-anglais.md)). Le domaine ne sait rien du HTTP, et l'API ne connaît aucun format de fichier : ajouter un quatrième conservateur, c'est écrire un lecteur. Sécurité : CSP stricte sans aucun tiers (`'self'` partout, polices servies par l'application), en-têtes de sécurité, erreurs sans trace interne, validation de chaque entrée, refus des XML piégés (`DOCTYPE`/`ENTITY`).
 
 ## Les choix, et pourquoi
 

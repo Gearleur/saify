@@ -1,7 +1,7 @@
 import { Section } from "@/components/Section";
 import { StatusDot } from "@/components/StatusDot";
 import { cn } from "@/lib/utils";
-import { EXEMPLES } from "./catalogue";
+import { EXAMPLES } from "./catalogue";
 import { LlmIndicator } from "./LlmIndicator";
 import { sessionStore, useQuestionSession } from "./sessionStore";
 import { runTone } from "./runTone";
@@ -14,7 +14,7 @@ export function QuestionsRail({ onAsk, busy }: { onAsk: (q: string) => void; bus
       <LlmIndicator />
       <Section title="Exemples">
         <ul className="-mx-1">
-          {EXEMPLES.map((q) => (
+          {EXAMPLES.map((q) => (
             <li key={q}>
               <button
                 disabled={busy}
@@ -43,7 +43,7 @@ export function QuestionsRail({ onAsk, busy }: { onAsk: (q: string) => void; bus
                 >
                   <StatusDot
                     tone={runTone(r)}
-                    pulse={r.phase === "comprehension" || r.phase === "calcul"}
+                    pulse={r.phase === "understanding" || r.phase === "computing"}
                   />
                   <span className="truncate">{r.question}</span>
                 </button>

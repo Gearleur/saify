@@ -5,10 +5,10 @@ import { useToast } from "./useToast";
 export function useCopy() {
   const { toast } = useToast();
   return useCallback(
-    async (texte: string, quoi: string) => {
+    async (text: string, subject: string) => {
       try {
-        await navigator.clipboard.writeText(texte);
-        toast({ title: `${quoi} copié`, description: "Prêt à coller dans un mail." });
+        await navigator.clipboard.writeText(text);
+        toast({ title: `${subject} copié`, description: "Prêt à coller dans un mail." });
       } catch {
         toast({
           title: "Copie impossible",

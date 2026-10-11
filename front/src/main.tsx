@@ -14,10 +14,10 @@ import "./index.css";
 // Avant le premier rendu : data-theme est posé avant que React ne peigne quoi que ce soit.
 initTheme();
 
-const racine = document.getElementById("root");
-if (!racine) throw new Error("#root absent de index.html");
+const root = document.getElementById("root");
+if (!root) throw new Error("#root absent de index.html");
 
-createRoot(racine).render(
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,

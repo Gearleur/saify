@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { DotTone } from "@/lib/metier";
+import type { DotTone } from "@/lib/domain";
 
 export interface ToastInput {
   title: string;

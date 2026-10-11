@@ -3,52 +3,53 @@
  * Format français : milliers séparés par une espace fine insécable, virgule décimale, vrai signe moins.
  */
 
-const FINE = "\u202f"; // espace fine insécable (séparateur de milliers)
-const MOINS = "\u2212"; // vrai signe moins, pas le trait d'union
-const MOTIF = /^([+-])?(\d+)(?:\.(\d+))?$/;
+const THIN_SPACE = "\u202f"; // espace fine insécable (séparateur de milliers)
+const MINUS = "\u2212"; // vrai signe moins, pas le trait d'union
+const PATTERN = /^([+-])?(\d+)(?:\.(\d+))?$/;
 
 interface Parts {
-  negatif: boolean;
-  entier: string;
+  negative: boolean;
+  integerPart: string;
   fraction: string;
 }
 
-function decouper(valeur: string): Parts | null {
-  const m = MOTIF.exec(valeur.trim());
+function split(value: string): Parts | null {
+  const m = PATTERN.exec(value.trim());
   if (!m) return null;
-  const entier = (m[2] ?? "0").replace(/^0+(?=\d)/, "");
+  const integerPart = (m[2] ?? "0").replace(/^0+(?=\d)/, "");
   const fraction = m[3] ?? "";
-  const nul = /^0*$/.test(entier) && /^0*$/.test(fraction);
-  return { negatif: m[1] === "-" && !nul, entier, fraction };
+  const zero = /^0*$/.test(integerPart) && /^0*$/.test(fraction);
+  return { negative: m[1] === "-" && !zero, integerPart, fraction };
 }
 
-function grouper(entier: string): string {
-  return entier.replace(/\B(?=(\d{3})+(?!\d))/g, FINE);
+function groupThousands(integerPart: string): string {
+  return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, THIN_SPACE);
 }
 
-export function isZero(valeur: string | null | undefined): boolean {
-  const p = valeur == null ? null : decouper(valeur);
-  return p !== null && /^0*$/.test(p.entier) && /^0*$/.test(p.fraction);
+export function isZero(value: string | null | undefined): boolean {
+  const p = value == null ? null : split(value);
+  return p !== null && /^0*$/.test(p.integerPart) && /^0*$/.test(p.fraction);
 }
 
-export function isNegative(valeur: string | null | undefined): boolean {
-  return valeur != null && (decouper(valeur)?.negatif ?? false);
+export function isNegative(value: string | null | undefined): boolean {
+  return value != null && (split(value)?.negative ?? false);
 }
 
 /** `"-1000"` → `−1 000` ; `signed` ajoute `+` devant un écart positif. Valeur illisible : rendue telle quelle. */
-export function formatDecimal(valeur: string | null | undefined, signed = false): string {
-  if (valeur == null || valeur === "") return "—";
-  const p = decouper(valeur);
-  if (!p) return valeur;
-  const corps = grouper(p.entier) + (p.fraction ? `,${p.fraction}` : "");
-  if (p.negatif) return MOINS + corps;
-  if (signed && !isZero(valeur)) return `+${corps}`;
-  return corps;
+export function formatDecimal(value: string | null | undefined, signed = false): string {
+  if (value == null || value === "") return "—";
+  const p = split(value);
+  if (!p) return value;
+  const body = groupThousands(p.integerPart) + (p.fraction ? `,${p.fraction}` : "");
+  if (p.negative) return MINUS + body;
+  if (signed && !isZero(value)) return `+${body}`;
+  return body;
 }
 
-function comparerAbsolus(a: Parts, b: Parts): number {
-  if (a.entier.length !== b.entier.length) return a.entier.length - b.entier.length;
-  if (a.entier !== b.entier) return a.entier < b.entier ? -1 : 1;
+function compareAbsolute(a: Parts, b: Parts): number {
+  if (a.integerPart.length !== b.integerPart.length)
+    return a.integerPart.length - b.integerPart.length;
+  if (a.integerPart !== b.integerPart) return a.integerPart < b.integerPart ? -1 : 1;
   const n = Math.max(a.fraction.length, b.fraction.length);
   const fa = a.fraction.padEnd(n, "0");
   const fb = b.fraction.padEnd(n, "0");
@@ -57,14 +58,14 @@ function comparerAbsolus(a: Parts, b: Parts): number {
 
 /** Tri décimal exact ; `null` et les valeurs illisibles passent en dernier. */
 export function compareDecimal(a: string | null, b: string | null): number {
-  const pa = a == null ? null : decouper(a);
-  const pb = b == null ? null : decouper(b);
+  const pa = a == null ? null : split(a);
+  const pb = b == null ? null : split(b);
   if (!pa || !pb) return pa ? -1 : pb ? 1 : 0;
-  if (pa.negatif !== pb.negatif) return pa.negatif ? -1 : 1;
-  const abs = comparerAbsolus(pa, pb);
-  return pa.negatif ? -abs : abs;
+  if (pa.negative !== pb.negative) return pa.negative ? -1 : 1;
+  const abs = compareAbsolute(pa, pb);
+  return pa.negative ? -abs : abs;
 }
 
-export function isDecimal(valeur: string): boolean {
-  return decouper(valeur) !== null;
+export function isDecimal(value: string): boolean {
+  return split(value) !== null;
 }

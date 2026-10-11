@@ -4,7 +4,7 @@ import type { ApiError } from "@/lib/api";
 export interface StagedFile {
   file: File;
   /** Contrôle local avant envoi (extension, taille, nom). */
-  probleme: string | null;
+  problem: string | null;
 }
 
 export interface FileStagingValue {

@@ -7,23 +7,23 @@ import { useAnnounceResult } from "./useAnnounceResult";
 
 /** Lancer sur les fichiers d'exemple ; le libellé porte la date de la base, jamais une date en dur. */
 export function useRunExample() {
-  const { sante, lancerExemple, chargement } = useReconciliation();
+  const { health, runSample, loading } = useReconciliation();
   const { navigate } = useHashRoute();
-  const annoncer = useAnnounceResult();
-  const signalerErreur = useErrorToast();
+  const announce = useAnnounceResult();
+  const reportError = useErrorToast();
 
   const run = useCallback(async () => {
     try {
-      const r = await lancerExemple();
-      annoncer(r);
+      const r = await runSample();
+      announce(r);
       navigate("a-traiter");
     } catch (e) {
-      signalerErreur(e);
+      reportError(e);
     }
-  }, [lancerExemple, annoncer, signalerErreur, navigate]);
+  }, [runSample, announce, reportError, navigate]);
 
-  const label = sante
-    ? `Lancer sur les fichiers d'exemple (${formatDateShort(sante.date_arrete)})`
+  const label = health
+    ? `Lancer sur les fichiers d'exemple (${formatDateShort(health.as_of_date)})`
     : "Lancer sur les fichiers d'exemple";
-  return { run, label, busy: chargement === "exemple" };
+  return { run, label, busy: loading === "sample" };
 }

@@ -1,4 +1,4 @@
-import type { DotTone } from "@/lib/metier";
+import type { DotTone } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "./StatusDot";
 
@@ -16,7 +16,7 @@ export function KpiRow({ items, className }: { items: Kpi[]; className?: string 
   return (
     <div className={cn("flex flex-wrap divide-x divide-border", className)}>
       {items.map((kpi) => {
-        const contenu = (
+        const content = (
           <>
             <span className="flex items-center gap-2 text-xs text-muted-foreground">
               {kpi.tone && <StatusDot tone={kpi.tone} />}
@@ -36,11 +36,11 @@ export function KpiRow({ items, className }: { items: Kpi[]; className?: string 
               "rounded-sm transition-colors duration-150 hover:[&>span:nth-child(2)]:text-link",
             )}
           >
-            {contenu}
+            {content}
           </button>
         ) : (
           <div key={kpi.id} className={classes}>
-            {contenu}
+            {content}
           </div>
         );
       })}

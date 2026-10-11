@@ -2,7 +2,7 @@
 front/package-lock.json linguist-generated=true
 uv.lock linguist-generated=true
 middle_office/web/** linguist-generated=true
-docs/exemple_rapprochement.json linguist-generated=true
+docs/sample_reconciliation.json linguist-generated=true
 
 # Exports de conversations Claude Code : archive, pas du code.
 docs/sessions/** linguist-documentation=true

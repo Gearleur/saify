@@ -8,7 +8,7 @@ interface ErrorNoticeProps {
   className?: string;
 }
 
-function detailsLisibles(details: unknown): string[] {
+function readableDetails(details: unknown): string[] {
   if (!Array.isArray(details)) return [];
   return details
     .map((d) => {
@@ -23,8 +23,8 @@ function detailsLisibles(details: unknown): string[] {
 
 /** Erreur du contrat, sobre : un point, le message de l'API, et le délai `Retry-After` d'un 429. */
 export function ErrorNotice({ error, className }: ErrorNoticeProps) {
-  const restant = useCountdown(error.retryAfter);
-  const details = detailsLisibles(error.details);
+  const remaining = useCountdown(error.retryAfter);
+  const details = readableDetails(error.details);
   return (
     <div
       role="alert"
@@ -39,7 +39,9 @@ export function ErrorNotice({ error, className }: ErrorNoticeProps) {
           <p className="font-medium">{error.message}</p>
           {error.status === 429 && (
             <p className="text-muted-foreground">
-              {restant > 0 ? `Nouvel essai possible dans ${restant} s.` : "Vous pouvez réessayer."}
+              {remaining > 0
+                ? `Nouvel essai possible dans ${remaining} s.`
+                : "Vous pouvez réessayer."}
             </p>
           )}
           {details.map((d) => (

@@ -1,12 +1,12 @@
 import { DataTable } from "@/components/DataTable";
 import { Section } from "@/components/Section";
 import { Button } from "@/components/ui/button";
-import { anomalieId, JOURNAL_COLUMNS } from "@/features/journal/journalColumns";
+import { anomalyId, LOG_COLUMNS } from "@/features/journal/journalColumns";
 import { useHashRoute } from "@/hooks/useHashRoute";
-import type { Anomalie } from "@/types/api";
+import type { Anomaly } from "@/types/api";
 
 /** Écarté ou signalé au nettoyage : les seules lignes du journal qui méritent l'œil de l'opérateur. */
-export function OffQueueAnomalies({ items }: { items: Anomalie[] }) {
+export function OffQueueAnomalies({ items }: { items: Anomaly[] }) {
   const { navigate } = useHashRoute();
   return (
     <Section
@@ -24,8 +24,8 @@ export function OffQueueAnomalies({ items }: { items: Anomalie[] }) {
         <DataTable
           label="Anomalies hors suspens"
           rows={items}
-          columns={JOURNAL_COLUMNS}
-          getRowId={anomalieId}
+          columns={LOG_COLUMNS}
+          getRowId={anomalyId}
         />
       )}
     </Section>

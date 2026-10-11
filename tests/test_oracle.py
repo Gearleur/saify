@@ -3,11 +3,11 @@
 from decimal import Decimal
 from pathlib import Path
 
-from middle_office import rapprocher_dossier
+from middle_office import reconcile_folder
 
-DONNEES = Path(__file__).resolve().parents[1] / "data" / "donnees"
+DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "donnees"
 
-ATTENDU = {
+EXPECTED = {
     ("ACT", "FR0000012965", "A", "QTE", Decimal(250000), Decimal(225000)),
     ("ACT", "FR0000016297", "B", "QTE", Decimal(40000), Decimal(41000)),
     ("OBL", "FR0000051641", "C", "QTE", Decimal(100000), Decimal(50000)),
@@ -19,29 +19,29 @@ ATTENDU = {
 
 
 def test_sept_suspens_exacts():
-    resultat = rapprocher_dossier(DONNEES)
-    obtenu = {
-        (s.fonds, s.isin, s.conservateur, s.type, s.qte_pms, s.qte_dep) for s in resultat.suspens
+    result = reconcile_folder(DATA_DIR)
+    obtained = {
+        (s.fund, s.isin, s.custodian, s.type, s.pms_qty, s.custodian_qty) for s in result.breaks
     }
-    assert obtenu == ATTENDU
+    assert obtained == EXPECTED
 
 
 def test_action_lue_dans_le_parametrage():
-    resultat = rapprocher_dossier(DONNEES)
-    dep = next(s for s in resultat.suspens if s.type == "DEP")
-    assert dep.action == "Corriger le référentiel dépositaire"
+    result = reconcile_folder(DATA_DIR)
+    custodian_positions = next(s for s in result.breaks if s.type == "DEP")
+    assert custodian_positions.action == "Corriger le référentiel dépositaire"
 
 
 def test_piste_mouvement_en_attente():
-    resultat = rapprocher_dossier(DONNEES)
-    pistes = {s.isin: s.piste for s in resultat.suspens}
-    assert pistes["FR0000012965"].startswith("op. n°19 ACHAT 25 000 dén. 26/09/2026")
-    assert pistes["FR0000016297"].startswith("op. n°20 VENTE 1 000 dén. 29/09/2026")
-    assert pistes["FR0000051641"] == ""
+    result = reconcile_folder(DATA_DIR)
+    leads = {s.isin: s.lead for s in result.breaks}
+    assert leads["FR0000012965"].startswith("op. n°19 ACHAT 25 000 dén. 26/09/2026")
+    assert leads["FR0000016297"].startswith("op. n°20 VENTE 1 000 dén. 29/09/2026")
+    assert leads["FR0000051641"] == ""
 
 
 def test_trois_exclusions_tracees():
-    resultat = rapprocher_dossier(DONNEES)
-    exclus = [a for a in resultat.journal if a.niveau == "EXCLU"]
-    assert {a.regle for a in exclus} == {"SANS_SOUS_COMPTE", "P3G", "ANNULATION_S"}
-    assert len(exclus) == 3
+    result = reconcile_folder(DATA_DIR)
+    excluded = [a for a in result.cleaning_log if a.level == "EXCLU"]
+    assert {a.rule for a in excluded} == {"SANS_SOUS_COMPTE", "P3G", "ANNULATION_S"}
+    assert len(excluded) == 3

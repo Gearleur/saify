@@ -8,26 +8,26 @@ interface ToastItem extends ToastInput {
 }
 
 const MAX = 3;
-const DUREE = 4200;
+const DURATION = 4200;
 
 /** Toasts discrets : blancs, un point de couleur, trois au plus, en bas à droite. */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
-  const suivant = useRef(0);
+  const next = useRef(0);
 
-  const fermer = useCallback((id: number) => setItems((l) => l.filter((t) => t.id !== id)), []);
+  const dismiss = useCallback((id: number) => setItems((l) => l.filter((t) => t.id !== id)), []);
   const toast = useCallback(
     (input: ToastInput) => {
-      const id = ++suivant.current;
+      const id = ++next.current;
       setItems((l) => [...l, { ...input, id }].slice(-MAX));
-      window.setTimeout(() => fermer(id), DUREE);
+      window.setTimeout(() => dismiss(id), DURATION);
     },
-    [fermer],
+    [dismiss],
   );
-  const valeur = useMemo(() => ({ toast }), [toast]);
+  const value = useMemo(() => ({ toast }), [toast]);
 
   return (
-    <ToastContext.Provider value={valeur}>
+    <ToastContext.Provider value={value}>
       {children}
       <ol
         aria-live="polite"
@@ -44,7 +44,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               {t.description && <p className="text-sm text-muted-foreground">{t.description}</p>}
             </div>
             <button
-              onClick={() => fermer(t.id)}
+              onClick={() => dismiss(t.id)}
               aria-label="Fermer"
               className="rounded p-0.5 text-subtle hover:text-foreground"
             >

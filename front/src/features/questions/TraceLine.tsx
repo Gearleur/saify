@@ -1,20 +1,20 @@
 import { Mono } from "@/components/Mono";
-import type { Comprehension } from "@/types/api";
+import type { Understanding } from "@/types/api";
 import { formatConfidence, sourceLabel } from "./catalogue";
 
 /** Traçabilité de la compréhension : ce que le LLM (ou le repli) a retenu, et pourquoi. */
-export function TraceLine({ c }: { c: Comprehension }) {
-  const paires: [string, string][] = [
-    ["intention", c.intention],
+export function TraceLine({ c }: { c: Understanding }) {
+  const pairs: [string, string][] = [
+    ["intention", c.intent],
     ["source", sourceLabel(c.source)],
-    ["confiance", formatConfidence(c.confiance)],
+    ["confiance", formatConfidence(c.confidence)],
   ];
-  if (c.fonds) paires.push(["fonds", c.fonds]);
-  if (c.horizon_mois) paires.push(["horizon", `${c.horizon_mois} mois`]);
-  if (c.isin) paires.push(["isin", c.isin]);
+  if (c.fund) pairs.push(["fonds", c.fund]);
+  if (c.horizon_months) pairs.push(["horizon", `${c.horizon_months} mois`]);
+  if (c.isin) pairs.push(["isin", c.isin]);
   return (
     <p className="flex flex-wrap gap-x-4 gap-y-1 text-subtle">
-      {paires.map(([k, v]) => (
+      {pairs.map(([k, v]) => (
         <Mono key={k}>
           {k} <span className="text-muted-foreground">{v}</span>
         </Mono>

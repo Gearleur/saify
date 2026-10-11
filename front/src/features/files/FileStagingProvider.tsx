@@ -2,23 +2,23 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useHashRoute } from "@/hooks/useHashRoute";
 import { useReconciliation } from "@/hooks/useReconciliation";
 import { ApiError } from "@/lib/api";
-import { checkFile, encodeFiles, EXTENSIONS, NB_MAX } from "@/lib/files";
+import { checkFile, encodeFiles, EXTENSIONS, MAX_FILES } from "@/lib/files";
 import { useAnnounceResult } from "./useAnnounceResult";
 import { FileStagingContext, type StagedFile } from "./useFileStaging";
 
 export function FileStagingProvider({ children }: { children: ReactNode }) {
-  const { envoyer, chargement } = useReconciliation();
+  const { upload, loading } = useReconciliation();
   const { navigate } = useHashRoute();
-  const annoncer = useAnnounceResult();
+  const announce = useAnnounceResult();
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [error, setError] = useState<ApiError | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   const add = useCallback((files: FileList | File[]) => {
-    const nouveaux = Array.from(files).map((file) => ({ file, probleme: checkFile(file) }));
+    const added = Array.from(files).map((file) => ({ file, problem: checkFile(file) }));
     setStaged((l) => [
-      ...l.filter((s) => !nouveaux.some((n) => n.file.name === s.file.name)),
-      ...nouveaux,
+      ...l.filter((s) => !added.some((n) => n.file.name === s.file.name)),
+      ...added,
     ]);
     setError(null);
   }, []);
@@ -30,29 +30,29 @@ export function FileStagingProvider({ children }: { children: ReactNode }) {
   const pick = useCallback(() => input.current?.click(), []);
 
   const submit = useCallback(async () => {
-    const fichiers = staged.map((s) => s.file);
-    if (fichiers.length > NB_MAX) {
-      setError(new ApiError(0, "VALIDATION", `Au plus ${NB_MAX} fichiers par rapprochement.`));
+    const files = staged.map((s) => s.file);
+    if (files.length > MAX_FILES) {
+      setError(new ApiError(0, "VALIDATION", `Au plus ${MAX_FILES} fichiers par rapprochement.`));
       return;
     }
     setError(null);
     try {
-      const r = await envoyer(await encodeFiles(fichiers));
+      const r = await upload(await encodeFiles(files));
       setStaged([]);
-      annoncer(r);
+      announce(r);
       navigate("a-traiter");
     } catch (e) {
       setError(e instanceof ApiError ? e : new ApiError(0, "INCONNU", "Envoi impossible."));
     }
-  }, [staged, envoyer, annoncer, navigate]);
+  }, [staged, upload, announce, navigate]);
 
-  const valeur = useMemo(
-    () => ({ staged, error, sending: chargement === "envoi", add, remove, clear, submit, pick }),
-    [staged, error, chargement, add, remove, clear, submit, pick],
+  const value = useMemo(
+    () => ({ staged, error, sending: loading === "upload", add, remove, clear, submit, pick }),
+    [staged, error, loading, add, remove, clear, submit, pick],
   );
 
   return (
-    <FileStagingContext.Provider value={valeur}>
+    <FileStagingContext.Provider value={value}>
       {children}
       <input
         ref={input}

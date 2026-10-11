@@ -1,19 +1,19 @@
 import type { Column } from "@/components/DataTable";
 import { Mono } from "@/components/Mono";
 import { StatusLabel } from "@/components/StatusDot";
-import { NIVEAUX, ORDRE_NIVEAUX } from "@/lib/metier";
-import type { Anomalie } from "@/types/api";
+import { LEVELS, LEVEL_ORDER } from "@/lib/domain";
+import type { Anomaly } from "@/types/api";
 
-export const anomalieId = (a: Anomalie) => `${a.fichier}:${a.ligne}:${a.regle}:${a.niveau}`;
+export const anomalyId = (a: Anomaly) => `${a.file}:${a.line}:${a.rule}:${a.level}`;
 
-function Motif({ a }: { a: Anomalie }) {
+function Reason({ a }: { a: Anomaly }) {
   return (
     <div className="py-0.5">
-      <p>{a.motif}</p>
-      {a.remede && (
+      <p>{a.reason}</p>
+      {a.remedy && (
         <p className="text-muted-foreground">
           <span className="font-medium text-foreground">Que faire : </span>
-          {a.remede}
+          {a.remedy}
         </p>
       )}
     </div>
@@ -21,13 +21,13 @@ function Motif({ a }: { a: Anomalie }) {
 }
 
 /** Colonnes du journal de nettoyage (vue Journal et anomalies hors suspens de la matinée). */
-export const JOURNAL_COLUMNS: Column<Anomalie>[] = [
+export const LOG_COLUMNS: Column<Anomaly>[] = [
   {
-    id: "niveau",
+    id: "level",
     header: "Niveau",
     className: "w-[112px] whitespace-nowrap",
-    cell: (a) => <StatusLabel tone={NIVEAUX[a.niveau].tone}>{NIVEAUX[a.niveau].label}</StatusLabel>,
-    compare: (a, b) => ORDRE_NIVEAUX.indexOf(a.niveau) - ORDRE_NIVEAUX.indexOf(b.niveau),
+    cell: (a) => <StatusLabel tone={LEVELS[a.level].tone}>{LEVELS[a.level].label}</StatusLabel>,
+    compare: (a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level),
   },
   {
     id: "source",
@@ -35,30 +35,35 @@ export const JOURNAL_COLUMNS: Column<Anomalie>[] = [
     className: "whitespace-nowrap",
     cell: (a) => (
       <Mono className="block max-w-[260px] truncate">
-        {a.fichier}
-        <span className="text-subtle">:{a.ligne}</span>
+        {a.file}
+        <span className="text-subtle">:{a.line}</span>
       </Mono>
     ),
-    compare: (a, b) => a.fichier.localeCompare(b.fichier) || a.ligne - b.ligne,
+    compare: (a, b) => a.file.localeCompare(b.file) || a.line - b.line,
   },
   {
-    id: "regle",
+    id: "rule",
     header: "Règle",
     className: "hidden whitespace-nowrap @3xl:table-cell",
     cell: (a) => (
-      <Mono className="block max-w-[200px] truncate text-muted-foreground">{a.regle}</Mono>
+      <Mono className="block max-w-[200px] truncate text-muted-foreground">{a.rule}</Mono>
     ),
-    compare: (a, b) => a.regle.localeCompare(b.regle),
+    compare: (a, b) => a.rule.localeCompare(b.rule),
   },
-  { id: "motif", header: "Motif", className: "w-full min-w-[260px]", cell: (a) => <Motif a={a} /> },
   {
-    id: "brut",
+    id: "reason",
+    header: "Motif",
+    className: "w-full min-w-[260px]",
+    cell: (a) => <Reason a={a} />,
+  },
+  {
+    id: "raw",
     header: "Valeur brute → retenue",
     className: "hidden whitespace-nowrap @5xl:table-cell",
     cell: (a) => (
-      <Mono className="block max-w-[280px] truncate text-muted-foreground" title={a.brut}>
-        {a.brut || "∅"}
-        {a.retenu && <span className="text-foreground"> → {a.retenu}</span>}
+      <Mono className="block max-w-[280px] truncate text-muted-foreground" title={a.raw}>
+        {a.raw || "∅"}
+        {a.kept && <span className="text-foreground"> → {a.kept}</span>}
       </Mono>
     ),
   },

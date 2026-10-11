@@ -8,38 +8,38 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
-from middle_office import rapprocher_dossier
-from middle_office.domaine.formats import formater_quantite
+from middle_office import reconcile_folder
+from middle_office.domain.formats import format_quantity
 
 
-def _qte(q: Decimal | None) -> str:
-    return "-" if q is None else formater_quantite(q)
+def _qty(q: Decimal | None) -> str:
+    return "-" if q is None else format_quantity(q)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    dossier = Path(args[0] if args else "data/donnees")
-    resultat = rapprocher_dossier(dossier)
-    print(f"Statut : {resultat.statut} · {len(resultat.suspens)} suspens\n")
-    for s in resultat.suspens:
+    folder = Path(args[0] if args else "data/donnees")
+    result = reconcile_folder(folder)
+    print(f"Statut : {result.status} · {len(result.breaks)} suspens\n")
+    for s in result.breaks:
         print(
-            f"{s.fonds or s.entite:<5} {s.isin:<12} {s.conservateur:<5} {s.type:<7} "
-            f"PMS {_qte(s.qte_pms):>9}  Dép. {_qte(s.qte_dep):>9}  {s.libelle_titre}"
+            f"{s.fund or s.entity:<5} {s.isin:<12} {s.custodian:<5} {s.type:<7} "
+            f"PMS {_qty(s.pms_qty):>9}  Dép. {_qty(s.custodian_qty):>9}  {s.security_name}"
         )
         print(f"      → {s.action}")
-        if s.piste:
-            print(f"      piste : {s.piste}")
-        for sig in s.signalements:
+        if s.lead:
+            print(f"      piste : {s.lead}")
+        for sig in s.flags:
             print(f"      ⚠ {sig.message}")
-    normalises = sum(a.niveau == "NORMALISE" for a in resultat.journal)
-    print(f"\nJournal ({normalises} normalisations non détaillées) :")
-    for a in resultat.journal:
-        if a.niveau != "NORMALISE":
-            print(f"  {a.niveau:<9} {a.regle:<21} {a.fichier}:{a.ligne}  {a.motif}")
-            if a.remede:
-                print(f"            → {a.remede}")
+    normalized = sum(a.level == "NORMALISE" for a in result.cleaning_log)
+    print(f"\nJournal ({normalized} normalisations non détaillées) :")
+    for a in result.cleaning_log:
+        if a.level != "NORMALISE":
+            print(f"  {a.level:<9} {a.rule:<21} {a.file}:{a.line}  {a.reason}")
+            if a.remedy:
+                print(f"            → {a.remedy}")
 
-    return 1 if resultat.statut == "BLOQUE" else 0
+    return 1 if result.status == "BLOQUE" else 0
 
 
 if __name__ == "__main__":

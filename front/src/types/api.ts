@@ -8,229 +8,229 @@ export type Decimal = string;
 /** Date ISO `YYYY-MM-DD`. */
 export type IsoDate = string;
 
-export type Priorite = "critique" | "a_relever" | "en_attente";
-export type TypeEcart = "QTE" | "ABS_DEP" | "ABS_INT" | "DEP";
-export type Niveau = "NORMALISE" | "EXCLU" | "SIGNALE" | "BLOQUANT";
-export type StatutRapprochement = "OK" | "BLOQUE";
-export type SourceFichier = "PMS" | "A" | "B" | "C";
+export type Priority = "critique" | "a_relever" | "en_attente";
+export type BreakType = "QTE" | "ABS_DEP" | "ABS_INT" | "DEP";
+export type Level = "NORMALISE" | "EXCLU" | "SIGNALE" | "BLOQUANT";
+export type ReconciliationStatus = "OK" | "BLOQUE";
+export type FileSource = "PMS" | "A" | "B" | "C";
 
-export interface ErreurApi {
-  erreur: { code: string; message: string; details?: unknown };
+export interface ErrorBody {
+  error: { code: string; message: string; details?: unknown };
 }
 
-export interface EtatLlm {
-  actif: boolean;
-  modele: string;
-  appels_aujourdhui: number;
-  budget_jour: number;
+export interface LlmState {
+  enabled: boolean;
+  model: string;
+  calls_today: number;
+  daily_budget: number;
 }
 
-export interface Sante {
-  statut: string;
+export interface Health {
+  status: string;
   version: string;
   /** Date de référence de la base de gestion (dernière date de positions dans orsay.db). */
-  date_arrete: IsoDate;
-  base_disponible: boolean;
-  llm: EtatLlm;
+  as_of_date: IsoDate;
+  db_available: boolean;
+  llm: LlmState;
 }
 
-export interface Fonds {
-  entite: string;
+export interface Fund {
+  entity: string;
   code: string;
 }
 
-export interface Conservateur {
+export interface Custodian {
   code: string;
-  nom: string;
+  name: string;
 }
 
-export interface TypeEcartParam {
+export interface BreakTypeSetting {
   code: string;
-  libelle: string;
-  action_attendue: string;
+  label: string;
+  expected_action: string;
 }
 
-export interface Transco {
-  cle: string;
-  entite: string;
+export interface Mapping {
+  key: string;
+  entity: string;
 }
 
-export interface Parametrage {
-  date_arrete: IsoDate;
-  fonds: Fonds[];
-  conservateurs: Conservateur[];
-  types_ecarts: TypeEcartParam[];
-  transcos: Record<string, Transco[]>;
+export interface ClientConfig {
+  as_of_date: IsoDate;
+  fund: Fund[];
+  custodians: Custodian[];
+  break_types: BreakTypeSetting[];
+  mappings: Record<string, Mapping[]>;
   exclusions: string[];
 }
 
-export interface FichierRecu {
-  nom: string;
-  source: SourceFichier | string;
-  taille: number;
+export interface ReceivedFile {
+  name: string;
+  source: FileSource | string;
+  size: number;
   sha256: string;
 }
 
-export interface FondsSynthese {
+export interface FundSummary {
   code: string;
-  entite: string;
-  nb_suspens: number;
+  entity: string;
+  break_count: number;
 }
 
-export interface Synthese {
-  nb_suspens: number;
-  par_priorite: Record<Priorite, number>;
-  par_type: Partial<Record<TypeEcart, number>>;
-  par_fonds: FondsSynthese[];
-  par_conservateur: Record<string, number>;
-  journal: Partial<Record<Niveau, number>>;
+export interface Summary {
+  break_count: number;
+  by_priority: Record<Priority, number>;
+  by_type: Partial<Record<BreakType, number>>;
+  by_fund: FundSummary[];
+  by_custodian: Record<string, number>;
+  cleaning_log: Partial<Record<Level, number>>;
 }
 
-export interface Suspens {
+export interface Break {
   id: string;
-  priorite: Priorite;
-  fonds: string;
-  entite: string;
+  priority: Priority;
+  fund: string;
+  entity: string;
   isin: string;
-  libelle_titre: string;
+  security_name: string;
   /** `A`, `B`, `C`, ou `A→B` pour un DEP (attendu chez A, trouvé chez B). */
-  conservateur: string;
-  type: TypeEcart;
-  libelle_type: string;
-  qte_pms: Decimal | null;
-  qte_dep: Decimal | null;
-  ecart: Decimal;
+  custodian: string;
+  type: BreakType;
+  break_type_label: string;
+  pms_qty: Decimal | null;
+  custodian_qty: Decimal | null;
+  difference: Decimal;
   action: string;
-  piste: string;
+  lead: string;
   /** Ce que les opérations en attente expliquent de l'écart (calcul signé, côté back). */
-  explication: Explication;
+  explanation: Explanation;
   /** Codes des signalements : c'est eux qu'on lit, jamais le texte des messages. */
-  alertes: Alerte[];
-  signalements: Signalement[];
+  alerts: Alert[];
+  flags: Flag[];
   sources: string[];
 }
 
-export type Explication = "aucune" | "totale" | "partielle" | "contraire";
-export type Alerte = "CSDR" | "DEP_AMBIGU" | "ISIN_INVALIDE" | "PISTE_MULTI_CONSERVATEURS";
+export type Explanation = "aucune" | "totale" | "partielle" | "contraire";
+export type Alert = "CSDR" | "DEP_AMBIGU" | "ISIN_INVALIDE" | "PISTE_MULTI_CONSERVATEURS";
 
-export interface Signalement {
-  code: Alerte;
+export interface Flag {
+  code: Alert;
   message: string;
 }
 
 /** Statut de traitement d'un suspens, partagé entre les postes (absent = « a_traiter »). */
-export type StatutTraitement = "a_traiter" | "en_cours" | "traite";
+export type WorkStatus = "a_traiter" | "en_cours" | "traite";
 
-export interface StatutsTraitement {
-  statuts: Record<string, StatutTraitement>;
+export interface WorkStatuses {
+  statuses: Record<string, WorkStatus>;
 }
 
-export interface StatutSuspens {
-  suspens: string;
-  statut: StatutTraitement;
-  modifie_le: string;
+export interface BreakWorkStatus {
+  break_id: string;
+  status: WorkStatus;
+  updated_at: string;
 }
 
-export interface Anomalie {
-  fichier: string;
-  ligne: number;
-  niveau: Niveau;
-  regle: string;
-  brut: string;
-  retenu: string;
-  motif: string;
-  remede: string;
+export interface Anomaly {
+  file: string;
+  line: number;
+  level: Level;
+  rule: string;
+  raw: string;
+  kept: string;
+  reason: string;
+  remedy: string;
 }
 
-export interface Rapprochement {
+export interface Reconciliation {
   id: string;
-  cree_le: string;
+  created_at: string;
   /** `null` si le PMS est absent ou porte plusieurs dates (le rapprochement est alors BLOQUE). */
-  date_arrete: IsoDate | null;
-  statut: StatutRapprochement;
-  fichiers: FichierRecu[];
-  synthese: Synthese;
-  suspens: Suspens[];
-  journal: Anomalie[];
+  as_of_date: IsoDate | null;
+  status: ReconciliationStatus;
+  files: ReceivedFile[];
+  summary: Summary;
+  breaks: Break[];
+  cleaning_log: Anomaly[];
 }
 
-export interface RapprochementResume {
+export interface ReconciliationSummary {
   id: string;
-  cree_le: string;
-  date_arrete: IsoDate | null;
-  statut: StatutRapprochement;
-  nb_suspens: number;
-  nb_a_traiter: number;
+  created_at: string;
+  as_of_date: IsoDate | null;
+  status: ReconciliationStatus;
+  break_count: number;
+  open_count: number;
 }
 
-export interface PointDeSituation {
-  texte: string;
+export interface StatusReport {
+  text: string;
 }
 
-export interface FichierEnvoye {
-  nom: string;
-  contenu_b64: string;
+export interface UploadedFile {
+  name: string;
+  content_b64: string;
 }
 
 /* Besoin 2 : questions sur la base de gestion */
 
-export type Intention =
+export type Intent =
   "ENCOURS" | "ECHEANCES" | "CONCENTRATION" | "NON_DENOUEES" | "ORIGINE_SUSPENS" | "HORS_CATALOGUE";
 
-export interface Chiffre {
-  libelle: string;
-  valeur: Decimal;
-  unite: string;
+export interface Figure {
+  label: string;
+  value: Decimal;
+  unit: string;
 }
 
-export interface LigneSource {
+export interface SourceRow {
   table: string;
-  valeurs: Record<string, string>;
+  values: Record<string, string>;
 }
 
 export interface Vigilance {
   code: string;
   message: string;
-  emetteurs: string[];
+  issuers: string[];
   /** En %. */
-  valeur: Decimal;
+  value: Decimal;
 }
 
-export interface Comprehension {
-  intention: Intention | string;
-  fonds: string | null;
-  horizon_mois: number | null;
+export interface Understanding {
+  intent: Intent | string;
+  fund: string | null;
+  horizon_months: number | null;
   isin: string | null;
   source: "llm" | "mots_cles" | string;
-  confiance: number;
+  confidence: number;
   detail: string;
   /** Date citée dans la question (AAAA-MM-JJ ou expression relative) : hors date de référence, pas de chiffre. */
-  date_demandee?: string | null;
+  requested_date?: string | null;
 }
 
-export interface ReponseQuestion {
+export interface QuestionAnswer {
   question: string;
-  reponse: string;
-  chiffres: Chiffre[];
-  requete_sql: string;
-  parametres_sql: Record<string, string | null>;
-  lignes_sources: LigneSource[];
-  confiance: "haute" | "basse" | string;
-  avertissements: string[];
+  answer: string;
+  figures: Figure[];
+  sql_query: string;
+  sql_params: Record<string, string | null>;
+  source_rows: SourceRow[];
+  confidence: "haute" | "basse" | string;
+  warnings: string[];
   vigilances: Vigilance[];
-  reformulations: string[];
-  comprehension: Comprehension;
+  suggestions: string[];
+  understanding: Understanding;
 }
 
-export interface EtapeFlux {
-  etape: "comprehension" | "calcul" | string;
+export interface StreamStep {
+  step: "understanding" | "computing" | string;
   message: string;
 }
 
 /** Événements de `POST /api/questions/flux`, dans l'ordre d'émission. */
-export type EvenementFlux =
-  | { type: "etape"; data: EtapeFlux }
-  | { type: "comprehension"; data: Comprehension }
-  | { type: "reponse"; data: ReponseQuestion }
-  | { type: "erreur"; data: { code: string; message: string } }
-  | { type: "fin"; data: Record<string, never> };
+export type StreamEvent =
+  | { type: "step"; data: StreamStep }
+  | { type: "understanding"; data: Understanding }
+  | { type: "answer"; data: QuestionAnswer }
+  | { type: "error"; data: { code: string; message: string } }
+  | { type: "end"; data: Record<string, never> };

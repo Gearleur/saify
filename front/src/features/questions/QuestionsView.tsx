@@ -15,15 +15,15 @@ export function QuestionsView() {
   const { selected } = useQuestionSession();
   const { ask, busy } = useQuestionStream();
   const { route, navigate } = useHashRoute();
-  const champ = useRef<HTMLTextAreaElement>(null);
-  const depuisPalette = route.params.get("q");
+  const field = useRef<HTMLTextAreaElement>(null);
+  const fromPalette = route.params.get("q");
 
-  useHotkeys({ "/": (e) => (e.preventDefault(), champ.current?.focus()) });
+  useHotkeys({ "/": (e) => (e.preventDefault(), field.current?.focus()) });
   useEffect(() => {
-    if (!depuisPalette) return;
+    if (!fromPalette) return;
     navigate("questions");
-    void ask(depuisPalette);
-  }, [depuisPalette, ask, navigate]);
+    void ask(fromPalette);
+  }, [fromPalette, ask, navigate]);
 
   return (
     <>
@@ -33,7 +33,7 @@ export function QuestionsView() {
       />
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 max-w-[860px] space-y-6">
-          <QuestionComposer onAsk={ask} busy={busy} inputRef={champ} />
+          <QuestionComposer onAsk={ask} busy={busy} inputRef={field} />
           {selected ? (
             <RunView key={selected.id} run={selected} onAsk={ask} />
           ) : (

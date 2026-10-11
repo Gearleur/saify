@@ -2,6 +2,6 @@
 
 import os
 
-os.environ["LLM_ACTIF"] = "0"
+os.environ["LLM_ENABLED"] = "0"
 # Le `.env` du poste ne doit rien changer aux tests : une variable déjà définie n'est pas écrasée.
-os.environ["DATE_ARRETE_ATTENDUE"] = ""
+os.environ["EXPECTED_AS_OF_DATE"] = ""

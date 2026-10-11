@@ -4,9 +4,9 @@ export type HotkeyMap = Record<string, (event: KeyboardEvent) => void>;
 
 /** Vrai si la frappe vise un champ de saisie (les raccourcis à une touche s'effacent alors). */
 export function isTyping(event: KeyboardEvent): boolean {
-  const cible = event.target as HTMLElement | null;
-  if (!cible) return false;
-  return cible.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(cible.tagName);
+  const target = event.target as HTMLElement | null;
+  if (!target) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
 /**
@@ -20,16 +20,16 @@ export function useHotkeys(map: HotkeyMap, enabled = true) {
   });
   useEffect(() => {
     if (!enabled) return;
-    const surTouche = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      const cle = mod ? `mod+${e.key.toLowerCase()}` : e.key;
-      const action = ref.current[cle];
+      const key = mod ? `mod+${e.key.toLowerCase()}` : e.key;
+      const action = ref.current[key];
       if (!action) return;
       if (!mod && (isTyping(e) || document.querySelector("[role=menu],[cmdk-root][data-open]")))
         return;
       action(e);
     };
-    window.addEventListener("keydown", surTouche);
-    return () => window.removeEventListener("keydown", surTouche);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [enabled]);
 }

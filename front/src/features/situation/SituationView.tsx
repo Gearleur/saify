@@ -5,33 +5,33 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NoReconciliation } from "@/features/files/NoReconciliation";
 import { useReconciliation } from "@/hooks/useReconciliation";
-import { rapprochementsApi } from "@/lib/api";
-import { rapprochementLabel } from "@/lib/dates";
+import { reconciliationsApi } from "@/lib/api";
+import { reconciliationLabel } from "@/lib/dates";
 import { SituationAside } from "./SituationAside";
 import { useCopy } from "@/hooks/useCopy";
-import { usePointDeSituation } from "./usePointDeSituation";
+import { useStatusReport } from "./useStatusReport";
 
 /** Le point de situation pour le responsable : le texte du back tel quel, prêt à coller. */
 export function SituationView() {
-  const { courant } = useReconciliation();
-  const { texte, error, loading } = usePointDeSituation(courant?.id ?? null);
-  const copier = useCopy();
-  if (!courant) return <NoReconciliation what="le point de situation" />;
+  const { current } = useReconciliation();
+  const { text, error, loading } = useStatusReport(current?.id ?? null);
+  const copy = useCopy();
+  if (!current) return <NoReconciliation what="le point de situation" />;
 
   return (
     <>
       <PageHeader
         title="Point de situation"
-        description={`${rapprochementLabel(courant.date_arrete)}, texte figé à sa création, prêt à coller dans un mail.`}
+        description={`${reconciliationLabel(current.as_of_date)}, texte figé à sa création, prêt à coller dans un mail.`}
         actions={
           <>
             <Button variant="outline" asChild>
-              <a href={rapprochementsApi.csvUrl(courant.id)} download>
+              <a href={reconciliationsApi.csvUrl(current.id)} download>
                 <Download />
                 Exporter CSV
               </a>
             </Button>
-            <Button onClick={() => texte && copier(texte, "Point de situation")} disabled={!texte}>
+            <Button onClick={() => text && copy(text, "Point de situation")} disabled={!text}>
               <Copy />
               Copier le texte
             </Button>
@@ -51,13 +51,13 @@ export function SituationView() {
             </div>
           )}
           {error && <ErrorNotice error={error} className="m-5" />}
-          {texte && (
+          {text && (
             <pre className="max-w-[80ch] whitespace-pre-wrap px-5 py-4 font-sans text-sm leading-6">
-              {texte}
+              {text}
             </pre>
           )}
         </article>
-        <SituationAside r={courant} />
+        <SituationAside r={current} />
       </div>
     </>
   );

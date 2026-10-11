@@ -18,9 +18,9 @@ export function useSort<T>(rows: T[], columns: Column<T>[], initial: SortState |
   }, []);
 
   const sorted = useMemo(() => {
-    const colonne = sort && columns.find((c) => c.id === sort.columnId);
-    if (!sort || !colonne?.compare) return rows;
-    const compare = colonne.compare;
+    const column = sort && columns.find((c) => c.id === sort.columnId);
+    if (!sort || !column?.compare) return rows;
+    const compare = column.compare;
     return [...rows].sort((a, b) => compare(a, b) * sort.direction);
   }, [rows, columns, sort]);
 

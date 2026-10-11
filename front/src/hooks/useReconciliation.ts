@@ -1,29 +1,29 @@
 import { createContext, useContext } from "react";
 import type { ApiError } from "@/lib/api";
 import type {
-  FichierEnvoye,
-  Parametrage,
-  Rapprochement,
-  RapprochementResume,
-  Sante,
+  UploadedFile,
+  ClientConfig,
+  Reconciliation,
+  ReconciliationSummary,
+  Health,
 } from "@/types/api";
 
-export type Chargement = "demarrage" | "exemple" | "envoi" | "lecture" | null;
+export type LoadingState = "startup" | "sample" | "upload" | "read" | null;
 
 export interface ReconciliationContextValue {
-  sante: Sante | null;
-  santeError: ApiError | null;
-  parametrage: Parametrage | null;
-  parametrageError: ApiError | null;
-  historique: RapprochementResume[];
+  health: Health | null;
+  healthError: ApiError | null;
+  clientConfig: ClientConfig | null;
+  clientConfigError: ApiError | null;
+  history: ReconciliationSummary[];
   /** Rapprochement affiché (le dernier ouvert, ou celui choisi dans l'historique). */
-  courant: Rapprochement | null;
-  chargement: Chargement;
+  current: Reconciliation | null;
+  loading: LoadingState;
   /** Lève une `ApiError` (429, 413, 422…) : à l'appelant de l'afficher. */
-  lancerExemple: () => Promise<Rapprochement>;
-  envoyer: (fichiers: FichierEnvoye[]) => Promise<Rapprochement>;
-  ouvrir: (id: string) => Promise<void>;
-  rafraichirSante: () => void;
+  runSample: () => Promise<Reconciliation>;
+  upload: (files: UploadedFile[]) => Promise<Reconciliation>;
+  openReconciliation: (id: string) => Promise<void>;
+  refreshHealth: () => void;
 }
 
 export const ReconciliationContext = createContext<ReconciliationContextValue | null>(null);

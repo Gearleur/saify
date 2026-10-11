@@ -1,32 +1,32 @@
 import { useReconciliation } from "@/hooks/useReconciliation";
-import { useReferentiel } from "@/hooks/useReferentiel";
+import { useReferenceData } from "@/hooks/useReferenceData";
 import { formatSize } from "@/lib/dates";
 import { FileSlot } from "./FileSlot";
 import { receivedSlots, type ReceivedState } from "./fileStates";
 
-const ETATS: Record<ReceivedState, { label: string; tone: "green" | "red" | "ring" }> = {
-  accepte: { label: "Accepté", tone: "green" },
-  refuse: { label: "Refusé", tone: "red" },
+const STATES: Record<ReceivedState, { label: string; tone: "green" | "red" | "ring" }> = {
+  accepted: { label: "Accepté", tone: "green" },
+  rejected: { label: "Refusé", tone: "red" },
   absent: { label: "Non reçu", tone: "ring" },
 };
 
 /** Les 4 fichiers du dernier rapprochement : reçu, accepté ou refusé. */
 export function ReceivedStrip() {
-  const { courant } = useReconciliation();
-  const { nomConservateur } = useReferentiel();
+  const { current } = useReconciliation();
+  const { custodianName } = useReferenceData();
   return (
     <>
-      {receivedSlots(courant).map(({ attendu, fichier, etat, blocage }) => (
+      {receivedSlots(current).map(({ expected, file, state, blocking }) => (
         <FileSlot
-          key={attendu.source}
-          code={attendu.label}
-          nom={attendu.source === "PMS" ? "Inventaire interne" : nomConservateur(attendu.source)}
-          format={attendu.format}
-          fichier={fichier?.nom ?? null}
-          tone={ETATS[etat].tone}
-          etat={blocage ? `${ETATS[etat].label}, règle ${blocage.regle}` : ETATS[etat].label}
-          meta={fichier ? formatSize(fichier.taille) : undefined}
-          refuse={etat === "refuse"}
+          key={expected.source}
+          code={expected.label}
+          name={expected.source === "PMS" ? "Inventaire interne" : custodianName(expected.source)}
+          format={expected.format}
+          file={file?.name ?? null}
+          tone={STATES[state].tone}
+          state={blocking ? `${STATES[state].label}, règle ${blocking.rule}` : STATES[state].label}
+          meta={file ? formatSize(file.size) : undefined}
+          rejected={state === "rejected"}
         />
       ))}
     </>

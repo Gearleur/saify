@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { DotTone } from "@/lib/metier";
+import type { DotTone } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "./StatusDot";
 
@@ -31,11 +31,9 @@ interface FilterMenuProps {
 
 /** Filtre de barre d'outils façon Supabase : un menu déroulant à cases, avec effectifs. */
 export function FilterMenu({ label, options, selected, onChange, description }: FilterMenuProps) {
-  const actif = selected.length > 0;
-  const basculer = (valeur: string) =>
-    onChange(
-      selected.includes(valeur) ? selected.filter((v) => v !== valeur) : [...selected, valeur],
-    );
+  const enabled = selected.length > 0;
+  const toggleOpen = (value: string) =>
+    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
 
   return (
     <DropdownMenu>
@@ -43,10 +41,10 @@ export function FilterMenu({ label, options, selected, onChange, description }: 
         <Button
           variant="outline"
           size="sm"
-          className={cn(actif && "border-foreground/30 bg-hover")}
+          className={cn(enabled && "border-foreground/30 bg-hover")}
         >
           {label}
-          {actif && (
+          {enabled && (
             <span className="rounded bg-background px-1 text-2xs text-muted-foreground">
               {selected.length}
             </span>
@@ -60,7 +58,7 @@ export function FilterMenu({ label, options, selected, onChange, description }: 
           <DropdownMenuCheckboxItem
             key={o.value}
             checked={selected.includes(o.value)}
-            onCheckedChange={() => basculer(o.value)}
+            onCheckedChange={() => toggleOpen(o.value)}
             onSelect={(e) => e.preventDefault()}
           >
             {o.tone && <StatusDot tone={o.tone} />}
@@ -71,7 +69,7 @@ export function FilterMenu({ label, options, selected, onChange, description }: 
             {o.count !== undefined && <span className="text-xs text-subtle">{o.count}</span>}
           </DropdownMenuCheckboxItem>
         ))}
-        {actif && (
+        {enabled && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => onChange([])} className="text-muted-foreground">

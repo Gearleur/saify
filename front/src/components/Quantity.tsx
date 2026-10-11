@@ -11,13 +11,13 @@ interface QuantityProps {
 /** Quantité ou écart (chaîne décimale), en chiffres tabulaires, sans passer par un float. */
 export function Quantity({ value, signed = false, className }: QuantityProps) {
   if (value == null) return <span className={cn("text-subtle", className)}>—</span>;
-  const nul = isZero(value);
+  const zero = isZero(value);
   return (
     <span
       className={cn(
         "tabular-nums",
-        signed && nul && "text-subtle",
-        signed && !nul && "font-medium",
+        signed && zero && "text-subtle",
+        signed && !zero && "font-medium",
         className,
       )}
       data-negative={isNegative(value) || undefined}

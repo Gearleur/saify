@@ -1,6 +1,6 @@
-import type { ErreurApi } from "@/types/api";
+import type { ErrorBody } from "@/types/api";
 
-/** Erreur du contrat `{"erreur": {"code", "message", "details"}}`, avec `Retry-After` pour un 429. */
+/** Erreur du contrat `{"error": {"code", "message", "details"}}`, avec `Retry-After` pour un 429. */
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -26,58 +26,58 @@ export class ApiError extends Error {
   }
 }
 
-function estErreurApi(corps: unknown): corps is ErreurApi {
-  return typeof corps === "object" && corps !== null && "erreur" in corps;
+function isErrorBody(body: unknown): body is ErrorBody {
+  return typeof body === "object" && body !== null && "error" in body;
 }
 
-function lireRetryAfter(res: Response): number | null {
-  const brut = res.headers.get("Retry-After");
-  if (!brut || !/^\d+$/.test(brut.trim())) return null;
-  return Number.parseInt(brut, 10);
+function readRetryAfter(res: Response): number | null {
+  const raw = res.headers.get("Retry-After");
+  if (!raw || !/^\d+$/.test(raw.trim())) return null;
+  return Number.parseInt(raw, 10);
 }
 
 /** Transforme une réponse en échec en `ApiError`, quel que soit son corps. */
 export async function toApiError(res: Response): Promise<ApiError> {
-  let corps: unknown = null;
+  let body: unknown = null;
   try {
-    corps = await res.json();
+    body = await res.json();
   } catch {
     /* corps vide ou non JSON */
   }
-  if (estErreurApi(corps)) {
-    const { code, message, details } = corps.erreur;
-    return new ApiError(res.status, code, message, details, lireRetryAfter(res));
+  if (isErrorBody(body)) {
+    const { code, message, details } = body.error;
+    return new ApiError(res.status, code, message, details, readRetryAfter(res));
   }
   return new ApiError(
     res.status,
     `HTTP_${res.status}`,
     `Réponse inattendue du serveur (${res.status}).`,
     null,
-    lireRetryAfter(res),
+    readRetryAfter(res),
   );
 }
 
-export const RESEAU = "RESEAU";
+export const NETWORK = "NETWORK";
 
 /** `fetch` vers l'API : en-têtes JSON, erreurs réseau et HTTP converties en `ApiError`. */
 export async function send(
   path: string,
   init: RequestInit & { json?: unknown } = {},
 ): Promise<Response> {
-  const { json, headers, ...reste } = init;
-  const entetes = new Headers(headers);
-  if (!entetes.has("Accept")) entetes.set("Accept", "application/json");
-  let body = reste.body;
+  const { json, headers, ...rest } = init;
+  const requestHeaders = new Headers(headers);
+  if (!requestHeaders.has("Accept")) requestHeaders.set("Accept", "application/json");
+  let body = rest.body;
   if (json !== undefined) {
-    entetes.set("Content-Type", "application/json");
+    requestHeaders.set("Content-Type", "application/json");
     body = JSON.stringify(json);
   }
   let res: Response;
   try {
-    res = await fetch(path, { ...reste, headers: entetes, body });
+    res = await fetch(path, { ...rest, headers: requestHeaders, body });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
-    throw new ApiError(0, RESEAU, "Serveur injoignable. Vérifiez que l'API est lancée.");
+    throw new ApiError(0, NETWORK, "Serveur injoignable. Vérifiez que l'API est lancée.");
   }
   if (!res.ok) throw await toApiError(res);
   return res;

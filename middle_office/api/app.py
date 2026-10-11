@@ -7,41 +7,39 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from middle_office.api.config import (
-    RACINE,
+    ROOT,
     VERSION,
-    Reglages,
-    configurer_logs,
-    date_attendue_depuis,
+    Settings,
+    configure_logging,
+    expected_date_from,
 )
-from middle_office.api.erreurs import enregistrer_gestionnaires
-from middle_office.api.limiteur import Limiteur
-from middle_office.api.middleware import Garde
-from middle_office.api.routes import questions, rapprochements, systeme, web
-from middle_office.api.services.historique import Historique
-from middle_office.api.services.llm import ClientEncadre, client_depuis_environnement
+from middle_office.api.errors import register_handlers
+from middle_office.api.middleware import Guard
+from middle_office.api.rate_limit import RateLimiter
+from middle_office.api.routes import questions, reconciliations, system, web
+from middle_office.api.services.history import History
+from middle_office.api.services.llm import GuardedClient, client_from_environment
 
-DEPUIS_ENVIRONNEMENT = object()
+FROM_ENVIRONMENT = object()
 
 
-def create_app(*, client_llm=DEPUIS_ENVIRONNEMENT, **surcharges) -> FastAPI:
+def create_app(*, llm_client=FROM_ENVIRONMENT, **overrides) -> FastAPI:
     """`surcharges` : champs de `Reglages` à remplacer (tests), ex. `create_app(limite_post=2)`.
     `client_llm` : par défaut construit depuis l'environnement ; None le coupe ; un client fourni
     (tests) passe lui aussi par l'encadrement."""
-    inconnus = surcharges.keys() - {f.name for f in fields(Reglages)}
-    if inconnus:
-        raise TypeError(f"réglage(s) inconnu(s) : {', '.join(sorted(inconnus))}")
-    # `.env` d'abord : il peut porter DATE_ARRETE_ATTENDUE comme la clé (qui reste dans l'environnement
+    unknown = overrides.keys() - {f.name for f in fields(Settings)}
+    if unknown:
+        raise TypeError(f"réglage(s) inconnu(s) : {', '.join(sorted(unknown))}")
+    # `.env` d'abord : il peut porter EXPECTED_AS_OF_DATE comme la clé (qui reste dans l'environnement
     # du process, jamais dans les réglages). Les variables déjà définies gardent la priorité.
-    load_dotenv(RACINE.parent / ".env", override=False)
-    if "date_arrete_attendue" not in surcharges:
-        surcharges["date_arrete_attendue"] = date_attendue_depuis(
-            os.environ.get("DATE_ARRETE_ATTENDUE")
-        )
-    reglages = Reglages(**surcharges)
-    fichier = reglages.fichier_historique
-    if fichier is not None and fichier.resolve() == reglages.base.resolve():
+    load_dotenv(ROOT.parent / ".env", override=False)
+    if "expected_as_of_date" not in overrides:
+        overrides["expected_as_of_date"] = expected_date_from(os.environ.get("EXPECTED_AS_OF_DATE"))
+    settings = Settings(**overrides)
+    file = settings.history_file
+    if file is not None and file.resolve() == settings.db_path.resolve():
         raise ValueError("l'historique ne doit jamais être écrit dans orsay.db (lecture seule)")
-    configurer_logs()
+    configure_logging()
 
     # Swagger désactivé : incompatible avec la CSP stricte (scripts et styles externes).
     app = FastAPI(
@@ -51,31 +49,33 @@ def create_app(*, client_llm=DEPUIS_ENVIRONNEMENT, **surcharges) -> FastAPI:
         redoc_url=None,
         openapi_url=None,
     )
-    app.state.reglages = reglages
-    app.state.historique = Historique(reglages.historique_max, fichier)
-    if client_llm is DEPUIS_ENVIRONNEMENT:
-        app.state.llm = client_depuis_environnement(
-            reglages.llm_budget_jour, reglages.llm_concurrence, reglages.llm_timeout
+    app.state.settings = settings
+    app.state.history = History(settings.history_size, file)
+    if llm_client is FROM_ENVIRONMENT:
+        app.state.llm = client_from_environment(
+            settings.llm_daily_budget, settings.llm_concurrency, settings.llm_timeout
         )
     else:
         app.state.llm = (
             None
-            if client_llm is None
-            else ClientEncadre(client_llm, reglages.llm_budget_jour, reglages.llm_concurrence)
+            if llm_client is None
+            else GuardedClient(llm_client, settings.llm_daily_budget, settings.llm_concurrency)
         )
 
-    enregistrer_gestionnaires(app)
-    for module in (systeme, rapprochements, questions, web):
+    register_handlers(app)
+    for module in (system, reconciliations, questions, web):
         app.include_router(module.router)
     app.mount(
-        "/static", web.Statiques(directory=reglages.dossier_web, check_dir=False), name="static"
+        "/static",
+        web.OptionalStaticFiles(directory=settings.web_dir, check_dir=False),
+        name="static",
     )
 
-    limiteurs = {
-        "POST": Limiteur(reglages.limite_post, reglages.fenetre),
-        "GET": Limiteur(reglages.limite_get, reglages.fenetre),
-        "PUT": Limiteur(reglages.limite_put, reglages.fenetre),
-        "QUESTIONS": Limiteur(reglages.limite_questions, reglages.fenetre),
+    rate_limiters = {
+        "POST": RateLimiter(settings.post_limit, settings.window),
+        "GET": RateLimiter(settings.get_limit, settings.window),
+        "PUT": RateLimiter(settings.put_limit, settings.window),
+        "QUESTIONS": RateLimiter(settings.question_limit, settings.window),
     }
-    app.add_middleware(Garde, limiteurs=limiteurs, taille_corps_max=reglages.taille_corps_max)
+    app.add_middleware(Guard, rate_limiters=rate_limiters, max_body_size=settings.max_body_size)
     return app

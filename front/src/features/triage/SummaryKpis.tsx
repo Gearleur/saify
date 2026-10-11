@@ -1,30 +1,30 @@
 import { KpiRow } from "@/components/KpiRow";
-import { ORDRE_PRIORITES, PRIORITES } from "@/lib/metier";
-import type { Synthese } from "@/types/api";
+import { PRIORITY_ORDER, PRIORITIES } from "@/lib/domain";
+import type { Summary } from "@/types/api";
 
 interface SummaryKpisProps {
-  synthese: Synthese;
-  traites: number;
+  summary: Summary;
+  treated: number;
 }
 
 /** Synthèse : un compteur par priorité (un clic fait défiler jusqu'au groupe), et l'avancement local. */
-export function SummaryKpis({ synthese, traites }: SummaryKpisProps) {
-  const defiler = (id: string) =>
+export function SummaryKpis({ summary, treated }: SummaryKpisProps) {
+  const scrollToGroup = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   return (
     <KpiRow
       items={[
-        ...ORDRE_PRIORITES.map((p) => ({
+        ...PRIORITY_ORDER.map((p) => ({
           id: p,
-          label: PRIORITES[p].label,
-          value: synthese.par_priorite[p] ?? 0,
-          tone: PRIORITES[p].tone,
-          onSelect: () => defiler(`groupe-${p}`),
+          label: PRIORITIES[p].label,
+          value: summary.by_priority[p] ?? 0,
+          tone: PRIORITIES[p].tone,
+          onSelect: () => scrollToGroup(`groupe-${p}`),
         })),
         {
-          id: "traites",
+          id: "treated",
           label: "Traités",
-          value: `${traites} / ${synthese.nb_suspens}`,
+          value: `${treated} / ${summary.break_count}`,
           tone: "green" as const,
         },
       ]}

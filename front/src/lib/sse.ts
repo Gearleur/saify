@@ -8,39 +8,39 @@ export interface SseMessage {
   data: string;
 }
 
-function lireBloc(bloc: string): SseMessage | null {
+function readBlock(block: string): SseMessage | null {
   let event = "message";
   const data: string[] = [];
-  for (const ligne of bloc.split(/\r?\n/)) {
-    if (ligne.startsWith("event:")) event = ligne.slice(6).trim();
-    else if (ligne.startsWith("data:")) data.push(ligne.slice(5).replace(/^ /, ""));
+  for (const line of block.split(/\r?\n/)) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
   }
   return data.length > 0 || event !== "message" ? { event, data: data.join("\n") } : null;
 }
 
 export async function* readSse(
-  corps: ReadableStream<Uint8Array>,
+  body: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
 ): AsyncGenerator<SseMessage> {
-  const lecteur = corps.getReader();
-  const decodeur = new TextDecoder();
-  let tampon = "";
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
   try {
     while (!signal?.aborted) {
-      const { value, done } = await lecteur.read();
+      const { value, done } = await reader.read();
       if (done) break;
-      tampon += decodeur.decode(value, { stream: true });
-      let separateur = /\r?\n\r?\n/.exec(tampon);
-      while (separateur) {
-        const message = lireBloc(tampon.slice(0, separateur.index));
-        tampon = tampon.slice(separateur.index + separateur[0].length);
+      buffer += decoder.decode(value, { stream: true });
+      let separator = /\r?\n\r?\n/.exec(buffer);
+      while (separator) {
+        const message = readBlock(buffer.slice(0, separator.index));
+        buffer = buffer.slice(separator.index + separator[0].length);
         if (message) yield message;
-        separateur = /\r?\n\r?\n/.exec(tampon);
+        separator = /\r?\n\r?\n/.exec(buffer);
       }
     }
-    const reste = lireBloc(tampon);
-    if (reste) yield reste;
+    const rest = readBlock(buffer);
+    if (rest) yield rest;
   } finally {
-    lecteur.releaseLock();
+    reader.releaseLock();
   }
 }
