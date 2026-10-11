@@ -13,6 +13,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import NamedTuple
 
+from middle_office.domaine.base_gestion import connexion_lecture_seule
+from middle_office.domaine.formats import date_fr, formater_quantite
 from middle_office.domaine.rapprochement.sources import (
     ERREURS_DE_FORMAT,
     Anomalie,
@@ -138,21 +140,11 @@ class Base:
     en_attente: list[Mouvement] = field(default_factory=list)
 
 
-def formater_quantite(q: Decimal) -> str:
-    texte = f"{q:,.0f}" if q == q.to_integral_value() else f"{q:,}"
-    return texte.replace(",", " ")
-
-
-def _date_fr(d: date) -> str:
-    return f"{d:%d/%m/%Y}"
-
-
 def _lire_base(db_path: Path | None, journal: list[Anomalie]) -> Base:
     try:
         if db_path is None:
             raise sqlite3.OperationalError("aucune base fournie")
-        db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        try:
+        with connexion_lecture_seule(db_path) as db:
             return Base(
                 codes_fonds=dict(db.execute("SELECT nom, code FROM portefeuilles")),
                 referentiel=dict(db.execute("SELECT isin, libelle FROM titres")),
@@ -164,8 +156,6 @@ def _lire_base(db_path: Path | None, journal: list[Anomalie]) -> Base:
                     )
                 ],
             )
-        finally:
-            db.close()
     except sqlite3.Error as erreur:
         journal.append(
             Anomalie(
@@ -284,7 +274,7 @@ def _piste(mouvements: list[Mouvement], ecart: Decimal,
     if not mouvements:
         return "", "aucune"
     operations = ", ".join(
-        f"op. n°{m.id} {m.sens} {formater_quantite(m.quantite)} dén. {_date_fr(m.date_denouement)}"
+        f"op. n°{m.id} {m.sens} {formater_quantite(m.quantite)} dén. {date_fr(m.date_denouement)}"
         for m in mouvements
     )
     net = sum((m.signe for m in mouvements), Decimal(0))
@@ -324,7 +314,7 @@ def _completer(suspens: list[Suspens], param: Parametrage, base: Base, date_arre
             if m.date_denouement <= date_arrete:
                 s.signaler(
                     "CSDR",
-                    f"op. n°{m.id} non dénouée au {_date_fr(m.date_denouement)} : "
+                    f"op. n°{m.id} non dénouée au {date_fr(m.date_denouement)} : "
                     "défaut de règlement-livraison, risque CSDR",
                 )
         if not isin_valide(s.isin):
@@ -347,7 +337,7 @@ def _date_du_depot(fichiers: dict[str, bytes], date_attendue: date | None) -> tu
         return None, anomalie(noms[0], 0, "BLOQUANT", "DATE_ARRETE", "", "", motif)
     if date_attendue is not None and lue != date_attendue:
         return None, anomalie(noms[0], 0, "BLOQUANT", "DATE_ARRETE", lue.isoformat(), "",
-                              f"fichiers arrêtés au {_date_fr(lue)}, attendu le {_date_fr(date_attendue)}")  # fmt: skip
+                              f"fichiers arrêtés au {date_fr(lue)}, attendu le {date_fr(date_attendue)}")  # fmt: skip
     return lue, None
 
 
@@ -421,7 +411,7 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
                     f"mouvement {m.id}",
                     "",
                     f"{m.portefeuille} {m.isin} {m.sens} {formater_quantite(m.quantite)} non dénoué "
-                    f"au {_date_fr(m.date_denouement)} : risque CSDR",
+                    f"au {date_fr(m.date_denouement)} : risque CSDR",
                 )  # fmt: skip
             )
 

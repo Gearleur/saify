@@ -48,11 +48,16 @@ def create_app(*, client_llm=DEPUIS_ENVIRONNEMENT, **surcharges) -> FastAPI:
                   docs_url=None, redoc_url=None, openapi_url=None)  # fmt: skip
     app.state.reglages = reglages
     app.state.historique = Historique(reglages.historique_max, fichier)
-    encadrement = (reglages.llm_budget_jour, reglages.llm_concurrence, reglages.llm_timeout)
     if client_llm is DEPUIS_ENVIRONNEMENT:
-        app.state.llm = client_depuis_environnement(*encadrement)
+        app.state.llm = client_depuis_environnement(
+            reglages.llm_budget_jour, reglages.llm_concurrence, reglages.llm_timeout
+        )
     else:
-        app.state.llm = None if client_llm is None else ClientEncadre(client_llm, *encadrement)
+        app.state.llm = (
+            None
+            if client_llm is None
+            else ClientEncadre(client_llm, reglages.llm_budget_jour, reglages.llm_concurrence)
+        )
 
     enregistrer_gestionnaires(app)
     for module in (systeme, rapprochements, questions, web):

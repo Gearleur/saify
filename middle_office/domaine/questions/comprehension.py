@@ -16,8 +16,8 @@ from typing import Literal
 import anthropic
 from pydantic import BaseModel, ValidationError
 
+from middle_office.domaine.base_gestion import connexion_lecture_seule
 from middle_office.domaine.questions import catalogue
-from middle_office.domaine.questions.base import connexion_lecture_seule
 from middle_office.domaine.questions.modeles import ContexteRapprochement, Reponse
 
 log = logging.getLogger("middle_office.questions")

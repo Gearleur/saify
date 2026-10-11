@@ -156,7 +156,7 @@ def test_budget_quotidien_epuise_repli_mots_cles():
 
 
 def test_concurrence_bornee():
-    encadre = ClientEncadre(FauxClient(_intention()), budget_jour=10, concurrence=1, timeout=5.0)
+    encadre = ClientEncadre(FauxClient(_intention()), budget_jour=10, concurrence=1)
     occupe = threading.Event()
     encadre._places.acquire()  # une question déjà en cours
     with pytest.raises(LLMIndisponible, match="simultanées"):
@@ -166,7 +166,7 @@ def test_concurrence_bornee():
 
 
 def test_modele_impose():
-    encadre = ClientEncadre(FauxClient(_intention()), budget_jour=10, concurrence=1, timeout=5.0)
+    encadre = ClientEncadre(FauxClient(_intention()), budget_jour=10, concurrence=1)
     with pytest.raises(LLMIndisponible, match="modèle"):
         encadre.messages.parse(model="claude-opus-5-5", max_tokens=1024, system="s", messages=[], output_format=IntentionLLM)  # fmt: skip
 

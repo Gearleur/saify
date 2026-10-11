@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from middle_office import rapprocher_dossier
-from middle_office.domaine.rapprochement.moteur import formater_quantite
+from middle_office.domaine.formats import formater_quantite
 
 
 def _qte(q: Decimal | None) -> str:

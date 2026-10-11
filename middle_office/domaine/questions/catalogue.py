@@ -10,18 +10,16 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from middle_office.domaine.questions.base import connexion_lecture_seule, decimal
+from middle_office.domaine.base_gestion import connexion_lecture_seule, decimal
+from middle_office.domaine.formats import CENTIME, date_fr, formater_quantite, montant, pourcentage
 from middle_office.domaine.questions.modeles import (
     Chiffre,
     ContexteRapprochement,
     LigneSource,
     Reponse,
-    montant,
 )
 from middle_office.domaine.questions.vigilance import REGLES_PAR_DEFAUT, ReglesVigilance
-from middle_office.domaine.rapprochement.moteur import formater_quantite
 
-CENTIME = Decimal("0.01")
 HORIZON_DEFAUT_MOIS = 12  # à valider avec le client (NOTES.md, Q4)
 AVERTISSEMENT_PMS = "Positions de la base de gestion (vue PMS, en date de négociation) : opérations non dénouées incluses."  # fmt: skip
 
@@ -63,14 +61,6 @@ FROM mouvements
 WHERE isin = :isin
 ORDER BY id
 """.strip()
-
-
-def _jour(d: date) -> str:
-    return f"{d:%d/%m/%Y}"
-
-
-def _pourcentage(valeur: Decimal) -> str:
-    return f"{valeur:.2f}".replace(".", ",") + " %"
 
 
 def _valoriser(quantite: Decimal, cours: Decimal, mode_cotation: str | None) -> Decimal | None:
@@ -119,7 +109,7 @@ def _valoriser_positions(base: Path, fonds: str | None, date_ref: date) -> _Valo
         qte, prix = decimal(quantite), decimal(cours)
         valeur = None
         if prix is None:
-            avertissements.append(f"{isin} {libelle} : pas de cours au {_jour(date_ref)}, ligne non valorisée")  # fmt: skip
+            avertissements.append(f"{isin} {libelle} : pas de cours au {date_fr(date_ref)}, ligne non valorisée")  # fmt: skip
         else:
             valeur = _valoriser(qte, prix, mode)
             if valeur is None:
@@ -139,7 +129,7 @@ def _valoriser_positions(base: Path, fonds: str | None, date_ref: date) -> _Valo
 
 def encours_valorise(base: Path, fonds: str | None, date_ref: date) -> Reponse:
     v = _valoriser_positions(base, fonds, date_ref)
-    jour = _jour(date_ref)
+    jour = date_fr(date_ref)
     if not v.lignes:
         return Reponse(f"Aucune position pour {fonds or 'les fonds'} au {jour} dans la base de gestion.",
                        [], SQL_ENCOURS, v.parametres, [], confiance="basse")  # fmt: skip
@@ -170,7 +160,7 @@ def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date,
         return Reponse("Précisez le fonds : la concentration par émetteur se lit fonds par fonds (PAT, OBL ou ACT).",
                        [], SQL_ENCOURS, {"date": date_ref.isoformat(), "fonds": None}, [], confiance="basse")  # fmt: skip
     v = _valoriser_positions(base, fonds, date_ref)
-    jour = _jour(date_ref)
+    jour = date_fr(date_ref)
     par_emetteur: dict[str, Decimal] = defaultdict(Decimal)
     for ligne, valeur in zip(v.lignes, v.valeurs, strict=True):
         if valeur is not None:
@@ -186,7 +176,7 @@ def concentration_emetteurs(base: Path, fonds: str | None, date_ref: date,
     premier, valeur_premier = classement[0]
     partiel = " partiel" if v.exclues else ""
     phrase = (
-        f"Premier émetteur d'{v.lignes[0][1]} au {jour} : {premier}, {_pourcentage(chiffres[0].valeur)} "
+        f"Premier émetteur d'{v.lignes[0][1]} au {jour} : {premier}, {pourcentage(chiffres[0].valeur)} "
         f"de l'encours valorisé{partiel} ({montant(valeur_premier.quantize(CENTIME))} EUR sur "
         f"{montant(total.quantize(CENTIME))} EUR, {len(classement)} émetteurs)."
     )
@@ -238,9 +228,9 @@ def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int |
         avertissements.insert(0, f"Horizon par défaut de {HORIZON_DEFAUT_MOIS} mois (à valider avec le middle office).")  # fmt: skip
     perimetre = _perimetre(fonds, isin)
     borne = (
-        f"après le {_jour(date_ref)}"
+        f"après le {date_fr(date_ref)}"
         if sans_borne
-        else f"entre le {_jour(date_ref)} et le {_jour(fin)}"
+        else f"entre le {date_fr(date_ref)} et le {date_fr(fin)}"
     )
     if not lignes:
         return Reponse(f"Aucune tombée d'échéance {perimetre} {borne}.", [], SQL_ECHEANCES, parametres,
@@ -262,7 +252,7 @@ def echeances(base: Path, fonds: str | None, date_ref: date, horizon_mois: int |
     ]
     nominal = sum((decimal(ligne[6]) for ligne in lignes), Decimal(0))
     detail = ", ".join(
-        f"{libelle} ({code}) le {_jour(date.fromisoformat(echeance))} pour {formater_quantite(decimal(qte))}"
+        f"{libelle} ({code}) le {date_fr(date.fromisoformat(echeance))} pour {formater_quantite(decimal(qte))}"
         for code, _n, _i, libelle, _t, echeance, qte in lignes
     )
     phrase = f"{len(lignes)} tombée(s) d'échéance {perimetre} {borne} : {detail}. Nominal remboursé : {montant(nominal)} EUR."  # fmt: skip
@@ -304,16 +294,16 @@ def operations_non_denouees(base: Path, fonds: str | None, date_ref: date,
         prevue = date.fromisoformat(date_den)
         if prevue <= date_ref:
             en_retard += 1
-            avertissements.insert(0, f"Op. n°{id_} ({libelle or isin}) devait être dénouée le {_jour(prevue)} : "
+            avertissements.insert(0, f"Op. n°{id_} ({libelle or isin}) devait être dénouée le {date_fr(prevue)} : "
                                      "défaut de règlement-livraison, risque CSDR.")  # fmt: skip
-        details.append(f"n°{id_} {sens} {formater_quantite(qte)} {libelle or isin} ({code}, dén. prévu {_jour(prevue)})")  # fmt: skip
+        details.append(f"n°{id_} {sens} {formater_quantite(qte)} {libelle or isin} ({code}, dén. prévu {date_fr(prevue)})")  # fmt: skip
         sources.append(LigneSource("mouvements", {
             "id": str(id_), "date_operation": date_op, "date_denouement": date_den, "portefeuille": code,
             "isin": isin, "sens": sens, "quantite": str(qte), "prix": "" if cours is None else str(cours),
             "montant": "" if valeur is None else str(valeur.quantize(CENTIME)), "contrepartie": contrepartie or "",
         }))  # fmt: skip
     retard = f", dont {en_retard} en retard (risque CSDR)" if en_retard else ""
-    phrase = f"{len(lignes)} opération(s) non dénouée(s) {perimetre} au {_jour(date_ref)}{retard} : {', '.join(details)}."  # fmt: skip
+    phrase = f"{len(lignes)} opération(s) non dénouée(s) {perimetre} au {date_fr(date_ref)}{retard} : {', '.join(details)}."  # fmt: skip
     chiffres = [Chiffre("Opérations non dénouées", Decimal(len(lignes)), "opérations")]
     if en_retard:
         chiffres.append(Chiffre("En retard (risque CSDR)", Decimal(en_retard), "opérations"))
@@ -336,7 +326,9 @@ def origine_suspens(base: Path, isin: str, contexte: ContexteRapprochement | Non
         return Reponse(motif, [], SQL_MOUVEMENTS_TITRE, parametres, [], confiance="basse")
 
     jour = (
-        _jour(date.fromisoformat(contexte.date_arrete)) if contexte.date_arrete else "date inconnue"
+        date_fr(date.fromisoformat(contexte.date_arrete))
+        if contexte.date_arrete
+        else "date inconnue"
     )
     reference = f"le rapprochement {contexte.id} (arrêté du {jour})"
     avertissements = []

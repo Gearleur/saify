@@ -1,14 +1,25 @@
 """Réglages de l'application et constantes HTTP (en-têtes de sécurité, extensions acceptées)."""
 
 import logging
+import tomllib
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
 from middle_office.domaine.rapprochement.calendrier import jour_ouvre_precedent
 
-VERSION = "0.3.0"
 RACINE = Path(__file__).resolve().parents[1]
+
+
+def _version() -> str:
+    """Une seule source de vérité : pyproject.toml (le projet n'est pas installé comme paquet)."""
+    try:
+        return tomllib.loads((RACINE.parent / "pyproject.toml").read_text())["project"]["version"]
+    except (OSError, KeyError, tomllib.TOMLDecodeError):
+        return "inconnue"
+
+
+VERSION = _version()
 MO = 1024 * 1024
 EXTENSIONS = (".csv", ".xlsx", ".txt", ".xml")
 

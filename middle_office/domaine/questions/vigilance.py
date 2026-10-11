@@ -8,14 +8,8 @@ l'attention, le gérant et le RCCI jugent. Les seuils se changent ici, en un seu
 from dataclasses import dataclass
 from decimal import Decimal
 
+from middle_office.domaine.formats import CENTIME, pourcentage
 from middle_office.domaine.questions.modeles import Vigilance
-
-CENTIME = Decimal("0.01")
-
-
-def _pct(valeur: Decimal) -> str:
-    texte = f"{valeur.quantize(CENTIME)}".replace(".", ",")
-    return f"{texte} %"
 
 
 def _seuil(valeur: Decimal) -> str:
@@ -42,7 +36,7 @@ class ReglesVigilance:
         part = {emetteur: montant / total * 100 for emetteur, montant in parts}
         au_dessus = [e for e, _ in parts if part[e] > self.seuil_emetteur]
         if au_dessus:
-            detail = ", ".join(f"{e} ({_pct(part[e])})" for e in au_dessus)
+            detail = ", ".join(f"{e} ({pourcentage(part[e])})" for e in au_dessus)
             vigilances.append(Vigilance(
                 "EMETTEUR_AU_DESSUS_DU_SEUIL",
                 f"Au-dessus du seuil de vigilance interne de {_seuil(self.seuil_emetteur)} par émetteur : {detail}.",
@@ -54,7 +48,7 @@ class ReglesVigilance:
             vigilances.append(Vigilance(
                 "CUMUL_AU_DESSUS_DU_PLAFOND",
                 f"Les {len(comptes)} émetteurs de plus de {_seuil(self.seuil_cumul_individuel)} cumulent "
-                f"{_pct(cumul)} de l'encours, au-delà du seuil de vigilance interne de {_seuil(self.plafond_cumul)}.",
+                f"{pourcentage(cumul)} de l'encours, au-delà du seuil de vigilance interne de {_seuil(self.plafond_cumul)}.",
                 comptes, cumul.quantize(CENTIME),
             ))  # fmt: skip
         return vigilances

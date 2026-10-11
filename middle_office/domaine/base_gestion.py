@@ -1,4 +1,4 @@
-"""Accès à orsay.db en lecture seule garantie : « personne ne doit pouvoir modifier l'inventaire ».
+"""Accès à orsay.db (base de gestion) en lecture seule garantie, pour les deux besoins : « personne ne doit pouvoir modifier l'inventaire ».
 
 Trois verrous indépendants : fichier ouvert en `mode=ro`, `PRAGMA query_only`, et un autorisateur
 SQLite qui refuse toute opération autre qu'une lecture (y compris PRAGMA et ATTACH).

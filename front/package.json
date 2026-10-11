@@ -1,7 +1,6 @@
 {
-  "name": "reco-front",
+  "name": "middle-office-front",
   "private": true,
-  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

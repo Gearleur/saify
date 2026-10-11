@@ -7,7 +7,7 @@ from pathlib import Path
 from middle_office.api.config import Reglages
 from middle_office.api.erreurs import ErreurApi
 from middle_office.api.schemas import Conservateur, Fonds, ParametrageSortie, Transco, TypeEcart
-from middle_office.domaine.questions.base import date_reference
+from middle_office.domaine.base_gestion import connexion_lecture_seule, date_reference
 from middle_office.domaine.rapprochement.sources import ERREURS_DE_FORMAT, lire_parametrage
 
 log = logging.getLogger("middle_office.api.referentiel")
@@ -27,11 +27,8 @@ EXCLUSIONS = [
 
 
 def _lire_base(base: Path, requete: str) -> list[tuple]:
-    db = sqlite3.connect(f"file:{base}?mode=ro", uri=True)
-    try:
+    with connexion_lecture_seule(base) as db:
         return db.execute(requete).fetchall()
-    finally:
-        db.close()
 
 
 def base_disponible(base: Path) -> bool:

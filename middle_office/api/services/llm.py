@@ -28,11 +28,10 @@ log = logging.getLogger("middle_office.api.llm")
 class ClientEncadre:
     """Imite `client.messages.parse` du SDK, en appliquant les garde-fous avant chaque appel réel."""
 
-    def __init__(
-        self, client, budget_jour: int, concurrence: int, timeout: float, cache_max: int = 256
-    ):
+    def __init__(self, client, budget_jour: int, concurrence: int, cache_max: int = 256):
+        """Le timeout et la nouvelle tentative sont réglés sur le client du SDK (voir plus bas)."""
         self._client = client
-        self.budget_jour, self.timeout, self.cache_max = budget_jour, timeout, cache_max
+        self.budget_jour, self.cache_max = budget_jour, cache_max
         self._places = threading.BoundedSemaphore(concurrence)
         self._verrou = threading.Lock()
         self._jour, self._appels = date.today(), 0
@@ -96,4 +95,4 @@ def client_depuis_environnement(
         log.info("llm : aucune clé configurée, compréhension par mots-clés")
         return None
     sdk = anthropic.Anthropic(timeout=timeout, max_retries=1)
-    return ClientEncadre(sdk, budget_jour, concurrence, timeout)
+    return ClientEncadre(sdk, budget_jour, concurrence)

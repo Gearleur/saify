@@ -5,11 +5,11 @@ import io
 from collections import Counter
 from decimal import Decimal
 
+from middle_office.domaine.formats import formater_quantite
 from middle_office.domaine.rapprochement.moteur import (
     PRIORITES,
     Resultat,
     Suspens,
-    formater_quantite,
 )
 
 COLONNES_CSV = (

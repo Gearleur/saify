@@ -56,8 +56,3 @@ class ContexteRapprochement:
     date_arrete: str | None = None
     suspens: list[dict] = field(default_factory=list)
     bloque_plus_recent: str | None = None
-
-
-def montant(valeur: Decimal) -> str:
-    """724836.00 -> « 724 836,00 »"""
-    return f"{valeur:,.2f}".replace(",", " ").replace(".", ",")
