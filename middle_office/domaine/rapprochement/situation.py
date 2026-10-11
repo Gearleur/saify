@@ -86,16 +86,40 @@ def point_de_situation(resultat: Resultat) -> str:
     return "\n".join(lignes) + "\n"
 
 
+def _texte_sur(valeur: str) -> str:
+    """Une cellule texte qui commence par = + - @ (ou tabulation, retour chariot) serait exécutée
+    comme formule par Excel : on la préfixe d'une apostrophe (recommandation OWASP). Les libellés
+    viennent des fichiers déposés, donc de l'extérieur."""
+    return f"'{valeur}" if valeur[:1] in ("=", "+", "-", "@", "\t", "\r") else valeur
+
+
 def suspens_csv(suspens: list[Suspens]) -> bytes:
-    """`;` et BOM UTF-8 : Excel l'ouvre directement, accents compris."""
+    """`;` et BOM UTF-8 : Excel l'ouvre directement, accents compris. Les quantités sont écrites
+    telles quelles (un écart négatif reste un nombre), tout le reste passe par `_texte_sur`."""
     sortie = io.StringIO()
     ecrivain = csv.writer(sortie, delimiter=";", lineterminator="\r\n")
     ecrivain.writerow(COLONNES_CSV)
     for s in suspens:
-        ecrivain.writerow([
-            s.priorite, s.fonds, s.entite, s.isin, s.libelle_titre, s.conservateur, s.type,
-            s.libelle_type, quantite_texte(s.qte_pms) or "", quantite_texte(s.qte_dep) or "",
-            quantite_texte(s.ecart), s.action, s.piste, " | ".join(sig.message for sig in s.signalements),
+        texte = [
+            s.priorite,
+            s.fonds,
+            s.entite,
+            s.isin,
+            s.libelle_titre,
+            s.conservateur,
+            s.type,
+            s.libelle_type,
+        ]
+        quantites = [
+            quantite_texte(s.qte_pms) or "",
+            quantite_texte(s.qte_dep) or "",
+            quantite_texte(s.ecart) or "",
+        ]
+        suite = [
+            s.action,
+            s.piste,
+            " | ".join(g.message for g in s.signalements),
             " | ".join(s.sources),
-        ])  # fmt: skip
+        ]
+        ecrivain.writerow([*map(_texte_sur, texte), *quantites, *map(_texte_sur, suite)])
     return sortie.getvalue().encode("utf-8-sig")

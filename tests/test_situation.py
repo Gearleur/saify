@@ -10,7 +10,7 @@ from middle_office.domaine.rapprochement.situation import (
     quantite_texte,
     suspens_csv,
 )
-from tests.fabrique import DONNEES, C, db_modifiee, fichiers, lancer, remplacer
+from tests.fabrique import DONNEES, PMS, C, db_modifiee, fichiers, lancer, remplacer
 
 ISINS = {
     "FR0000011488",
@@ -110,6 +110,16 @@ def test_csv_suspens():
     safran = next(ligne for ligne in lignes if "FR0000016297" in ligne).split(";")
     assert safran[0] == "en_attente"
     assert safran[8:11] == ["40000", "41000", "-1000"]
+
+
+def test_csv_neutralise_les_formules_mais_pas_les_ecarts_negatifs():
+    """Reproduit en revue : un libellé PMS « =1+2 » ressortait tel quel, et Excel l'exécutait."""
+    pms = remplacer(PMS, (";EDF 4% 2031;", ";=1+2;"))
+    lignes = suspens_csv(lancer(fichiers(pms=pms)).suspens).decode("utf-8-sig").splitlines()
+    edf = next(ligne for ligne in lignes if "FR0000011488" in ligne).split(";")
+    assert edf[4] == "'=1+2"
+    lvmh = next(ligne for ligne in lignes if "FR0000999914" in ligne).split(";")
+    assert lvmh[10] == "-30000"  # nombre, pas texte
 
 
 def test_xml_avec_doctype_bloque():
