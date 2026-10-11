@@ -3,8 +3,8 @@
  * Format français : milliers séparés par une espace fine insécable, virgule décimale, vrai signe moins.
  */
 
-const FINE = " ";
-const MOINS = "−";
+const FINE = "\u202f"; // espace fine insécable (séparateur de milliers)
+const MOINS = "\u2212"; // vrai signe moins, pas le trait d'union
 const MOTIF = /^([+-])?(\d+)(?:\.(\d+))?$/;
 
 interface Parts {

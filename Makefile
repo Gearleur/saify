@@ -38,5 +38,5 @@ front-dev:      ## Front en développement sur http://localhost:5173, /api relay
 front-build:    ## Rebuild du front dans middle_office/web (à commiter)
 	cd front && npm run build
 
-front-check:    ## Lint et typage du front
-	cd front && npm run lint && npm run typecheck
+front-check:    ## Lint, typage, format et tests du front
+	cd front && npm run lint && npm run typecheck && npm run format:check && npm test
