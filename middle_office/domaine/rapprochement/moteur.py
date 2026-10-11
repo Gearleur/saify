@@ -35,6 +35,7 @@ LECTEURS = {
     "C": ("depositaire_C", lire_depositaire_c),
 }
 PRIORITES = ("critique", "a_relever", "en_attente")  # ordre de traitement
+TYPES_EXPLICABLES = ("QTE", "ABS_DEP", "ABS_INT")  # par une opération en attente de dénouement
 EXPLICATIONS = ("aucune", "totale", "partielle", "contraire")  # par les opérations en attente
 ALERTES = ("CSDR", "DEP_AMBIGU", "ISIN_INVALIDE", "PISTE_MULTI_CONSERVATEURS")
 
@@ -81,10 +82,13 @@ class Suspens:
 
 
 def priorite(s: Suspens) -> str:
-    """critique : risque CSDR ; en_attente : QTE entièrement expliqué sans alerte ; sinon a_relever."""
+    """critique : risque CSDR ; en_attente : écart entièrement expliqué par des opérations en attente,
+    sans alerte ; sinon a_relever. Un achat de ligne nouvelle non dénoué donne un ABS_DEP expliqué,
+    une vente totale un ABS_INT : même traitement qu'un QTE. Un DEP (mauvais conservateur) n'est
+    jamais expliqué par une opération."""
     if "CSDR" in s.alertes:
         return "critique"
-    if s.type == "QTE" and s.explication == "totale" and not s.alertes:
+    if s.type in TYPES_EXPLICABLES and s.explication == "totale" and not s.alertes:
         return "en_attente"
     return "a_relever"
 

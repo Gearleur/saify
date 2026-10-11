@@ -43,7 +43,13 @@ def test_priorite_a_relever_sinon():
     assert priorite(_suspens(explication="contraire")) == "a_relever"
     expliquee_mais_signalee = _suspens(explication="totale", alertes={"PISTE_MULTI_CONSERVATEURS"})
     assert priorite(expliquee_mais_signalee) == "a_relever"
-    assert priorite(_suspens("ABS_DEP", explication="totale")) == "a_relever"
+    assert priorite(_suspens("DEP", explication="totale")) == "a_relever"
+
+
+def test_absences_entierement_expliquees_en_attente():
+    """Achat d'une ligne nouvelle non dénoué (ABS_DEP), vente totale non dénouée (ABS_INT)."""
+    assert priorite(_suspens("ABS_DEP", explication="totale")) == "en_attente"
+    assert priorite(_suspens("ABS_INT", explication="totale")) == "en_attente"
 
 
 def test_tri_priorite_puis_entite_type_isin():

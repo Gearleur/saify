@@ -15,7 +15,7 @@
 - **Journal de nettoyage** : trace de chaque transformation des données sources, au niveau NORMALISE, EXCLU, SIGNALE ou BLOQUANT.
 
 ## Termes propres à l'outil
-- **Priorité d'un suspens** : `critique` (opération non dénouée à sa date prévue, risque CSDR), `à relever` (absence, mauvais dépositaire, écart non ou partiellement expliqué), `en attente` (écart entièrement expliqué par une opération en attente de dénouement).
+- **Priorité d'un suspens** : `critique` (opération non dénouée à sa date prévue, risque CSDR), `à relever` (absence, mauvais dépositaire, écart non ou partiellement expliqué), `en attente` (écart, ou absence, entièrement expliqué par une opération en attente de dénouement ; jamais un DEP).
 - **Piste** : l'opération en attente (table `mouvements`) qui explique un écart, avec un calcul signé (achats moins ventes) : entièrement, partiellement ou pas du tout.
 - **Remède** : ce que l'opérateur doit faire pour lever un blocage (champ `remede` de tout BLOQUANT).
 - **Encours valorisé** : quantité × cours pour les actions ; nominal × cours / 100 pour les obligations (cours en % du nominal, pied de coupon, sans coupon couru).

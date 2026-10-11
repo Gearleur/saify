@@ -181,7 +181,7 @@ Si `statut = "BLOQUE"` : `suspens = []`, les compteurs de suspens valent 0, et l
 
 **Priorité** (règle métier, calculée côté back) :
 - `critique` : alerte `CSDR` (opération non dénouée à sa date prévue).
-- `en_attente` : `QTE` d'`explication` `totale`, sans aucune alerte : il suffit d'attendre le dénouement.
+- `en_attente` : `QTE`, `ABS_DEP` ou `ABS_INT` d'`explication` `totale`, sans aucune alerte : il suffit d'attendre le dénouement (achat d'une ligne nouvelle, vente totale…). Un `DEP` n'est jamais expliqué par une opération.
 - `a_relever` : tout le reste (absences, DEP, écarts non ou partiellement expliqués, signalements).
 
 ### Anomalie (ligne du journal de nettoyage)

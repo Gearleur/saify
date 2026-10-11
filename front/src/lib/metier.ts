@@ -24,7 +24,7 @@ export const PRIORITES: Record<Priorite, PrioriteInfo> = {
     label: "À relever",
     group: "À relever",
     tone: "amber",
-    description: "Absences, mauvais conservateur, écarts non expliqués.",
+    description: "Absences et écarts non expliqués, mauvais conservateur.",
     empty: "Rien à relever : tous les écarts sont expliqués.",
   },
   en_attente: {

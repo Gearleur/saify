@@ -238,3 +238,11 @@ def test_reformuler_les_messages_ne_change_pas_la_priorite(monkeypatch):
     resultat = lancer(fichiers())
     assert {s.piste for s in resultat.suspens} <= {"", "libellé reformulé"}
     assert {(s.isin, s.conservateur): s.priorite for s in resultat.suspens} == attendu
+
+
+def test_achat_de_ligne_nouvelle_non_denoue_en_attente(tmp_path):
+    """Reproduit en revue : EDF absent chez A, entièrement expliqué par un achat en attente."""
+    db = db_modifiee(tmp_path, "INSERT INTO mouvements VALUES (99, '2026-09-25', '2026-09-29', 'OBL',"
+                               " 'FR0000011488', 'ACHAT', 40000, 100, 'X', 'EN_ATTENTE')")  # fmt: skip
+    (edf,) = _suspens(lancer(fichiers(), db=db), "FR0000011488")
+    assert (edf.type, edf.explication, edf.priorite) == ("ABS_DEP", "totale", "en_attente")
