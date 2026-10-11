@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from middle_office.domaine.rapprochement.calendrier import jour_ouvre_precedent
+
 VERSION = "0.3.0"
 RACINE = Path(__file__).resolve().parents[1]
 MO = 1024 * 1024
@@ -21,6 +23,25 @@ EN_TETES_SECURITE = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
 }
+
+
+AUTO = "auto"
+
+
+def date_attendue_depuis(valeur: str | None) -> date | str | None:
+    """`DATE_ARRETE_ATTENDUE` : vide, `auto` ou AAAA-MM-JJ. Une valeur invalide arrête le démarrage :
+    mieux vaut un serveur qui refuse de partir qu'un contrôle de date silencieusement désactivé."""
+    valeur = (valeur or "").strip().lower()
+    if not valeur:
+        return None
+    if valeur == AUTO:
+        return AUTO
+    try:
+        return date.fromisoformat(valeur)
+    except ValueError:
+        raise ValueError(
+            f"DATE_ARRETE_ATTENDUE « {valeur} » : attendu vide, « auto » ou AAAA-MM-JJ"
+        ) from None
 
 
 @dataclass(frozen=True)
@@ -43,8 +64,15 @@ class Reglages:
     llm_budget_jour: int = 300  # appels LLM réels par jour, au-delà : mots-clés
     llm_concurrence: int = 4  # appels LLM simultanés
     llm_timeout: float = 10.0  # secondes, une seule nouvelle tentative
-    # Date d'arrêté exigée des fichiers (en production : J-1 ouvré) ; None : celle lue dans le PMS.
-    date_arrete_attendue: date | None = None
+    # Date d'arrêté exigée des fichiers : None (celle lue dans le PMS, pour la démo du 25/09), une date
+    # fixe, ou AUTO (J-1 ouvré TARGET2, recalculé à chaque dépôt). Variable DATE_ARRETE_ATTENDUE.
+    date_arrete_attendue: date | str | None = None
+
+    def date_attendue(self, aujourdhui: date | None = None) -> date | None:
+        if self.date_arrete_attendue == AUTO:
+            return jour_ouvre_precedent(aujourdhui or date.today())
+        assert not isinstance(self.date_arrete_attendue, str), self.date_arrete_attendue
+        return self.date_arrete_attendue
 
     @property
     def parametrage(self) -> Path:

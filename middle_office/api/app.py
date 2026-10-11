@@ -1,11 +1,18 @@
 """Assemblage de l'application : réglages, services, gestionnaires d'erreurs, routes, middleware."""
 
+import os
 from dataclasses import fields
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from middle_office.api.config import RACINE, VERSION, Reglages, configurer_logs
+from middle_office.api.config import (
+    RACINE,
+    VERSION,
+    Reglages,
+    configurer_logs,
+    date_attendue_depuis,
+)
 from middle_office.api.erreurs import enregistrer_gestionnaires
 from middle_office.api.limiteur import Limiteur
 from middle_office.api.middleware import Garde
@@ -23,6 +30,13 @@ def create_app(*, client_llm=DEPUIS_ENVIRONNEMENT, **surcharges) -> FastAPI:
     inconnus = surcharges.keys() - {f.name for f in fields(Reglages)}
     if inconnus:
         raise TypeError(f"réglage(s) inconnu(s) : {', '.join(sorted(inconnus))}")
+    # `.env` d'abord : il peut porter DATE_ARRETE_ATTENDUE comme la clé (qui reste dans l'environnement
+    # du process, jamais dans les réglages). Les variables déjà définies gardent la priorité.
+    load_dotenv(RACINE.parent / ".env", override=False)
+    if "date_arrete_attendue" not in surcharges:
+        surcharges["date_arrete_attendue"] = date_attendue_depuis(
+            os.environ.get("DATE_ARRETE_ATTENDUE")
+        )
     reglages = Reglages(**surcharges)
     fichier = reglages.fichier_historique
     if fichier is not None and fichier.resolve() == reglages.base.resolve():
@@ -36,9 +50,6 @@ def create_app(*, client_llm=DEPUIS_ENVIRONNEMENT, **surcharges) -> FastAPI:
     app.state.historique = Historique(reglages.historique_max, fichier)
     encadrement = (reglages.llm_budget_jour, reglages.llm_concurrence, reglages.llm_timeout)
     if client_llm is DEPUIS_ENVIRONNEMENT:
-        load_dotenv(
-            RACINE.parent / ".env", override=False
-        )  # la clé reste dans l'environnement du process
         app.state.llm = client_depuis_environnement(*encadrement)
     else:
         app.state.llm = None if client_llm is None else ClientEncadre(client_llm, *encadrement)

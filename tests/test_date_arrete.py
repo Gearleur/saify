@@ -2,11 +2,13 @@
 
 from datetime import date
 
+import pytest
 from fastapi.testclient import TestClient
 
 from middle_office import rapprocher
 from middle_office.api import create_app
 from middle_office.domaine.questions.base import date_reference
+from middle_office.domaine.rapprochement.calendrier import jour_ouvre_precedent
 from tests.fabrique import DONNEES, PMS, A, B, C, fichiers, regles, remplacer, xlsx_a
 
 PARAM = DONNEES / "parametrage.xlsx"
@@ -94,6 +96,50 @@ def test_api_date_attendue_configurable():
     client = TestClient(create_app(fichier_historique=None, client_llm=None, date_arrete_attendue=date(2026, 9, 28)))  # fmt: skip
     corps = client.post("/api/rapprochements/exemple").json()
     assert corps["statut"] == "BLOQUE"
+
+
+def test_date_attendue_auto_suit_le_jour_ouvre_precedent(monkeypatch):
+    monkeypatch.setenv("DATE_ARRETE_ATTENDUE", "auto")
+    reglages = create_app(fichier_historique=None, client_llm=None).state.reglages
+    assert reglages.date_attendue(date(2026, 9, 28)) == date(2026, 9, 25)  # lundi → vendredi
+    assert reglages.date_attendue(date(2026, 9, 26)) == date(2026, 9, 25)
+
+
+def test_date_attendue_auto_refuse_les_fichiers_d_avant_hier(monkeypatch):
+    """Reproduit en revue : relancer les fichiers de la veille passait sans alerte."""
+    monkeypatch.setenv("DATE_ARRETE_ATTENDUE", "auto")
+    client = TestClient(create_app(fichier_historique=None, client_llm=None))
+    corps = client.post(
+        "/api/rapprochements/exemple"
+    ).json()  # arrêté du 25/09, nous sommes plus tard
+    assert corps["statut"] == "BLOQUE"
+    assert any(a["regle"] == "DATE_ARRETE" for a in corps["journal"])
+
+
+@pytest.mark.parametrize("valeur", ["", "  "])
+def test_date_attendue_vide_lit_le_pms(monkeypatch, valeur):
+    monkeypatch.setenv("DATE_ARRETE_ATTENDUE", valeur)
+    client = TestClient(create_app(fichier_historique=None, client_llm=None))
+    assert client.post("/api/rapprochements/exemple").json()["statut"] == "OK"
+
+
+def test_date_attendue_invalide_refuse_le_demarrage(monkeypatch):
+    monkeypatch.setenv("DATE_ARRETE_ATTENDUE", "25/09/2026")
+    with pytest.raises(ValueError, match="DATE_ARRETE_ATTENDUE"):
+        create_app(fichier_historique=None, client_llm=None)
+
+
+@pytest.mark.parametrize(
+    ("jour", "veille_ouvree"),
+    [
+        (date(2026, 4, 7), date(2026, 4, 2)),  # lundi de Pâques et vendredi saint fermés
+        (date(2026, 12, 28), date(2026, 12, 24)),  # 25 et 26 décembre
+        (date(2027, 1, 4), date(2026, 12, 31)),  # 1er janvier, puis week-end
+        (date(2026, 5, 4), date(2026, 4, 30)),  # 1er mai
+    ],
+)
+def test_jour_ouvre_precedent_target2(jour, veille_ouvree):
+    assert jour_ouvre_precedent(jour) == veille_ouvree
 
 
 def test_questions_sans_base_503(tmp_path):

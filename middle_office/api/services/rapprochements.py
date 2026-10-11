@@ -33,7 +33,7 @@ log = logging.getLogger("middle_office.api.audit")
 
 def executer(depot: dict[str, bytes], reglages: Reglages, historique: Historique) -> Rapprochement:
     """Rapproche, enregistre dans l'historique et trace l'audit (sha256 des fichiers, jamais leur contenu)."""
-    resultat = rapprocher(depot, reglages.parametrage, reglages.base, reglages.date_arrete_attendue)
+    resultat = rapprocher(depot, reglages.parametrage, reglages.base, reglages.date_attendue())
     cree_le = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     modele = vers_modele(historique.nouvel_id(), cree_le, depot, resultat)
     # CSV et point de situation figés maintenant : l'historique les relit sans garder `resultat`.

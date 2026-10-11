@@ -127,7 +127,7 @@ Côté navigateur : `fetch` en `POST` et lecture de `response.body` (pas d'`Even
 Le premier événement part immédiatement ; le LLM prend environ 2 à 3 s ; le calcul quelques millisecondes.
 
 ## Date d'arrêté d'un rapprochement
-Elle n'est **jamais codée en dur** : elle est lue dans le PMS déposé (colonne `date_arrete`, une seule date admise), et les trois relevés conservateurs doivent porter la même. Si le PMS est absent ou porte plusieurs dates, le rapprochement est `BLOQUE` et `date_arrete` vaut `null`. Le réglage serveur `date_arrete_attendue` (en production : J-1 ouvré) refuse en plus des fichiers périmés (`BLOQUANT DATE_ARRETE`, « fichiers arrêtés au X, attendu le Y »).
+Elle n'est **jamais codée en dur** : elle est lue dans le PMS déposé (colonne `date_arrete`, une seule date admise), et les trois relevés conservateurs doivent porter la même. Si le PMS est absent ou porte plusieurs dates, le rapprochement est `BLOQUE` et `date_arrete` vaut `null`. La variable `DATE_ARRETE_ATTENDUE` refuse en plus des fichiers périmés (`BLOQUANT DATE_ARRETE`, « fichiers arrêtés au X, attendu le Y ») : `auto` exige J-1 ouvré (calendrier TARGET2, recalculé à chaque dépôt), `AAAA-MM-JJ` une date fixe ; vide (par défaut, pour la démo du 25/09), seule la cohérence entre les 4 fichiers est contrôlée. Une valeur invalide empêche le serveur de démarrer.
 
 ## Objets
 
