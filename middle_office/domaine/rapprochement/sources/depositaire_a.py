@@ -18,9 +18,33 @@ from middle_office.domaine.rapprochement.sources.commun import (
 from middle_office.domaine.rapprochement.sources.parametrage import Parametrage
 
 
+def _lire_ligne(lecture: Lecture, num: int, cellules: tuple, param: Parametrage) -> None:
+    compte, isin, designation, quantite = (list(cellules) + [None] * 4)[:4]
+    if all(est_vide(v) for v in cellules):
+        return
+    if est_vide(compte) or est_vide(isin) or est_vide(quantite):
+        lecture.bloquer("LIGNE_INCOMPLETE", num, cellules, "compte, ISIN ou quantité vide")
+        return
+    compte = str(compte).strip()
+    if compte not in param.comptes_a:
+        lecture.transco_absente(num, compte, "TRANSCO_DEPOSITAIRE_A")
+        return
+    brut = str(quantite)
+    qte = lire_decimal(re.sub(r"\s", "", brut))
+    signaler_separateur_ambigu(lecture, num, brut)
+    if qte is None:
+        lecture.bloquer("QUANTITE_ILLISIBLE", num, brut, "quantité non numérique")
+        return
+    if brut != str(qte):
+        lecture.normaliser("SEPARATEUR_MILLIERS", num, brut, qte, "quantité texte → nombre")
+    isin, libelle = normaliser_isin(lecture, num, str(isin)), str(designation or "").strip()
+    lecture.ajouter("A", param.comptes_a[compte], isin, "A", qte, libelle, num, compte=compte)
+
+
 def lire_depositaire_a(
     nom: str, contenu: bytes, param: Parametrage, date_arrete: date | None
 ) -> Lecture:
+    """Classeur : titre daté (JJ/MM/AAAA), puis un tableau sous l'en-tête « Compte »."""
     lecture = Lecture(nom)
     with closing(openpyxl.load_workbook(io.BytesIO(contenu), read_only=True, data_only=True)) as wb:
         lignes = list(wb.worksheets[0].iter_rows(values_only=True))
@@ -34,34 +58,6 @@ def lire_depositaire_a(
     if entete is None:
         lecture.bloquer("FORMAT", 0, "", "en-tête « Compte » introuvable")
         return lecture
-
     for num, cellules in enumerate(lignes[entete + 1 :], start=entete + 2):
-        compte, isin, designation, quantite = (list(cellules) + [None] * 4)[:4]
-        if all(est_vide(v) for v in cellules):
-            continue
-        if est_vide(compte) or est_vide(isin) or est_vide(quantite):
-            lecture.bloquer("LIGNE_INCOMPLETE", num, cellules, "compte, ISIN ou quantité vide")
-            continue
-        compte = str(compte).strip()
-        if compte not in param.comptes_a:
-            lecture.transco_absente(num, compte, "TRANSCO_DEPOSITAIRE_A")
-            continue
-        brut = str(quantite)
-        qte = lire_decimal(re.sub(r"\s", "", brut))
-        signaler_separateur_ambigu(lecture, num, brut)
-        if qte is None:
-            lecture.bloquer("QUANTITE_ILLISIBLE", num, brut, "quantité non numérique")
-            continue
-        if brut != str(qte):
-            lecture.normaliser("SEPARATEUR_MILLIERS", num, brut, qte, "quantité texte → nombre")
-        lecture.ajouter(
-            "A",
-            param.comptes_a[compte],
-            normaliser_isin(lecture, num, str(isin)),
-            "A",
-            qte,
-            str(designation or "").strip(),
-            num,
-            compte=compte,
-        )
+        _lire_ligne(lecture, num, cellules, param)
     return lecture
