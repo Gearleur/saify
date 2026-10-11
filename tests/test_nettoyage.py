@@ -1,7 +1,11 @@
 """Un test par piège : fichiers altérés en mémoire, niveau attendu dans le journal."""
 
+import io
+import zipfile
+
 import pytest
 
+from middle_office.domaine.rapprochement import moteur
 from middle_office.domaine.rapprochement.sources import isin_valide
 from tests.fabrique import (
     PMS,
@@ -166,6 +170,43 @@ def test_parametrage_transco_contradictoire_bloquante(tmp_path):
         tmp_path, "TRANSCO_SOUS_COMPTES", lambda ws: ws.append(["SC-PAT-01", "ORSAY OBLIGATIONS"])
     )
     resultat = lancer(fichiers(), param=param)
+    assert "PARAMETRAGE" in regles(resultat, "BLOQUANT")
+
+
+@pytest.mark.parametrize("cle", ["a", "c"])
+@pytest.mark.parametrize(
+    "corruption", [b"", b"bonjour", bytes(range(256)) * 4, b"PK\x03\x04tronque"]
+)
+def test_fichier_corrompu_refuse_avec_remede(cle, corruption):
+    resultat = lancer(fichiers(**{cle: corruption}))
+    assert resultat.statut == "BLOQUE"
+    (refus,) = [a for a in resultat.journal if a.regle == "FORMAT_ILLISIBLE"]
+    assert refus.remede
+
+
+def test_zip_qui_n_est_pas_un_classeur_refuse():
+    sortie = io.BytesIO()
+    with zipfile.ZipFile(sortie, "w") as archive:
+        archive.writestr("autre.txt", "pas un classeur")
+    assert "FORMAT_ILLISIBLE" in regles(lancer(fichiers(a=sortie.getvalue())), "BLOQUANT")
+
+
+def test_bug_de_l_outil_n_est_pas_deguise_en_fichier_illisible(monkeypatch):
+    """Une erreur de programmation doit remonter (500 tracé), pas dire « redéposez le fichier »."""
+
+    def lecteur_bogue(*_):
+        raise TypeError("bug")
+
+    monkeypatch.setitem(moteur.LECTEURS, "B", ("depositaire_B", lecteur_bogue))
+    with pytest.raises(TypeError):
+        lancer(fichiers())
+
+
+def test_parametrage_action_vide_bloquante(tmp_path):
+    def vider_action(ws):
+        ws.cell(next(c.row for c in ws["A"] if c.value == "QTE"), 3).value = None
+
+    resultat = lancer(fichiers(), param=parametrage_modifie(tmp_path, "TYPES_ECARTS", vider_action))
     assert "PARAMETRAGE" in regles(resultat, "BLOQUANT")
 
 

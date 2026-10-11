@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from middle_office.domaine.rapprochement.sources import (
+    ERREURS_DE_FORMAT,
     Anomalie,
     Lecture,
     Parametrage,
@@ -362,7 +363,10 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
     resultat = Resultat()
     try:
         param = lire_parametrage(parametrage)
-    except Exception as erreur:  # sans paramétrage fiable, aucun fonds n'est identifiable
+    except (
+        *ERREURS_DE_FORMAT,
+        OSError,
+    ) as erreur:  # sans paramétrage fiable, aucun fonds n'est identifiable
         resultat.journal.append(anomalie(Path(parametrage).name, 0, "BLOQUANT", "PARAMETRAGE", "", "",
                                          f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
         resultat.statut = "BLOQUE"
@@ -388,7 +392,9 @@ def rapprocher(fichiers: dict[str, bytes], parametrage: Path, db_path: Path | No
         nom = noms[0]
         try:
             lecture: Lecture = lecteur(nom, fichiers[nom], param, date_arrete)
-        except Exception as erreur:  # fichier corrompu ou format inattendu : refusé, pas deviné
+        except (
+            ERREURS_DE_FORMAT
+        ) as erreur:  # fichier corrompu ou format inattendu : refusé, pas deviné
             resultat.journal.append(anomalie(nom, 0, "BLOQUANT", "FORMAT_ILLISIBLE", "", "",
                                              f"{type(erreur).__name__} : {erreur}"))  # fmt: skip
             continue

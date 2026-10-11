@@ -8,7 +8,7 @@ from middle_office.api.config import Reglages
 from middle_office.api.erreurs import ErreurApi
 from middle_office.api.schemas import Conservateur, Fonds, ParametrageSortie, Transco, TypeEcart
 from middle_office.domaine.questions.base import date_reference
-from middle_office.domaine.rapprochement.sources import lire_parametrage
+from middle_office.domaine.rapprochement.sources import ERREURS_DE_FORMAT, lire_parametrage
 
 log = logging.getLogger("middle_office.api.referentiel")
 
@@ -61,7 +61,7 @@ def codes_fonds(base: Path) -> dict[str, str]:
 def parametrage(reglages: Reglages) -> ParametrageSortie:
     try:
         param = lire_parametrage(reglages.parametrage)
-    except Exception as exc:
+    except (*ERREURS_DE_FORMAT, OSError) as exc:
         log.warning("parametrage illisible : %s", exc)
         raise ErreurApi(503, "PARAMETRAGE_INDISPONIBLE", f"parametrage.xlsx illisible : {exc}") from exc  # fmt: skip
     tables = dict(zip(TRANSCOS, (param.sous_comptes, param.comptes_a, param.desks_b, param.comptes_c), strict=True))  # fmt: skip

@@ -9,12 +9,15 @@ import csv
 import io
 import re
 import xml.etree.ElementTree as ET
+import zipfile
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import openpyxl
+from openpyxl.utils.exceptions import InvalidFileException
 
 SOUS_COMPTES_EXCLUS = {"P3G"}
 NS_C = {"c": "urn:orsay:depositaire-c:positions:2026"}
@@ -22,6 +25,12 @@ PROPS_C = ("ACTION", "COMPTE", "CODE_ISIN", "LIBELLE_TITRE", "QUANTITE", "LOT")
 ACTIONS_C = {"C", "S"}  # C : position, S : annulation
 COLONNES_PMS = ("date_arrete", "sous_compte", "isin", "libelle", "quantite", "depositaire")
 TYPES_REQUIS = ("QTE", "ABS_DEP", "ABS_INT", "DEP")
+# Ce qu'un fichier mal formé peut lever à la lecture (vérifié sur des fichiers vides, binaires,
+# tronqués, en UTF-16). Le reste est un bug de l'outil : il doit remonter, pas devenir « fichier illisible ».
+ERREURS_DE_FORMAT = (
+    ValueError, KeyError, IndexError, EOFError, csv.Error, ET.ParseError, zipfile.BadZipFile,
+    InvalidFileException,
+)  # fmt: skip
 
 # Ce que l'opérateur doit faire quand un fichier est refusé : un blocage doit être actionnable.
 REMEDES = {
@@ -131,7 +140,11 @@ class Lecture:
 
 def lire_parametrage(chemin: Path) -> Parametrage:
     """Lève ValueError, avec un message actionnable, si le paramétrage est incomplet ou contradictoire."""
-    wb = openpyxl.load_workbook(chemin, read_only=True, data_only=True)
+    with closing(openpyxl.load_workbook(chemin, read_only=True, data_only=True)) as wb:
+        return _parametrage(wb)
+
+
+def _parametrage(wb) -> Parametrage:
 
     def table(nom: str) -> list[tuple]:
         if nom not in wb.sheetnames:
@@ -150,8 +163,16 @@ def lire_parametrage(chemin: Path) -> Parametrage:
         return resultat
 
     types_ecarts = {
-        str(code).strip(): (libelle, action) for code, libelle, action, *_ in table("TYPES_ECARTS")
+        str(code).strip(): (str(libelle or "").strip(), str(action or "").strip())
+        for code, libelle, action, *_ in table("TYPES_ECARTS")
     }
+    incomplets = [
+        code for code, (libelle, action) in types_ecarts.items() if not libelle or not action
+    ]
+    if incomplets:
+        raise ValueError(
+            f"TYPES_ECARTS : libellé ou action attendue vide pour {', '.join(incomplets)}"
+        )
     manquants = [code for code in TYPES_REQUIS if code not in types_ecarts]
     if manquants:
         raise ValueError(f"TYPES_ECARTS : code(s) {', '.join(manquants)} absent(s)")
@@ -322,8 +343,8 @@ def lire_pms(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) ->
 
 def lire_depositaire_a(nom: str, contenu: bytes, param: Parametrage, date_arrete: date) -> Lecture:
     lecture = Lecture(nom)
-    wb = openpyxl.load_workbook(io.BytesIO(contenu), read_only=True, data_only=True)
-    lignes = list(wb.worksheets[0].iter_rows(values_only=True))
+    with closing(openpyxl.load_workbook(io.BytesIO(contenu), read_only=True, data_only=True)) as wb:
+        lignes = list(wb.worksheets[0].iter_rows(values_only=True))
 
     titre = str(lignes[0][0] or "") if lignes else ""
     trouvee = re.search(r"(\d{2})/(\d{2})/(\d{4})", titre)
