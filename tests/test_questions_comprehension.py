@@ -11,13 +11,13 @@ import httpx2
 import pytest
 
 from middle_office.domaine.questions.comprehension import (
-    SEUIL_CONFIANCE,
     IntentionLLM,
     comprendre,
     executer,
     repondre,
 )
 from middle_office.domaine.questions.modeles import ContexteRapprochement
+from middle_office.domaine.questions.refus import SEUIL_CONFIANCE
 from tests.fabrique import DONNEES, FauxClient
 
 BASE = DONNEES / "orsay.db"

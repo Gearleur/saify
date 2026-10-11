@@ -45,59 +45,62 @@ class _Valorisation:
         return sum(v is None for v in self.valeurs)
 
 
+def _valoriser_ligne(
+    ligne: tuple, date_ref: date
+) -> tuple[Decimal | None, LigneSource, str | None]:
+    """Valeur (None si non valorisable), ligne source affichée, avertissement éventuel."""
+    code, _nom, isin, libelle, emetteur, type_titre, mode, quantite, cours, date_cours = ligne
+    qte, prix = decimal(quantite), decimal(cours)
+    valeur = None if prix is None else valoriser(qte, prix, mode)
+    avertissement = None
+    if prix is None:
+        avertissement = (
+            f"{isin} {libelle} : pas de cours au {date_fr(date_ref)}, ligne non valorisée"
+        )
+    elif valeur is None:
+        avertissement = (
+            f"{isin} {libelle} : mode de cotation « {mode} » inconnu, ligne non valorisée"
+        )
+    source = LigneSource(
+        "positions × titres × cours",
+        {
+            "portefeuille": code,
+            "isin": isin,
+            "libelle": libelle,
+            "emetteur": emetteur or "",
+            "type_titre": type_titre,
+            "mode_cotation": mode or "",
+            "quantite": str(qte),
+            "cours": "" if prix is None else str(prix),
+            "date_cours": date_cours or "",
+            "valorisation": "" if valeur is None else str(valeur.quantize(CENTIME)),
+        },
+    )
+    return valeur, source, avertissement
+
+
 def valoriser_positions(base: Path, fonds: str | None, date_ref: date) -> _Valorisation:
     parametres = {"date": date_ref.isoformat(), "fonds": fonds}
     with connexion_lecture_seule(base) as db:
         lignes = db.execute(SQL_ENCOURS, parametres).fetchall()
-    valeurs, sources, avertissements = [], [], []
-    for (
-        code,
-        _nom,
-        isin,
-        libelle,
-        emetteur,
-        type_titre,
-        mode,
-        quantite,
-        cours,
-        date_cours,
-    ) in lignes:
-        qte, prix = decimal(quantite), decimal(cours)
-        valeur = None
-        if prix is None:
-            avertissements.append(
-                f"{isin} {libelle} : pas de cours au {date_fr(date_ref)}, ligne non valorisée"
-            )
-        else:
-            valeur = valoriser(qte, prix, mode)
-            if valeur is None:
-                avertissements.append(
-                    f"{isin} {libelle} : mode de cotation « {mode} » inconnu, ligne non valorisée"
-                )
-        valeurs.append(valeur)
-        sources.append(
-            LigneSource(
-                "positions × titres × cours",
-                {
-                    "portefeuille": code,
-                    "isin": isin,
-                    "libelle": libelle,
-                    "emetteur": emetteur or "",
-                    "type_titre": type_titre,
-                    "mode_cotation": mode or "",
-                    "quantite": str(qte),
-                    "cours": "" if prix is None else str(prix),
-                    "date_cours": date_cours or "",
-                    "valorisation": "" if valeur is None else str(valeur.quantize(CENTIME)),
-                },
-            )
-        )
+    valorisees = [_valoriser_ligne(ligne, date_ref) for ligne in lignes]
+    avertissements = [a for _, _, a in valorisees if a]
     if any(ligne[6] == "POURCENTAGE" for ligne in lignes):
         avertissements.append(
             "Obligations valorisées au pied de coupon (cours en % du nominal), sans coupon couru."
         )
     avertissements.append(AVERTISSEMENT_PMS)
+    valeurs, sources = [v for v, _, _ in valorisees], [s for _, s, _ in valorisees]
     return _Valorisation(parametres, lignes, valeurs, sources, avertissements)
+
+
+def _total_par(v: _Valorisation, colonne: int, defaut: str = "") -> dict[str, Decimal]:
+    """Somme des lignes valorisées, regroupées par une colonne de SQL_ENCOURS (fonds, émetteur…)."""
+    totaux: dict[str, Decimal] = defaultdict(Decimal)
+    for ligne, valeur in zip(v.lignes, v.valeurs, strict=True):
+        if valeur is not None:
+            totaux[ligne[colonne] or defaut] += valeur
+    return totaux
 
 
 def encours_valorise(base: Path, fonds: str | None, date_ref: date) -> Reponse:
@@ -113,10 +116,7 @@ def encours_valorise(base: Path, fonds: str | None, date_ref: date) -> Reponse:
             confiance="basse",
         )
 
-    totaux: dict[str, Decimal] = defaultdict(Decimal)
-    for ligne, valeur in zip(v.lignes, v.valeurs, strict=True):
-        if valeur is not None:
-            totaux[ligne[1]] += valeur
+    totaux = _total_par(v, colonne=1)
     partiel = " partiel" if v.exclues else ""
     chiffres = [
         Chiffre(f"Encours valorisé{partiel}" if fonds else nom, total.quantize(CENTIME), "EUR")
@@ -156,10 +156,7 @@ def concentration_emetteurs(
         )
     v = valoriser_positions(base, fonds, date_ref)
     jour = date_fr(date_ref)
-    par_emetteur: dict[str, Decimal] = defaultdict(Decimal)
-    for ligne, valeur in zip(v.lignes, v.valeurs, strict=True):
-        if valeur is not None:
-            par_emetteur[ligne[4] or "Émetteur non renseigné"] += valeur
+    par_emetteur = _total_par(v, colonne=4, defaut="Émetteur non renseigné")
     total = sum(par_emetteur.values(), Decimal(0))
     if not total:
         return Reponse(

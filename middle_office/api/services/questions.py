@@ -19,7 +19,8 @@ from middle_office.api.schemas import (
 from middle_office.api.services.historique import Historique
 from middle_office.api.services.llm import ClientEncadre
 from middle_office.domaine.base_gestion import date_reference
-from middle_office.domaine.questions.comprehension import Comprehension, comprendre, executer
+from middle_office.domaine.questions.comprehension import comprendre, executer
+from middle_office.domaine.questions.intention import Comprehension
 from middle_office.domaine.questions.modeles import ContexteRapprochement, Reponse
 
 log = logging.getLogger("middle_office.api.audit")

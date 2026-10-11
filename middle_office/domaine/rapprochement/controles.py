@@ -8,60 +8,52 @@ from middle_office.domaine.rapprochement.informations import Base
 from middle_office.domaine.rapprochement.sources import Anomalie, Position, isin_valide
 
 
-def signaler_positions(positions: list[Position], base: Base) -> list[Anomalie]:
-    """ISIN douteux et libellés divergents : conservés, mais remontés à un humain."""
-    anomalies = []
-    vus: set[str] = set()
+def _signale(fichier: str, ligne: int, regle: str, brut: str, retenu: str, motif: str) -> Anomalie:
+    return Anomalie(fichier, ligne, "SIGNALE", regle, brut, retenu, motif)
+
+
+def _isins_douteux(positions: list[Position], base: Base) -> list[Anomalie]:
+    """Une fois par ISIN : clé de contrôle invalide, ou absent du référentiel de orsay.db."""
+    anomalies, vus = [], set()
     for p in positions:
         if p.isin in vus:
             continue
         vus.add(p.isin)
         if not isin_valide(p.isin):
+            motif = "clé de contrôle ISIN invalide : probable erreur de saisie"
             anomalies.append(
-                Anomalie(
-                    p.fichier,
-                    p.ligne,
-                    "SIGNALE",
-                    "ISIN_CLE_INVALIDE",
-                    p.isin,
-                    p.isin,
-                    "clé de contrôle ISIN invalide : probable erreur de saisie",
-                )
+                _signale(p.fichier, p.ligne, "ISIN_CLE_INVALIDE", p.isin, p.isin, motif)
             )
         if base.referentiel is not None and p.isin not in base.referentiel:
+            motif = "ISIN absent du référentiel titres"
             anomalies.append(
-                Anomalie(
-                    p.fichier,
-                    p.ligne,
-                    "SIGNALE",
-                    "ISIN_HORS_REFERENTIEL",
-                    p.isin,
-                    p.isin,
-                    "ISIN absent du référentiel titres",
-                )
+                _signale(p.fichier, p.ligne, "ISIN_HORS_REFERENTIEL", p.isin, p.isin, motif)
             )
-    libelles: dict[str, dict[str, Position]] = defaultdict(dict)
+    return anomalies
+
+
+def _libelles_divergents(positions: list[Position]) -> list[Anomalie]:
+    """Même ISIN, libellés PMS et conservateur différents (casse ignorée) : vérifier le titre."""
+    par_isin: dict[str, dict[str, Position]] = defaultdict(dict)
     for p in positions:
         if p.libelle:
-            libelles[p.isin].setdefault("PMS" if p.source == "PMS" else "DEP", p)
-    for isin, par_cote in libelles.items():
-        if (
-            len(par_cote) == 2
-            and par_cote["PMS"].libelle.upper() != par_cote["DEP"].libelle.upper()
-        ):
-            p, d = par_cote["PMS"], par_cote["DEP"]
+            par_isin[p.isin].setdefault("PMS" if p.source == "PMS" else "DEP", p)
+    anomalies = []
+    for isin, cotes in par_isin.items():
+        pms, dep = cotes.get("PMS"), cotes.get("DEP")
+        if pms and dep and pms.libelle.upper() != dep.libelle.upper():
+            motif = f"{isin} : libellé PMS « {pms.libelle} » ≠ conservateur « {dep.libelle} »"
             anomalies.append(
-                Anomalie(
-                    d.fichier,
-                    d.ligne,
-                    "SIGNALE",
-                    "LIBELLE_DIFFERENT",
-                    d.libelle,
-                    p.libelle,
-                    f"{isin} : libellé PMS « {p.libelle} » ≠ conservateur « {d.libelle} »",
+                _signale(
+                    dep.fichier, dep.ligne, "LIBELLE_DIFFERENT", dep.libelle, pms.libelle, motif
                 )
             )
     return anomalies
+
+
+def signaler_positions(positions: list[Position], base: Base) -> list[Anomalie]:
+    """ISIN douteux et libellés divergents : conservés, mais remontés à un humain."""
+    return _isins_douteux(positions, base) + _libelles_divergents(positions)
 
 
 def denouements_depasses(base: Base, date_arrete: date) -> list[Anomalie]:
